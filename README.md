@@ -22,6 +22,25 @@ O objetivo do MVP e receber planilhas de producao e faturamento, padronizar os d
 - [Checklist da planilha real](docs/checklist-planilha-real.md)
 - [Schema SQL inicial](database/schema-inicial.sql)
 
+## Backend
+
+O backend Spring Boot foi iniciado em `src/main/java/br/com/faturamed`.
+
+Componentes iniciais:
+
+- `FaturamedApplication`: entrada da aplicacao.
+- `HealthController`: endpoint `GET /api/health`.
+- `MotorConferencia`: compara registros de producao e faturamento.
+- `V1__schema_inicial.sql`: migration Flyway com o schema inicial.
+
+Quando Java 21 e Maven estiverem instalados/configurados, os comandos principais serao:
+
+```bash
+docker compose up -d
+mvn test
+mvn spring-boot:run
+```
+
 ## Campos padronizados
 
 Os arquivos importados devem ser convertidos para um formato interno comum:
