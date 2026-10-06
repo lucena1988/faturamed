@@ -1,0 +1,9 @@
+coluna,campo_padronizado,obrigatorio,observacao
+A,data_atendimento,sim,Data do atendimento ou realizacao
+B,paciente_nome,sim,Nome do paciente
+C,paciente_documento,nao,CPF/carteirinha/prontuario quando existir
+D,procedimento_codigo,sim,Codigo TUSS/proprio/convênio
+E,procedimento_nome,sim,Descricao do procedimento
+F,medico_nome,nao,Profissional responsavel
+G,quantidade,sim,Quantidade faturada
+H,valor_total,sim,Valor total faturado
