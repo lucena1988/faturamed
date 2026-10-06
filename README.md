@@ -20,6 +20,7 @@ O objetivo do MVP e receber planilhas de producao e faturamento, padronizar os d
 - [Modelo de negocio](docs/modelo-negocio.md)
 - [Regras de conferencia](docs/regras-conferencia.md)
 - [Checklist da planilha real](docs/checklist-planilha-real.md)
+- [Exemplos da API](docs/api-exemplos.md)
 - [Schema SQL inicial](database/schema-inicial.sql)
 
 ## Backend
@@ -30,6 +31,9 @@ Componentes iniciais:
 
 - `FaturamedApplication`: entrada da aplicacao.
 - `HealthController`: endpoint `GET /api/health`.
+- `EmpresaController`: endpoints iniciais de cadastro/listagem de empresas.
+- `LayoutImportacaoController`: cadastro/listagem de layouts de importacao.
+- `ImportacaoController`: cadastro de importacoes e registros importados padronizados.
 - `MotorConferencia`: compara registros de producao e faturamento.
 - `V1__schema_inicial.sql`: migration Flyway com o schema inicial.
 
@@ -40,6 +44,16 @@ docker compose up -d
 mvn test
 mvn spring-boot:run
 ```
+
+Endpoints iniciais:
+
+- `POST /api/empresas`
+- `GET /api/empresas`
+- `POST /api/layouts`
+- `GET /api/layouts?empresaId=1`
+- `POST /api/importacoes`
+- `POST /api/importacoes/{id}/registros`
+- `GET /api/importacoes/{id}/registros`
 
 ## Campos padronizados
 
