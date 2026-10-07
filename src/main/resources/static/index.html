@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Faturamed</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegacao principal">
+      <a class="brand" href="#dashboard" data-view-link="dashboard" aria-label="Faturamed dashboard">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="img">
+            <path d="M5 4.75A2.75 2.75 0 0 1 7.75 2h8.5A2.75 2.75 0 0 1 19 4.75v14.5A2.75 2.75 0 0 1 16.25 22h-8.5A2.75 2.75 0 0 1 5 19.25V4.75Z"/>
+            <path d="M9 7h6M9 11h6M9 15h2.5"/>
+            <path d="M14.25 14.25v4.5M12 16.5h4.5"/>
+          </svg>
+        </span>
+        <span>
+          <strong>Faturamed</strong>
+          <small>Auditoria medica</small>
+        </span>
+      </a>
+
+      <nav class="nav-list" aria-label="Modulos">
+        <button class="nav-item active" type="button" data-view-link="dashboard">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/></svg>
+          </span>
+          Dashboard
+        </button>
+        <button class="nav-item" type="button" data-view-link="importacoes">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/></svg>
+          </span>
+          Importacoes
+        </button>
+        <button class="nav-item" type="button" data-view-link="divergencias">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>
+          </span>
+          Divergencias
+        </button>
+        <button class="nav-item" type="button" data-view-link="layouts">
+          <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><path d="M8 3v4M15 10v4M11 17v4"/></svg>
+          </span>
+          Layouts
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <span class="status-dot"></span>
+        <span>Ambiente local</span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Conferencia Setembro/2026</p>
+          <h1 id="view-title">Dashboard</h1>
+        </div>
+        <div class="topbar-actions">
+          <label class="select-field">
+            <span>Unidade</span>
+            <select id="unit-filter">
+              <option>Clinica Central</option>
+              <option>Unidade Norte</option>
+              <option>Unidade Sul</option>
+            </select>
+          </label>
+          <label class="select-field">
+            <span>Periodo</span>
+            <select id="period-filter">
+              <option>Setembro/2026</option>
+              <option>Agosto/2026</option>
+              <option>Julho/2026</option>
+            </select>
+          </label>
+          <button class="icon-button" type="button" title="Atualizar indicadores" aria-label="Atualizar indicadores" id="refresh-button">
+            <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v6h-6"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboard-view" data-view="dashboard">
+        <div class="kpi-grid" aria-label="Indicadores principais">
+          <article class="kpi-card risk">
+            <span class="kpi-label">Valor em risco</span>
+            <strong>R$ 48.750,00</strong>
+            <small>12,4% menor que agosto</small>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Itens analisados</span>
+            <strong>15.842</strong>
+            <small>2 importacoes cruzadas</small>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Conformes</span>
+            <strong>14.921</strong>
+            <small>94,2% da amostra</small>
+          </article>
+          <article class="kpi-card alert">
+            <span class="kpi-label">Divergencias</span>
+            <strong>621</strong>
+            <small>187 duplicidades</small>
+          </article>
+        </div>
+
+        <div class="content-grid">
+          <section class="panel wide">
+            <div class="panel-header">
+              <div>
+                <h2>Mapa de conferencia</h2>
+                <p>Produção, faturamento e impacto financeiro por tipo de regra.</p>
+              </div>
+              <div class="segmented" role="tablist" aria-label="Agrupamento do grafico">
+                <button class="active" type="button">Tipo</button>
+                <button type="button">Medico</button>
+                <button type="button">Unidade</button>
+              </div>
+            </div>
+            <div class="audit-chart" aria-label="Grafico de divergencias">
+              <div class="chart-row">
+                <span>Faturado sem producao</span>
+                <div class="bar"><i style="width: 76%"></i></div>
+                <strong>R$ 21.400</strong>
+              </div>
+              <div class="chart-row">
+                <span>Valor divergente</span>
+                <div class="bar"><i style="width: 58%"></i></div>
+                <strong>R$ 14.850</strong>
+              </div>
+              <div class="chart-row">
+                <span>Quantidade divergente</span>
+                <div class="bar"><i style="width: 42%"></i></div>
+                <strong>R$ 8.300</strong>
+              </div>
+              <div class="chart-row">
+                <span>Duplicidade</span>
+                <div class="bar"><i style="width: 23%"></i></div>
+                <strong>R$ 4.200</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2>Status da rodada</h2>
+              <span class="badge success">94,2%</span>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut" aria-hidden="true"></div>
+              <dl class="legend-list">
+                <div><dt>Conforme</dt><dd>14.921</dd></div>
+                <div><dt>Divergente</dt><dd>621</dd></div>
+                <div><dt>Nao encontrado</dt><dd>113</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section class="panel wide">
+            <div class="panel-header">
+              <div>
+                <h2>Fila de analise</h2>
+                <p>Divergencias priorizadas por valor em risco.</p>
+              </div>
+              <button class="text-button" type="button" data-view-link="divergencias">Ver todas</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Paciente</th>
+                    <th>Procedimento</th>
+                    <th>Tipo</th>
+                    <th>Medico</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="priority-table"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="importacoes-view" data-view="importacoes">
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Nova importacao</h2>
+                <p>Registre arquivos de producao e faturamento.</p>
+              </div>
+            </div>
+            <form class="stack-form" id="import-form">
+              <label>
+                <span>Tipo</span>
+                <select name="tipo">
+                  <option>FATURAMENTO</option>
+                  <option>PRODUCAO</option>
+                </select>
+              </label>
+              <label>
+                <span>Layout</span>
+                <select name="layout">
+                  <option>Layout faturamento padrao</option>
+                  <option>Layout producao padrao</option>
+                </select>
+              </label>
+              <label>
+                <span>Nome do arquivo</span>
+                <input name="arquivo" type="text" value="faturamento-setembro-2026.xlsx">
+              </label>
+              <button class="dropzone" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4"/><path d="M4 16v3h16v-3"/></svg>
+                <span>Soltar arquivo</span>
+                <small>.xlsx, .xls ou .csv</small>
+              </button>
+              <button class="primary-button" type="submit">Registrar importacao</button>
+            </form>
+          </section>
+
+          <section class="panel wide">
+            <div class="panel-header">
+              <div>
+                <h2>Importacoes recentes</h2>
+                <p>Arquivos recebidos e processados no periodo.</p>
+              </div>
+              <span class="badge">4 arquivos</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Arquivo</th>
+                    <th>Tipo</th>
+                    <th>Linhas</th>
+                    <th>Status</th>
+                    <th>Recebido</th>
+                  </tr>
+                </thead>
+                <tbody id="imports-table"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="divergencias-view" data-view="divergencias">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Divergencias</h2>
+              <p>Itens que exigem conferencia ou contestacao.</p>
+            </div>
+            <div class="filters">
+              <select id="type-filter" aria-label="Filtrar por tipo">
+                <option value="TODOS">Todos os tipos</option>
+                <option value="Faturado sem producao">Faturado sem producao</option>
+                <option value="Valor divergente">Valor divergente</option>
+                <option value="Quantidade divergente">Quantidade divergente</option>
+              </select>
+              <select id="status-filter" aria-label="Filtrar por status">
+                <option value="TODOS">Todos os status</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Em analise">Em analise</option>
+                <option value="Contestado">Contestado</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Paciente</th>
+                  <th>Data</th>
+                  <th>Procedimento</th>
+                  <th>Tipo</th>
+                  <th>Valor em risco</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="divergence-table"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="layouts-view" data-view="layouts">
+        <div class="content-grid">
+          <section class="panel wide">
+            <div class="panel-header">
+              <div>
+                <h2>Layout faturamento padrao</h2>
+                <p>Mapeamento de colunas salvo para novas importacoes.</p>
+              </div>
+              <button class="primary-button small" type="button" id="add-column">Adicionar campo</button>
+            </div>
+            <div class="layout-board" id="layout-board"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header compact">
+              <h2>Campos obrigatorios</h2>
+              <span class="badge success">8/8</span>
+            </div>
+            <ul class="check-list">
+              <li><span></span>Data</li>
+              <li><span></span>Paciente</li>
+              <li><span></span>Procedimento</li>
+              <li><span></span>Quantidade</li>
+              <li><span></span>Valor total</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

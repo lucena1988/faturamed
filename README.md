@@ -55,6 +55,22 @@ Endpoints iniciais:
 - `POST /api/importacoes/{id}/registros`
 - `GET /api/importacoes/{id}/registros`
 
+## Frontend
+
+O prototipo inicial do sistema esta em `src/main/resources/static`.
+
+Arquivos principais:
+
+- `index.html`
+- `styles.css`
+- `app.js`
+
+Quando a aplicacao Spring Boot estiver rodando, o frontend ficara disponivel em:
+
+```text
+http://localhost:8080/
+```
+
 ## Campos padronizados
 
 Os arquivos importados devem ser convertidos para um formato interno comum:
