@@ -1,6 +1,9 @@
 spring:
   application:
     name: faturamed
+  http:
+    converters:
+      preferred-json-mapper: jackson2
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/faturamed}
     username: ${DB_USER:faturamed}
