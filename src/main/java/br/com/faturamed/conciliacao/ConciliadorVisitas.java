@@ -13,7 +13,27 @@ public class ConciliadorVisitas {
             String convenio, String medico, String codigo, String procedimento, String conta,
             String setor, BigDecimal valorTotal, BigDecimal regra, BigDecimal repasse) {}
     public record Visita(int linhaMedico, String atendimento, LocalDate data, Status status, String motivo,
-            Map<String, String> original, RegistroHospital hospital, List<RegistroHospital> candidatos) {}
+            Map<String, String> original, RegistroHospital hospital, List<RegistroHospital> candidatos,
+            CamposRevisados camposRevisados) {
+        public Visita(int linhaMedico, String atendimento, LocalDate data, Status status, String motivo,
+                Map<String, String> original, RegistroHospital hospital, List<RegistroHospital> candidatos) {
+            this(linhaMedico, atendimento, data, status, motivo, original, hospital, candidatos, null);
+        }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "medico", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String medicoEfetivo() { return camposRevisados != null ? camposRevisados.medico()
+                : hospital != null ? hospital.medico() : original.getOrDefault("medico", ""); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "procedimento", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String procedimentoEfetivo() { return camposRevisados != null ? camposRevisados.procedimento()
+                : hospital != null ? hospital.procedimento() : original.getOrDefault("procedimento/mat-med", ""); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "codigoProcedimento", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String codigoEfetivo() { return camposRevisados != null ? camposRevisados.codigoProcedimento() : hospital == null ? null : hospital.codigo(); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "valorHospital", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public BigDecimal valorEfetivo() { return camposRevisados != null ? camposRevisados.valorHospital() : hospital == null ? null : hospital.valorTotal(); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "repasse", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public BigDecimal repasseEfetivo() { return camposRevisados != null ? camposRevisados.repasse() : hospital == null ? null : hospital.repasse(); }
+    }
+    public record CamposRevisados(String medico, String procedimento, String codigoProcedimento,
+            BigDecimal valorHospital, BigDecimal repasse) {}
     public record Relatorio(String hospital, String arquivoMedico, String arquivoHospital,
             String regraStatus, List<Visita> visitas, List<RegistroHospital> hospitalSemProducao,
             Map<Status, Long> resumo, BigDecimal repasseCorrespondente) {}

@@ -10,6 +10,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(br.com.faturamed.conciliacao.ConflitoRevisaoException.class)
+    public ResponseEntity<Map<String, String>> handleConflitoRevisao(br.com.faturamed.conciliacao.ConflitoRevisaoException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("erro", exception.getMessage()));
+    }
+
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(RecursoNaoEncontradoException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

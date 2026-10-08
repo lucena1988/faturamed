@@ -25,10 +25,49 @@
         <label>Atendimento<input id="search" type="search"></label>
         <span id="count"></span>
       </div>
-      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Revisao</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="conciliation-history"><h2>Relatorios anteriores</h2><ul id="history"></ul></section>
   </main>
+  <dialog id="review-dialog" aria-labelledby="review-title">
+    <form id="review-form">
+      <header class="review-heading"><h2 id="review-title">Revisar visita</h2><button type="button" id="review-close" aria-label="Fechar revisao" title="Fechar revisao">X</button></header>
+      <dl id="review-summary" class="review-summary"></dl>
+      <h3>Registros do hospital</h3>
+      <p id="review-candidate-message"></p>
+      <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Medico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
+      <div class="review-fields">
+        <label>Decisao<select id="review-action" required>
+          <option value="AJUSTAR_DADOS">Ajustar dados da visita</option>
+          <option value="CONFIRMAR_CORRESPONDENCIA">Confirmar correspondencia</option>
+          <option value="MANTER_PENDENTE">Manter pendente</option>
+          <option value="MANTER_DIVERGENTE">Manter divergente</option>
+          <option value="RESTAURAR_AUTOMATICO">Restaurar resultado automatico</option>
+        </select></label>
+        <label>Responsavel<input id="review-owner" required maxlength="180" autocomplete="name"></label>
+        <label class="review-justification">Justificativa<textarea id="review-justification" required minlength="5" maxlength="2000" rows="3"></textarea></label>
+      </div>
+      <fieldset id="review-edit-fields" hidden disabled>
+        <legend>Dados revisados</legend>
+        <div class="review-fields">
+          <label>Data<input id="edit-date" type="date" required></label>
+          <label>Atendimento<input id="edit-attendance" required maxlength="80"></label>
+          <label>Medico<input id="edit-doctor" maxlength="180"></label>
+          <label>Procedimento<input id="edit-procedure" maxlength="2000"></label>
+          <label>Codigo do procedimento<input id="edit-code" maxlength="40"></label>
+          <label>Valor hospital (R$)<input id="edit-value" type="number" min="0" step="0.000001"></label>
+          <label>Repasse (R$)<input id="edit-repasse" type="number" min="0" step="0.000001"></label>
+          <label>Status<select id="edit-status" required><option>PENDENTE</option><option>DIVERGENTE</option><option>PAGA</option></select></label>
+          <label class="review-justification">Motivo<textarea id="edit-reason" rows="2" required maxlength="2000"></textarea></label>
+        </div>
+        <button type="button" id="edit-search-candidates">Buscar correspondencias para atendimento e data</button>
+        <button type="button" id="edit-fill-candidate">Preencher com registro selecionado</button>
+      </fieldset>
+      <p id="review-message" role="status" aria-live="polite"></p>
+      <div class="review-actions"><button type="button" id="review-reload" hidden>Atualizar detalhes</button><button type="submit" id="review-save" disabled>Salvar revisao</button></div>
+      <section class="review-history"><h3>Historico da visita</h3><ol id="review-history"></ol></section>
+    </form>
+  </dialog>
   <script src="conciliacao.js"></script>
 </body>
 </html>

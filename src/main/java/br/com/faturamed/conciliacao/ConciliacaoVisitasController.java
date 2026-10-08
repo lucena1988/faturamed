@@ -1,7 +1,7 @@
 package br.com.faturamed.conciliacao;
 
-import br.com.faturamed.shared.RecursoNaoEncontradoException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.*;
@@ -17,14 +17,16 @@ public class ConciliacaoVisitasController {
     private final ExportadorRelatorioVisitas exportador;
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
+    private final RevisaoVisitasService revisoes;
 
     public ConciliacaoVisitasController(LeitorPlanilhaVisitas leitor, ConciliadorVisitas conciliador,
-            ExportadorRelatorioVisitas exportador, JdbcTemplate jdbc, ObjectMapper json) {
+            ExportadorRelatorioVisitas exportador, JdbcTemplate jdbc, ObjectMapper json, RevisaoVisitasService revisoes) {
         this.leitor = leitor;
         this.conciliador = conciliador;
         this.exportador = exportador;
         this.jdbc = jdbc;
         this.json = json;
+        this.revisoes = revisoes;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -49,16 +51,27 @@ public class ConciliacaoVisitasController {
 
     @GetMapping("/{id}")
     public ConciliadorVisitas.Relatorio buscar(@PathVariable Long id) throws Exception {
-        var registros = jdbc.queryForList("select relatorio::text from conciliacao_visitas where id = ?", String.class, id);
-        if (registros.isEmpty()) throw new RecursoNaoEncontradoException("Relatorio nao encontrado");
-        return json.readValue(registros.getFirst(), ConciliadorVisitas.Relatorio.class);
+        return revisoes.carregar(id).atual();
+    }
+
+    @GetMapping("/{id}/visitas/{linha}/revisao")
+    public RevisaoVisitasService.Detalhe detalhar(@PathVariable Long id, @PathVariable int linha,
+            @RequestParam(required = false) String atendimento, @RequestParam(required = false) java.time.LocalDate data) throws Exception {
+        return revisoes.detalhar(id, linha, atendimento, data);
+    }
+
+    @PostMapping("/{id}/visitas/{linha}/revisao")
+    public RevisaoVisitasService.Resultado revisar(@PathVariable Long id, @PathVariable int linha,
+            @Valid @RequestBody RevisaoVisitaRequest request) throws Exception {
+        return revisoes.revisar(id, linha, request);
     }
 
     @GetMapping("/{id}/relatorio.xlsx")
     public ResponseEntity<byte[]> exportar(@PathVariable Long id) throws Exception {
+        var estado = revisoes.carregar(id);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=conciliacao-visitas-" + id + ".xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(exportador.exportar(buscar(id)));
+                .body(exportador.exportar(estado.atual(), estado.historico()));
     }
 }

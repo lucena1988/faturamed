@@ -11,6 +11,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ExportadorRelatorioVisitas {
     public byte[] exportar(ConciliadorVisitas.Relatorio relatorio) throws Exception {
+        return exportar(relatorio, java.util.List.of());
+    }
+
+    public byte[] exportar(ConciliadorVisitas.Relatorio relatorio,
+            java.util.List<RevisaoVisitasService.Revisao> revisoes) throws Exception {
         try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
             CellStyle moeda = workbook.createCellStyle();
             moeda.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00########"));
@@ -47,12 +52,11 @@ public class ExportadorRelatorioVisitas {
                         visita.linhaMedico(), visita.data(), visita.atendimento(),
                         originalOuHospital(visita, "convenio", h == null ? null : h.convenio()),
                         originalOuHospital(visita, "nome", h == null ? null : h.paciente()),
-                        originalOuHospital(visita, "procedimento/mat-med", h == null ? null : h.procedimento()),
-                        originalOuHospital(visita, "medico", h == null ? null : h.medico()),
-                        visita.original().getOrDefault("valor orig", "").isBlank()
+                        visita.procedimentoEfetivo(), visita.medicoEfetivo(),
+                        visita.camposRevisados() != null ? visita.valorEfetivo() : visita.original().getOrDefault("valor orig", "").isBlank()
                                 ? (h == null ? null : h.valorTotal()) : visita.original().get("valor orig"), visita.status().name(),
-                        h == null ? null : h.codigo(), h == null ? null : h.conta(), h == null ? null : h.valorTotal(),
-                        h == null ? null : h.regra(), h == null ? null : h.repasse(), h == null ? null : h.linha(),
+                        visita.codigoEfetivo(), h == null ? null : h.conta(), visita.valorEfetivo(),
+                        h == null ? null : h.regra(), visita.repasseEfetivo(), h == null ? null : h.linha(),
                         visita.candidatos().size(), visita.motivo()}, moeda, data);
             }
             configurar(visitas, headers.length);
@@ -68,6 +72,28 @@ public class ExportadorRelatorioVisitas {
             cabecalho(semProducao, detailHeaders, titulo);
             for (var h : relatorio.hospitalSemProducao()) hospital(semProducao, null, h, moeda, data);
             configurar(semProducao, detailHeaders.length);
+            if (!revisoes.isEmpty()) {
+                Sheet historico = workbook.createSheet("Revisoes");
+                String[] reviewHeaders = {"Revisao", "Linha medico", "Data da decisao (UTC)", "Responsavel", "Acao",
+                        "Status anterior", "Status revisado", "Linha hospital anterior", "Linha hospital revisada", "Justificativa", "Campos alterados"};
+                cabecalho(historico, reviewHeaders, titulo);
+                for (var revisao : revisoes) preencher(historico.createRow(historico.getLastRowNum() + 1), new Object[]{
+                        revisao.id(), revisao.linhaMedico(), revisao.criadoEm().toString(), revisao.responsavel(), revisao.acao().name(),
+                        revisao.antes().status().name(), revisao.depois().status().name(),
+                        revisao.antes().hospital() == null ? null : revisao.antes().hospital().linha(),
+                        revisao.depois().hospital() == null ? null : revisao.depois().hospital().linha(), revisao.justificativa(),
+                        alteracoes(revisao.antes(), revisao.depois())}, moeda, data);
+                configurar(historico, reviewHeaders.length);
+                historico.setColumnWidth(9, 85 * 256);
+                historico.setColumnWidth(10, 85 * 256);
+                CellStyle wrap = workbook.createCellStyle(); wrap.setWrapText(true);
+                for (int i = 1; i <= historico.getLastRowNum(); i++) {
+                    Cell cell = historico.getRow(i).getCell(10); cell.setCellStyle(wrap);
+                    int lines = java.util.Arrays.stream(cell.getStringCellValue().split("\n", -1))
+                            .mapToInt(line -> Math.max(1, (line.length() + 79) / 80)).sum();
+                    historico.getRow(i).setHeightInPoints(Math.min(409, 16 * lines));
+                }
+            }
             workbook.write(output);
             return output.toByteArray();
         }
@@ -76,6 +102,20 @@ public class ExportadorRelatorioVisitas {
     private String originalOuHospital(ConciliadorVisitas.Visita visita, String campo, String hospital) {
         String original = visita.original().getOrDefault(campo, "");
         return original.isBlank() ? hospital : original;
+    }
+
+    private String alteracoes(ConciliadorVisitas.Visita antes, ConciliadorVisitas.Visita depois) {
+        String[] labels = {"Data", "Atendimento", "Medico", "Procedimento", "Codigo", "Valor hospital", "Repasse"};
+        Object[] old = {antes.data(), antes.atendimento(), antes.medicoEfetivo(), antes.procedimentoEfetivo(),
+                antes.codigoEfetivo(), antes.valorEfetivo(), antes.repasseEfetivo()};
+        Object[] updated = {depois.data(), depois.atendimento(), depois.medicoEfetivo(), depois.procedimentoEfetivo(),
+                depois.codigoEfetivo(), depois.valorEfetivo(), depois.repasseEfetivo()};
+        var changes = new java.util.ArrayList<String>();
+        for (int i = 0; i < labels.length; i++) if (!java.util.Objects.equals(old[i], updated[i])) {
+            changes.add(labels[i] + ": " + java.util.Objects.toString(old[i], "Nao informado")
+                    + " -> " + java.util.Objects.toString(updated[i], "Nao informado"));
+        }
+        return String.join("\n", changes);
     }
 
     private void hospital(Sheet sheet, Integer linhaMedico, ConciliadorVisitas.RegistroHospital h, CellStyle moeda, CellStyle data) {

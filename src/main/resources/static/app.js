@@ -37,7 +37,10 @@ function currentVisits() {
 function attentionVisits() {
   return currentVisits().filter(visit => visit.status !== 'PAGA').sort((a, b) =>
     (a.status === 'DIVERGENTE' ? 0 : 1) - (b.status === 'DIVERGENTE' ? 0 : 1)
-    || (b.hospital?.repasse ?? -1) - (a.hospital?.repasse ?? -1) || a.linhaMedico - b.linhaMedico);
+    || (effectiveRepasse(b) ?? -1) - (effectiveRepasse(a) ?? -1) || a.linhaMedico - b.linhaMedico);
+}
+function effectiveRepasse(visit) {
+  return visit.camposRevisados ? visit.repasse : visit.repasse ?? visit.hospital?.repasse;
 }
 function uniqueHospitalRows(rows) {
   return [...new Map(rows.map(row => [row.linha, row])).values()];
@@ -49,6 +52,8 @@ function renderValues(visits) {
   const allHospital = uniqueHospitalRows([...report.hospitalSemProducao,
     ...report.visitas.flatMap(visit => visit.candidatos)]);
   const knownTotal = knownRepasse(allHospital);
+  const allocated = new Map(report.visitas.filter(visit => visit.hospital)
+    .map(visit => [visit.hospital.linha, visit.linhaMedico]));
   $('#kpi-repasse').textContent = knownTotal.length
     ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Nao informado';
   $('#kpi-repasse-detail').textContent = knownTotal.length < allHospital.length
@@ -56,15 +61,21 @@ function renderValues(visits) {
     : 'Total da planilha do hospital';
   for (const [status, suffix] of [['PAGA', 'pagas'], ['PENDENTE', 'pendentes'], ['DIVERGENTE', 'divergentes']]) {
     const selected = visits.filter(visit => visit.status === status);
-    const rows = knownRepasse(selected.flatMap(visit => visit.hospital ? [visit.hospital] : visit.candidatos));
+    const candidatesForValue = visit => (visit.hospital ? [visit.hospital] : visit.candidatos)
+      .filter(row => !allocated.has(row.linha) || allocated.get(row.linha) === visit.linhaMedico);
+    const rows = knownRepasse(selected.filter(visit => !visit.camposRevisados).flatMap(candidatesForValue));
+    const corrected = selected.filter(visit => visit.camposRevisados && effectiveRepasse(visit) != null);
     const missing = selected.filter(visit => {
-      const candidates = visit.hospital ? [visit.hospital] : visit.candidatos;
+      if (visit.camposRevisados) return effectiveRepasse(visit) == null;
+      const candidates = candidatesForValue(visit);
       return !candidates.length || candidates.some(row => row.repasse == null || !Number.isFinite(Number(row.repasse)));
     }).length;
-    $(`#kpi-valor-${suffix}`).textContent = rows.length || !selected.length
-      ? currency.format(rows.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Nao informado';
+    $(`#kpi-valor-${suffix}`).textContent = rows.length || corrected.length || !selected.length
+      ? currency.format(rows.reduce((sum, row) => sum + Number(row.repasse), 0)
+        + corrected.reduce((sum, visit) => sum + Number(effectiveRepasse(visit)), 0)) : 'Nao informado';
     $(`#kpi-valor-${suffix}-detail`).textContent = missing
       ? `${missing} visitas sem valor informado`
+      : selected.some(visit => visit.camposRevisados) ? 'Repasse com ajustes da revisao'
       : status === 'DIVERGENTE' ? 'Repasse dos registros em conferencia' : 'Repasse informado pelo hospital';
   }
 }
@@ -171,7 +182,7 @@ function renderChart() {
   const groups = new Map();
   for (const visit of currentVisits()) {
     const label = chartMode === 'status' ? labels[visit.status]
-      : chartMode === 'medico' ? visit.hospital?.medico || visit.original.medico || 'Nao identificado'
+      : chartMode === 'medico' ? (visit.medico ?? visit.hospital?.medico ?? visit.original.medico) || 'Nao identificado'
       : visit.motivo;
     groups.set(label, (groups.get(label) || 0) + 1);
   }
@@ -190,12 +201,12 @@ function fillAttentionTable(table, visits, detailed) {
   table.replaceChildren();
   for (const visit of visits) {
     const row = element('tr');
-    const value = visit.hospital?.repasse;
+    const value = effectiveRepasse(visit);
     const cells = detailed ? [visit.atendimento, visit.data.split('-').reverse().join('/'),
-      visit.hospital?.procedimento || visit.original['procedimento/mat-med'] || 'Nao identificado', visit.motivo,
+      (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Nao identificado', visit.motivo,
       value == null ? 'Nao informado' : currency.format(value)]
-      : [visit.atendimento, visit.hospital?.procedimento || visit.original['procedimento/mat-med'] || 'Nao identificado',
-        visit.motivo, visit.hospital?.medico || visit.original.medico || 'Nao identificado',
+      : [visit.atendimento, (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Nao identificado',
+        visit.motivo, (visit.medico ?? visit.hospital?.medico ?? visit.original.medico) || 'Nao identificado',
         value == null ? 'Nao informado' : currency.format(value)];
     for (const value of cells) row.append(element('td', value));
     const status = element('td');

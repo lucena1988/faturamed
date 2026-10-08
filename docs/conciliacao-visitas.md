@@ -30,11 +30,39 @@ O XLSX inclui Resumo, Visitas, Candidatos hospital e Hospital sem producao. A ul
 
 Os relatorios sao persistidos no PostgreSQL e podem ser reabertos na tela.
 
+## Revisao das visitas
+
+Cada linha tem a acao Revisar. Os detalhes exibem os dados da producao, o status automatico, o status atual, os candidatos do hospital e o historico de decisoes.
+
+- Confirmar correspondencia associa um candidato da propria visita. O status passa a PAGA quando o setor e Faturado; caso contrario, fica PENDENTE. Medico, codigo, valor total e repasse precisam estar preenchidos.
+- Manter pendente e Manter divergente removem a associacao atual e registram a justificativa.
+- Restaurar resultado automatico retorna ao resultado original da importacao, sem apagar o historico.
+
+Todas as decisoes exigem responsavel e justificativa. O responsavel e informado pelo operador; ainda nao ha vinculo com um usuario autenticado. As decisoes sao gravadas separadamente em revisao_visita, com os estados antes/depois e horario. O JSON original da importacao permanece preservado.
+
+Um registro do hospital so pode ser associado a uma linha do medico na mesma rodada. Registros ocupados ficam indisponiveis na tela. As revisoes usam a versao da rodada; uma alteracao concorrente retorna HTTP 409 e exige atualizar os detalhes.
+
+O dashboard e o XLSX consultam o resultado revisado. O XLSX inclui a aba Revisoes quando existem decisoes. Nos cards financeiros, um candidato ja associado a outra visita nao e contado novamente como valor pendente/divergente.
+
 ## API
 
 - POST /api/conciliacoes/visitas (multipart: hospital, producao, faturamento).
 - GET /api/conciliacoes/visitas (ultimos 100 relatorios).
 - GET /api/conciliacoes/visitas/{id}.
 - GET /api/conciliacoes/visitas/{id}/relatorio.xlsx.
+- GET /api/conciliacoes/visitas/{id}/visitas/{linha}/revisao.
+- POST /api/conciliacoes/visitas/{id}/visitas/{linha}/revisao (JSON: acao, linhaHospital quando confirmar, responsavel, justificativa, versao retornada pelos detalhes).
 
 A leitura usa Apache POI. No layout Analia Franco, Planilha2 tem prioridade para evitar importar o mesmo detalhe duas vezes. Nao misture hospitais em um unico arquivo. As tabelas TUSS/AMB ainda nao participam desse cruzamento.
+# Ajustes de dados na revisao
+
+A decisao `AJUSTAR_DADOS` permite corrigir data, atendimento, medico, procedimento,
+codigo TUSS/AMB, valor hospital, repasse, status e motivo. A linha identifica a
+origem e nao e editavel. Campos monetarios vazios permanecem desconhecidos,
+nao sao convertidos em zero. Atendimento e data corrigidos podem ser usados
+para buscar novamente os registros do hospital.
+
+Os ajustes compoem o resultado efetivo, o dashboard e o Excel, com historico
+de antes/depois, responsavel e justificativa. O total informado pelo hospital
+continua baseado na planilha original. `PAGA` exige uma correspondencia com
+registro faturado do hospital e dados completos; nao comprova recebimento.
