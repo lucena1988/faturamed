@@ -70,4 +70,15 @@ form.addEventListener('submit', async event => {
 });
 document.querySelector('#status').addEventListener('change', renderRows);
 document.querySelector('#search').addEventListener('input', renderRows);
-history().catch(error => { message.textContent = error.message; });
+async function initialize() {
+  await history();
+  const params = new URLSearchParams(location.search);
+  const id = params.get('relatorio');
+  if (id && /^[0-9]+$/.test(id)) {
+    document.querySelector('#search').value = params.get('atendimento') || '';
+    const status = params.get('status');
+    if (['PAGA', 'PENDENTE', 'DIVERGENTE'].includes(status)) document.querySelector('#status').value = status;
+    showReport(id, await request(`/api/conciliacoes/visitas/${id}`));
+  }
+}
+initialize().catch(error => { message.textContent = error.message; });

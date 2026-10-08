@@ -152,6 +152,7 @@ svg {
 
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 18px;
   align-items: center;
   justify-content: space-between;
@@ -199,7 +200,16 @@ p {
 .select-field {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
+
+.select-field select { width: 180px; max-width: 100%; }
+#report-filter { width: 250px; }
+.filters { min-width: 0; max-width: 100%; }
+.filters select { width: 240px; max-width: 100%; }
+.panel { min-width: 0; }
+.chart-row span { overflow-wrap: anywhere; }
+.nav-item { text-decoration: none; }
 
 .select-field span,
 .stack-form label span {
@@ -244,7 +254,7 @@ input {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -264,16 +274,7 @@ input {
   padding: 18px;
 }
 
-.kpi-card::after {
-  position: absolute;
-  right: -22px;
-  bottom: -22px;
-  width: 82px;
-  height: 82px;
-  content: "";
-  border-radius: 999px;
-  background: rgba(23, 109, 117, 0.11);
-}
+.kpi-card::after { content: none; }
 
 .kpi-card.risk::after {
   background: rgba(201, 79, 95, 0.14);
@@ -294,7 +295,7 @@ input {
 .kpi-card strong {
   display: block;
   margin-bottom: 10px;
-  font-size: 1.8rem;
+  font-size: 1.35rem;
   letter-spacing: 0;
 }
 
@@ -366,7 +367,7 @@ input {
 
 .chart-row {
   display: grid;
-  grid-template-columns: 180px minmax(120px, 1fr) 100px;
+  grid-template-columns: minmax(0, 1fr) minmax(70px, 1fr) 55px;
   gap: 12px;
   align-items: center;
 }
@@ -695,7 +696,7 @@ td {
   }
 
   .nav-list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     margin-top: 12px;
   }
 
@@ -721,6 +722,7 @@ td {
   .topbar-actions,
   .select-field,
   .select-field select,
+  #report-filter,
   .filters,
   .filters select {
     width: 100%;

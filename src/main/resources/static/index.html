@@ -24,7 +24,10 @@
       </a>
 
       <nav class="nav-list" aria-label="Modulos">
-        <a class="nav-item" href="conciliacao.html">Conciliacao de visitas</a>
+        <a class="nav-item" href="conciliacao.html" title="Conciliacao de visitas" aria-label="Conciliacao de visitas">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/></svg></span>
+          Conciliacao de visitas
+        </a>
         <button class="nav-item active" type="button" data-view-link="dashboard">
           <span class="nav-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/></svg>
@@ -60,25 +63,21 @@
     <main class="workspace">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Conferencia Setembro/2026</p>
+          <p class="eyebrow" id="report-context">Carregando conciliacoes</p>
           <h1 id="view-title">Dashboard</h1>
         </div>
         <div class="topbar-actions">
           <label class="select-field">
-            <span>Unidade</span>
-            <select id="unit-filter">
-              <option>Clinica Central</option>
-              <option>Unidade Norte</option>
-              <option>Unidade Sul</option>
-            </select>
+            <span>Hospital</span>
+            <select id="unit-filter" disabled></select>
+          </label>
+          <label class="select-field">
+            <span>Relatorio</span>
+            <select id="report-filter" disabled></select>
           </label>
           <label class="select-field">
             <span>Periodo</span>
-            <select id="period-filter">
-              <option>Setembro/2026</option>
-              <option>Agosto/2026</option>
-              <option>Julho/2026</option>
-            </select>
+            <select id="period-filter" disabled></select>
           </label>
           <button class="icon-button" type="button" title="Atualizar indicadores" aria-label="Atualizar indicadores" id="refresh-button">
             <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v6h-6"/></svg>
@@ -86,27 +85,34 @@
         </div>
       </header>
 
+      <p id="dashboard-message" role="status" aria-live="polite"></p>
+
       <section class="view active" id="dashboard-view" data-view="dashboard">
         <div class="kpi-grid" aria-label="Indicadores principais">
           <article class="kpi-card risk">
-            <span class="kpi-label">Valor em risco</span>
-            <strong>R$ 48.750,00</strong>
-            <small>12,4% menor que agosto</small>
+            <span class="kpi-label">Repasse das visitas pagas</span>
+            <strong id="kpi-repasse">...</strong>
+            <small>Valor informado pelo hospital</small>
           </article>
           <article class="kpi-card">
             <span class="kpi-label">Itens analisados</span>
-            <strong>15.842</strong>
-            <small>2 importacoes cruzadas</small>
+            <strong id="kpi-total">...</strong>
+            <small id="kpi-total-detail"></small>
           </article>
           <article class="kpi-card">
-            <span class="kpi-label">Conformes</span>
-            <strong>14.921</strong>
-            <small>94,2% da amostra</small>
+            <span class="kpi-label">Pagas</span>
+            <strong id="kpi-pagas">...</strong>
+            <small id="kpi-pagas-detail"></small>
+          </article>
+          <article class="kpi-card alert">
+            <span class="kpi-label">Pendentes</span>
+            <strong id="kpi-pendentes">...</strong>
+            <small>Sem faturamento confirmado nesta rodada</small>
           </article>
           <article class="kpi-card alert">
             <span class="kpi-label">Divergencias</span>
-            <strong>621</strong>
-            <small>187 duplicidades</small>
+            <strong id="kpi-divergentes">...</strong>
+            <small>Visitas que exigem conferencia</small>
           </article>
         </div>
 
@@ -115,49 +121,28 @@
             <div class="panel-header">
               <div>
                 <h2>Mapa de conferencia</h2>
-                <p>Produção, faturamento e impacto financeiro por tipo de regra.</p>
+                <p id="chart-context">Visitas no periodo selecionado.</p>
               </div>
               <div class="segmented" role="tablist" aria-label="Agrupamento do grafico">
-                <button class="active" type="button">Tipo</button>
-                <button type="button">Medico</button>
-                <button type="button">Unidade</button>
+                <button class="active" type="button" role="tab" aria-selected="true" data-chart="status">Status</button>
+                <button type="button" role="tab" aria-selected="false" data-chart="medico">Medico</button>
+                <button type="button" role="tab" aria-selected="false" data-chart="motivo">Motivo</button>
               </div>
             </div>
-            <div class="audit-chart" aria-label="Grafico de divergencias">
-              <div class="chart-row">
-                <span>Faturado sem producao</span>
-                <div class="bar"><i style="width: 76%"></i></div>
-                <strong>R$ 21.400</strong>
-              </div>
-              <div class="chart-row">
-                <span>Valor divergente</span>
-                <div class="bar"><i style="width: 58%"></i></div>
-                <strong>R$ 14.850</strong>
-              </div>
-              <div class="chart-row">
-                <span>Quantidade divergente</span>
-                <div class="bar"><i style="width: 42%"></i></div>
-                <strong>R$ 8.300</strong>
-              </div>
-              <div class="chart-row">
-                <span>Duplicidade</span>
-                <div class="bar"><i style="width: 23%"></i></div>
-                <strong>R$ 4.200</strong>
-              </div>
-            </div>
+            <div class="audit-chart" id="audit-chart" aria-label="Quantidade de visitas"></div>
           </section>
 
           <section class="panel">
             <div class="panel-header compact">
               <h2>Status da rodada</h2>
-              <span class="badge success">94,2%</span>
+              <span class="badge success" id="paid-percent">...</span>
             </div>
             <div class="donut-wrap">
-              <div class="donut" aria-hidden="true"></div>
+              <div class="donut" id="status-donut" aria-hidden="true"></div>
               <dl class="legend-list">
-                <div><dt>Conforme</dt><dd>14.921</dd></div>
-                <div><dt>Divergente</dt><dd>621</dd></div>
-                <div><dt>Nao encontrado</dt><dd>113</dd></div>
+                <div><dt>Pagas</dt><dd id="legend-pagas">...</dd></div>
+                <div><dt>Pendentes</dt><dd id="legend-pendentes">...</dd></div>
+                <div><dt>Divergentes</dt><dd id="legend-divergentes">...</dd></div>
               </dl>
             </div>
           </section>
@@ -166,7 +151,7 @@
             <div class="panel-header">
               <div>
                 <h2>Fila de analise</h2>
-                <p>Divergencias priorizadas por valor em risco.</p>
+                <p id="queue-count">Pendencias e divergencias.</p>
               </div>
               <button class="text-button" type="button" data-view-link="divergencias">Ver todas</button>
             </div>
@@ -174,11 +159,11 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Paciente</th>
+                    <th>Atendimento</th>
                     <th>Procedimento</th>
-                    <th>Tipo</th>
+                    <th>Motivo</th>
                     <th>Medico</th>
-                    <th>Valor</th>
+                    <th>Repasse informado</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -195,44 +180,34 @@
             <div class="panel-header">
               <div>
                 <h2>Nova importacao</h2>
-                <p>Registre arquivos de producao e faturamento.</p>
+                <p>Visitas hospitalares</p>
               </div>
             </div>
             <form class="stack-form" id="import-form">
               <label>
-                <span>Tipo</span>
-                <select name="tipo">
-                  <option>FATURAMENTO</option>
-                  <option>PRODUCAO</option>
-                </select>
+                <span>Hospital</span>
+                <input name="hospital" required maxlength="180" placeholder="Nome do hospital">
               </label>
               <label>
-                <span>Layout</span>
-                <select name="layout">
-                  <option>Layout faturamento padrao</option>
-                  <option>Layout producao padrao</option>
-                </select>
+                <span>Producao do medico</span>
+                <input name="producao" type="file" accept=".xlsx,.xlsb" required>
               </label>
               <label>
-                <span>Nome do arquivo</span>
-                <input name="arquivo" type="text" value="faturamento-setembro-2026.xlsx">
+                <span>Faturamento do hospital</span>
+                <input name="faturamento" type="file" accept=".xlsx,.xlsb" required>
               </label>
-              <button class="dropzone" type="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4"/><path d="M4 16v3h16v-3"/></svg>
-                <span>Soltar arquivo</span>
-                <small>.xlsx, .xls ou .csv</small>
-              </button>
-              <button class="primary-button" type="submit">Registrar importacao</button>
+              <button class="primary-button" type="submit">Importar e conciliar</button>
+              <p id="import-message" role="status" aria-live="polite"></p>
             </form>
           </section>
 
           <section class="panel wide">
             <div class="panel-header">
               <div>
-                <h2>Importacoes recentes</h2>
-                <p>Arquivos recebidos e processados no periodo.</p>
+                <h2>Arquivos da conciliacao</h2>
+                <p id="imports-context"></p>
               </div>
-              <span class="badge">4 arquivos</span>
+              <span class="badge" id="imports-count">...</span>
             </div>
             <div class="table-wrap">
               <table>
@@ -262,15 +237,11 @@
             <div class="filters">
               <select id="type-filter" aria-label="Filtrar por tipo">
                 <option value="TODOS">Todos os tipos</option>
-                <option value="Faturado sem producao">Faturado sem producao</option>
-                <option value="Valor divergente">Valor divergente</option>
-                <option value="Quantidade divergente">Quantidade divergente</option>
               </select>
               <select id="status-filter" aria-label="Filtrar por status">
                 <option value="TODOS">Todos os status</option>
-                <option value="Pendente">Pendente</option>
-                <option value="Em analise">Em analise</option>
-                <option value="Contestado">Contestado</option>
+                <option value="PENDENTE">Pendente</option>
+                <option value="DIVERGENTE">Divergente</option>
               </select>
             </div>
           </div>
@@ -278,11 +249,11 @@
             <table>
               <thead>
                 <tr>
-                  <th>Paciente</th>
+                  <th>Atendimento</th>
                   <th>Data</th>
                   <th>Procedimento</th>
-                  <th>Tipo</th>
-                  <th>Valor em risco</th>
+                  <th>Motivo</th>
+                  <th>Repasse informado</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
