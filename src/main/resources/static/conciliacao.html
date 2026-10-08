@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conciliacao de visitas | Faturamed</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="conciliacao.css">
+</head>
+<body>
+  <main class="conciliation-workspace">
+    <header class="conciliation-heading"><div><a href="/">Faturamed</a><h1>Conciliacao de visitas</h1></div>
+      <a id="download" hidden>Baixar relatorio XLSX</a></header>
+    <form id="conciliation-form" class="conciliation-form">
+      <label>Hospital<input name="hospital" required maxlength="180" value="Analia Franco"></label>
+      <label>Producao do medico<input name="producao" type="file" accept=".xlsx,.xlsb" required></label>
+      <label>Faturamento do hospital<input name="faturamento" type="file" accept=".xlsx,.xlsb" required></label>
+      <button type="submit" id="submit">Conciliar</button>
+    </form>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="results" hidden>
+      <div class="conciliation-stats" id="stats"></div>
+      <div class="conciliation-filters">
+        <label>Status<select id="status"><option value="">Todos</option><option>PAGA</option><option>PENDENTE</option><option>DIVERGENTE</option></select></label>
+        <label>Atendimento<input id="search" type="search"></label>
+        <span id="count"></span>
+      </div>
+      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th></tr></thead><tbody id="rows"></tbody></table></div>
+    </section>
+    <section class="conciliation-history"><h2>Relatorios anteriores</h2><ul id="history"></ul></section>
+  </main>
+  <script src="conciliacao.js"></script>
+</body>
+</html>

@@ -37,10 +37,18 @@ Componentes iniciais:
 - `MotorConferencia`: compara registros de producao e faturamento.
 - `V1__schema_inicial.sql`: migration Flyway com o schema inicial.
 
-Quando Java 21 e Maven estiverem instalados/configurados, os comandos principais serao:
+Para rodar a aplicacao e o PostgreSQL com Docker:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
+```
+
+Acesse http://localhost:8080/. Para parar os containers, execute `docker compose down`. Os dados do PostgreSQL ficam persistidos no volume `postgres_data`.
+
+Para executar o backend fora do Docker, com Java 21 e Maven instalados:
+
+```bash
+docker compose up -d postgres
 mvn test
 mvn spring-boot:run
 ```

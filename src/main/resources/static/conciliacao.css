@@ -1,0 +1,24 @@
+.conciliation-workspace { max-width: 1600px; margin: 0 auto; padding: 28px; }
+.conciliation-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 24px; }
+.conciliation-heading h1 { font-size: 26px; margin: 12px 0 0; }
+.conciliation-heading a { color: var(--primary); }
+.conciliation-form { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr auto; gap: 18px; align-items: end; padding: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.conciliation-workspace label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 14px; }
+.conciliation-workspace input, .conciliation-workspace select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: white; }
+.conciliation-workspace button { padding: 12px 18px; background: var(--primary); color: white; border: 0; border-radius: 4px; }
+.conciliation-workspace button:disabled { opacity: .6; cursor: wait; }
+.conciliation-stats { display: flex; flex-wrap: wrap; gap: 30px; padding: 20px 0; }
+.conciliation-stats strong { display: block; font-size: 23px; margin-top: 8px; }
+.conciliation-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 20px; margin: 12px 0 20px; }
+.conciliation-table { overflow-x: auto; background: white; }
+.conciliation-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.conciliation-table th, .conciliation-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--line); min-width: 110px; vertical-align: top; }
+.conciliation-table th { background: #e7f0ee; }
+.conciliation-table td:last-child { min-width: 250px; }
+.conciliation-history { padding: 28px 0; }
+.conciliation-history h2 { font-size: 18px; }
+.conciliation-history ul { list-style: none; padding: 0; }
+.conciliation-history li { margin: 10px 0; }
+.conciliation-history button { background: transparent; color: var(--primary); padding: 4px 0; text-align: left; }
+@media (max-width: 900px) { .conciliation-form { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 550px) { .conciliation-workspace { padding: 16px; } .conciliation-form { grid-template-columns: 1fr; } .conciliation-heading { align-items: start; flex-direction: column; } }
