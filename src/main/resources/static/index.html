@@ -90,9 +90,9 @@
       <section class="view active" id="dashboard-view" data-view="dashboard">
         <div class="kpi-grid" aria-label="Indicadores principais">
           <article class="kpi-card risk">
-            <span class="kpi-label">Repasse das visitas pagas</span>
+            <span class="kpi-label">Repasse de visitas</span>
             <strong id="kpi-repasse">...</strong>
-            <small>Valor informado pelo hospital</small>
+            <small id="kpi-repasse-detail">Total da planilha do hospital</small>
           </article>
           <article class="kpi-card">
             <span class="kpi-label">Itens analisados</span>
@@ -104,15 +104,30 @@
             <strong id="kpi-pagas">...</strong>
             <small id="kpi-pagas-detail"></small>
           </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Valor das pagas</span>
+            <strong id="kpi-valor-pagas">...</strong>
+            <small id="kpi-valor-pagas-detail"></small>
+          </article>
           <article class="kpi-card alert">
             <span class="kpi-label">Pendentes</span>
             <strong id="kpi-pendentes">...</strong>
             <small>Sem faturamento confirmado nesta rodada</small>
           </article>
           <article class="kpi-card alert">
+            <span class="kpi-label">Valor pendente</span>
+            <strong id="kpi-valor-pendentes">...</strong>
+            <small id="kpi-valor-pendentes-detail"></small>
+          </article>
+          <article class="kpi-card alert">
             <span class="kpi-label">Divergencias</span>
             <strong id="kpi-divergentes">...</strong>
             <small>Visitas que exigem conferencia</small>
+          </article>
+          <article class="kpi-card alert">
+            <span class="kpi-label">Valor divergente</span>
+            <strong id="kpi-valor-divergentes">...</strong>
+            <small id="kpi-valor-divergentes-detail"></small>
           </article>
         </div>
 

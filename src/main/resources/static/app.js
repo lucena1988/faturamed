@@ -39,14 +39,43 @@ function attentionVisits() {
     (a.status === 'DIVERGENTE' ? 0 : 1) - (b.status === 'DIVERGENTE' ? 0 : 1)
     || (b.hospital?.repasse ?? -1) - (a.hospital?.repasse ?? -1) || a.linhaMedico - b.linhaMedico);
 }
-function paidSum(visits) {
-  return visits.filter(visit => visit.status === 'PAGA').reduce((sum, visit) => sum + Number(visit.hospital.repasse), 0);
+function uniqueHospitalRows(rows) {
+  return [...new Map(rows.map(row => [row.linha, row])).values()];
+}
+function knownRepasse(rows) {
+  return uniqueHospitalRows(rows).filter(row => row.repasse != null && Number.isFinite(Number(row.repasse)));
+}
+function renderValues(visits) {
+  const allHospital = uniqueHospitalRows([...report.hospitalSemProducao,
+    ...report.visitas.flatMap(visit => visit.candidatos)]);
+  const knownTotal = knownRepasse(allHospital);
+  $('#kpi-repasse').textContent = knownTotal.length
+    ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Nao informado';
+  $('#kpi-repasse-detail').textContent = knownTotal.length < allHospital.length
+    ? `Total informado; ${allHospital.length - knownTotal.length} registros sem repasse`
+    : 'Total da planilha do hospital';
+  for (const [status, suffix] of [['PAGA', 'pagas'], ['PENDENTE', 'pendentes'], ['DIVERGENTE', 'divergentes']]) {
+    const selected = visits.filter(visit => visit.status === status);
+    const rows = knownRepasse(selected.flatMap(visit => visit.hospital ? [visit.hospital] : visit.candidatos));
+    const missing = selected.filter(visit => {
+      const candidates = visit.hospital ? [visit.hospital] : visit.candidatos;
+      return !candidates.length || candidates.some(row => row.repasse == null || !Number.isFinite(Number(row.repasse)));
+    }).length;
+    $(`#kpi-valor-${suffix}`).textContent = rows.length || !selected.length
+      ? currency.format(rows.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Nao informado';
+    $(`#kpi-valor-${suffix}-detail`).textContent = missing
+      ? `${missing} visitas sem valor informado`
+      : status === 'DIVERGENTE' ? 'Repasse dos registros em conferencia' : 'Repasse informado pelo hospital';
+  }
 }
 function clearData(message) {
   report = null;
   for (const id of ['kpi-repasse', 'kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes',
+    'kpi-valor-pagas', 'kpi-valor-pendentes', 'kpi-valor-divergentes',
     'legend-pagas', 'legend-pendentes', 'legend-divergentes', 'paid-percent', 'imports-count']) $(`#${id}`).textContent = '...';
+  for (const suffix of ['pagas', 'pendentes', 'divergentes']) $(`#kpi-valor-${suffix}-detail`).textContent = '';
   $('#kpi-total-detail').textContent = '';
+  $('#kpi-repasse-detail').textContent = 'Total da planilha do hospital';
   $('#kpi-pagas-detail').textContent = '';
   $('#dashboard-message').textContent = message;
   for (const id of ['priority-table', 'divergence-table', 'imports-table', 'audit-chart']) $(`#${id}`).replaceChildren();
@@ -77,6 +106,7 @@ async function loadReports(preferredId) {
       clearData('Nenhuma conciliacao salva.');
       for (const id of ['kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes', 'legend-pagas', 'legend-pendentes', 'legend-divergentes']) $(`#${id}`).textContent = '0';
       $('#kpi-repasse').textContent = currency.format(0);
+      for (const suffix of ['pagas', 'pendentes', 'divergentes']) $(`#kpi-valor-${suffix}`).textContent = currency.format(0);
       $('#paid-percent').textContent = '0%';
       $('#imports-count').textContent = '0 arquivos';
     }
@@ -115,7 +145,7 @@ function renderDashboard() {
   const counts = Object.fromEntries(Object.keys(labels).map(status => [status, visits.filter(visit => visit.status === status).length]));
   const paidRate = visits.length ? counts.PAGA / visits.length : 0;
   $('#report-context').textContent = `${report.hospital} - Conciliacao #${reportId}`;
-  $('#kpi-repasse').textContent = currency.format(paidSum(visits));
+  renderValues(visits);
   $('#kpi-total').textContent = integer.format(visits.length);
   $('#kpi-total-detail').textContent = `${new Set(visits.map(v => v.atendimento)).size} atendimentos`;
   $('#kpi-pagas-detail').textContent = `${percentage.format(paidRate)} das visitas`;
