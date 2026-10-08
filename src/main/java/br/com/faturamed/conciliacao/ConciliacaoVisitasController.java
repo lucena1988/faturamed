@@ -54,6 +54,12 @@ public class ConciliacaoVisitasController {
         return revisoes.carregar(id).atual();
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluir(@PathVariable Long id) {
+        revisoes.excluir(id);
+    }
+
     @GetMapping("/{id}/visitas/{linha}/revisao")
     public RevisaoVisitasService.Detalhe detalhar(@PathVariable Long id, @PathVariable int linha,
             @RequestParam(required = false) String atendimento, @RequestParam(required = false) java.time.LocalDate data) throws Exception {

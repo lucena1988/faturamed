@@ -18,7 +18,7 @@ async function request(url, options) {
     error.status = response.status;
     throw error;
   }
-  return response.json();
+  return response.status === 204 ? null : response.json();
 }
 function showReport(id, data) {
   reportId = id;
@@ -48,7 +48,7 @@ function renderRows() {
     const h = visit.hospital;
     const total = visit.camposRevisados ? visit.valorHospital : visit.valorHospital ?? h?.valorTotal;
     const repasse = visit.camposRevisados ? visit.repasse : visit.repasse ?? h?.repasse;
-    const values = [visit.linhaMedico, visit.data.split('-').reverse().join('/'), visit.atendimento,
+    const values = [visit.linhaMedico, visit.data ? visit.data.split('-').reverse().join('/') : 'Nao informada', visit.atendimento,
       visit.medico ?? h?.medico ?? visit.original.medico ?? '', visit.procedimento ?? h?.procedimento ?? visit.original['procedimento/mat-med'] ?? '',
       total == null ? '' : money.format(total), repasse == null ? '' : money.format(repasse), visit.status, visit.motivo];
     const row = document.createElement('tr');
@@ -62,7 +62,7 @@ function renderRows() {
   }
   document.querySelector('#count').textContent = `${filtered.length} de ${report.visitas.length} visitas`;
 }
-async function history() {
+async function loadHistory() {
   const items = await request('/api/conciliacoes/visitas');
   const list = document.querySelector('#history'); list.replaceChildren();
   for (const item of items) {
@@ -72,8 +72,29 @@ async function history() {
       try { showReport(item.id, await request(`/api/conciliacoes/visitas/${item.id}`)); message.textContent = ''; }
       catch (error) { message.textContent = error.message; }
     });
-    li.append(button); list.append(li);
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'delete-report';
+    remove.textContent = 'Excluir'; remove.title = `Excluir relatorio #${item.id}`;
+    remove.setAttribute('aria-label', `Excluir relatorio ${item.id}`);
+    remove.addEventListener('click', async () => {
+      if (!confirm(`Excluir definitivamente o relatorio #${item.id} de ${item.hospital}?\nAs visitas conciliadas e todo o historico de revisoes deste relatorio serao apagados. Esta acao nao pode ser desfeita.`)) return;
+      remove.disabled = true; button.disabled = true;
+      try {
+        await request(`/api/conciliacoes/visitas/${item.id}`, { method: 'DELETE' });
+        if (String(reportId) === String(item.id)) {
+          ++reviewGeneration; reviewDetail = null; reviewDialog.close(); report = null; reportId = null;
+          document.querySelector('#results').hidden = true; document.querySelector('#download').hidden = true;
+          document.querySelector('#rows').replaceChildren(); document.querySelector('#stats').replaceChildren();
+          const url = new URL(location.href); url.searchParams.delete('relatorio');
+          window.history.replaceState(null, '', url);
+        }
+        message.textContent = `Relatorio #${item.id} excluido.`;
+        await loadHistory();
+      } catch (error) { message.textContent = error.message; remove.disabled = false; button.disabled = false; }
+    });
+    li.append(button, remove); list.append(li);
   }
+  if (!items.length) list.append(node('li', 'Nenhum relatorio salvo.'));
 }
 form.addEventListener('submit', async event => {
   event.preventDefault(); const submit = document.querySelector('#submit'); submit.disabled = true;
@@ -82,14 +103,14 @@ form.addEventListener('submit', async event => {
     const result = await request('/api/conciliacoes/visitas', { method: 'POST', body: new FormData(form) });
     showReport(result.id, result.relatorio);
     message.textContent = `Relatorio #${result.id} salvo. ${result.relatorio.visitas.length} visitas processadas.`;
-    await history();
+    await loadHistory();
   } catch (error) { message.textContent = error.message; }
   finally { submit.disabled = false; }
 });
 document.querySelector('#status').addEventListener('change', renderRows);
 document.querySelector('#search').addEventListener('input', renderRows);
 async function initialize() {
-  await history();
+  await loadHistory();
   const params = new URLSearchParams(location.search);
   const id = params.get('relatorio');
   if (id && /^[0-9]+$/.test(id)) {
@@ -131,7 +152,7 @@ async function openReview(line) {
     document.querySelector('#review-title').textContent = `Atendimento ${detail.atual.atendimento} - linha ${line}`;
     const original = detail.original;
     const summary = document.querySelector('#review-summary');
-    for (const [label, value] of [['Data da visita', original.data.split('-').reverse().join('/')],
+    for (const [label, value] of [['Data da visita', original.data ? original.data.split('-').reverse().join('/') : 'Nao informada'],
       ['Status automatico', original.status], ['Status atual', detail.atual.status],
       ['Medico na producao', original.original.medico || 'Nao informado'],
       ['Procedimento na producao', original.original['procedimento/mat-med'] || 'Nao informado'],
@@ -196,13 +217,13 @@ document.querySelector('#edit-search-candidates').addEventListener('click', asyn
   if (!reviewDetail || reviewSaving) return;
   const atendimento = document.querySelector('#edit-attendance').value.trim();
   const data = document.querySelector('#edit-date').value;
-  if (!atendimento || !data) { document.querySelector('#review-message').textContent = 'Informe atendimento e data.'; return; }
+  if (!atendimento) { document.querySelector('#review-message').textContent = 'Informe atendimento.'; return; }
   const token = ++reviewGeneration;
   const activeDetail = reviewDetail;
   document.querySelector('#review-save').disabled = true;
   document.querySelector('#review-message').textContent = 'Buscando correspondencias...';
   try {
-    const detail = await request(`/api/conciliacoes/visitas/${reportId}/visitas/${reviewLine}/revisao?${new URLSearchParams({ atendimento, data })}`);
+    const detail = await request(`/api/conciliacoes/visitas/${reportId}/visitas/${reviewLine}/revisao?${new URLSearchParams(data ? { atendimento, data } : { atendimento })}`);
     if (token !== reviewGeneration || !reviewDialog.open || reviewDetail !== activeDetail) return;
     // Uma busca nao atualiza a versao da decisao que o operador abriu.
     if (detail.versao !== reviewDetail.versao) throw Object.assign(new Error('A conciliacao foi revisada. Atualize os detalhes.'), { status: 409 });
@@ -264,7 +285,7 @@ document.querySelector('#review-form').addEventListener('submit', async event =>
         linhaHospital: selected && (acao === 'CONFIRMAR_CORRESPONDENCIA' || adjusted) ? Number(selected.value) : null,
         responsavel: document.querySelector('#review-owner').value,
         justificativa: document.querySelector('#review-justification').value, versao: reviewDetail.versao,
-        ajuste: adjusted ? { data: document.querySelector('#edit-date').value, atendimento: document.querySelector('#edit-attendance').value,
+        ajuste: adjusted ? { data: document.querySelector('#edit-date').value || null, atendimento: document.querySelector('#edit-attendance').value,
           medico: document.querySelector('#edit-doctor').value, procedimento: document.querySelector('#edit-procedure').value,
           codigoProcedimento: document.querySelector('#edit-code').value, valorHospital: amount('#edit-value'), repasse: amount('#edit-repasse'),
           status: document.querySelector('#edit-status').value, motivo: document.querySelector('#edit-reason').value } : null }) });

@@ -32,7 +32,7 @@ async function request(url, options = {}) {
 }
 function currentVisits() {
   const period = $('#period-filter').value;
-  return (report?.visitas || []).filter(visit => !period || visit.data.startsWith(period));
+  return (report?.visitas || []).filter(visit => !period || (period === 'SEM_DATA' ? !visit.data : visit.data?.startsWith(period)));
 }
 function attentionVisits() {
   return currentVisits().filter(visit => visit.status !== 'PAGA').sort((a, b) =>
@@ -106,15 +106,14 @@ async function loadReports(preferredId) {
     const items = await request('/api/conciliacoes/visitas', { signal });
     if (token !== generation) return;
     reports = items;
-    const selected = reports.find(item => String(item.id) === String(preferredId ?? reportId)) || reports[0];
+    const selected = reports.find(item => String(item.id) === String(preferredId ?? reportId))
+      || (reportId === '' && preferredId == null ? null : reports[0]);
     const hospitals = [...new Set(reports.map(item => item.hospital))];
-    options($('#unit-filter'), hospitals.map(name => [name, name]), selected?.hospital);
+    options($('#unit-filter'), [['', 'Selecione um hospital'], ...hospitals.map(name => [name, name])], selected?.hospital ?? '');
     populateReports(selected?.id);
     if (selected) await loadReport(selected.id);
     else {
-      options($('#period-filter'), []);
-      $('#report-context').textContent = 'Sem conciliacoes';
-      clearData('Nenhuma conciliacao salva.');
+      clearSelection(reports.length ? 'Selecione hospital e relatorio.' : 'Nenhuma conciliacao salva.');
       for (const id of ['kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes', 'legend-pagas', 'legend-pendentes', 'legend-divergentes']) $(`#${id}`).textContent = '0';
       $('#kpi-repasse').textContent = currency.format(0);
       for (const suffix of ['pagas', 'pendentes', 'divergentes']) $(`#kpi-valor-${suffix}`).textContent = currency.format(0);
@@ -128,9 +127,19 @@ async function loadReports(preferredId) {
 }
 function populateReports(selected) {
   const items = reports.filter(item => item.hospital === $('#unit-filter').value);
-  options($('#report-filter'), items.map(item => [item.id, `#${item.id} - ${item.arquivo_medico}`]), selected);
+  options($('#report-filter'), [['', 'Selecione um relatorio'], ...items.map(item => [item.id, `#${item.id} - ${item.arquivo_medico}`])], selected ?? '');
+}
+function clearSelection(message = 'Selecione hospital e relatorio.') {
+  controller?.abort(); ++generation; reportId = '';
+  clearData(message); options($('#period-filter'), [['', 'Todos os meses']], '');
+  $('#period-filter').disabled = true;
+  $('#report-context').textContent = 'Nenhum relatorio selecionado';
+  for (const id of ['kpi-repasse', 'kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes',
+    'kpi-valor-pagas', 'kpi-valor-pendentes', 'kpi-valor-divergentes', 'legend-pagas', 'legend-pendentes',
+    'legend-divergentes', 'paid-percent', 'imports-count']) $(`#${id}`).textContent = '-';
 }
 async function loadReport(id) {
+  if (!id) { clearSelection(); return; }
   controller?.abort(); controller = new AbortController();
   const token = ++generation;
   clearData('Carregando resultados...');
@@ -139,10 +148,11 @@ async function loadReport(id) {
     if (token !== generation) return;
     report = data; reportId = id;
     const previousPeriod = $('#period-filter').value;
-    const periods = [...new Set(data.visitas.map(visit => visit.data.slice(0, 7)))].sort().reverse();
-    options($('#period-filter'), [['', 'Todos os meses'], ...periods.map(period => [period,
+    const periods = [...new Set(data.visitas.filter(visit => visit.data).map(visit => visit.data.slice(0, 7)))].sort().reverse();
+    const undated = data.visitas.some(visit => !visit.data) ? [['SEM_DATA', 'Sem data informada']] : [];
+    options($('#period-filter'), [['', 'Todos os meses'], ...undated, ...periods.map(period => [period,
       new Date(`${period}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })])],
-      periods.includes(previousPeriod) ? previousPeriod : periods.length === 1 ? periods[0] : '');
+      periods.includes(previousPeriod) || (undated.length && previousPeriod === 'SEM_DATA') ? previousPeriod : '');
     $('#dashboard-message').textContent = '';
     renderDashboard();
   } catch (error) {
@@ -202,7 +212,7 @@ function fillAttentionTable(table, visits, detailed) {
   for (const visit of visits) {
     const row = element('tr');
     const value = effectiveRepasse(visit);
-    const cells = detailed ? [visit.atendimento, visit.data.split('-').reverse().join('/'),
+    const cells = detailed ? [visit.atendimento, visit.data ? visit.data.split('-').reverse().join('/') : 'Nao informada',
       (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Nao identificado', visit.motivo,
       value == null ? 'Nao informado' : currency.format(value)]
       : [visit.atendimento, (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Nao identificado',

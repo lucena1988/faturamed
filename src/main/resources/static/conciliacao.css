@@ -19,6 +19,9 @@
 .conciliation-history h2 { font-size: 18px; }
 .conciliation-history ul { list-style: none; padding: 0; }
 .conciliation-history li { margin: 10px 0; }
+.conciliation-history li { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.conciliation-history li > button:first-child { overflow-wrap: anywhere; }
+.conciliation-history .delete-report { color: #b42318; flex-shrink: 0; padding: 8px 12px; border: 1px solid #e7b8b3; }
 .conciliation-history button { background: transparent; color: var(--primary); padding: 4px 0; text-align: left; }
 .conciliation-table td:last-child { min-width: 100px; }
 .conciliation-table td:nth-child(9) { min-width: 250px; }

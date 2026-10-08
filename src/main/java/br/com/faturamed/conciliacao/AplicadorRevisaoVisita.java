@@ -34,6 +34,7 @@ public class AplicadorRevisaoVisita {
                 status = LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
                         ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE;
                 motivo = "Correspondencia confirmada na revisao: " + request.justificativa().trim();
+                data = hospital.data();
             }
             case MANTER_PENDENTE -> {
                 status = ConciliadorVisitas.Status.PENDENTE;
@@ -60,6 +61,7 @@ public class AplicadorRevisaoVisita {
                             .orElseThrow(() -> new IllegalArgumentException("Registro hospitalar nao corresponde ao atendimento e data ajustados"));
                 } else if (anterior.hospital() != null && anterior.hospital().atendimento().equals(atendimento)
                         && anterior.hospital().data().equals(data)) hospital = anterior.hospital();
+                if (hospital != null && data == null) data = hospital.data();
             }
             default -> throw new IllegalArgumentException("Acao invalida");
         }
@@ -96,13 +98,15 @@ public class AplicadorRevisaoVisita {
         var chaves = new java.util.HashSet<ConciliadorVisitas.Chave>();
         visitas.forEach(v -> chaves.add(new ConciliadorVisitas.Chave(v.atendimento(), v.data())));
         var semProducao = registrosHospital(base).stream().filter(h ->
-                !chaves.contains(new ConciliadorVisitas.Chave(h.atendimento(), h.data()))).toList();
+                !chaves.contains(new ConciliadorVisitas.Chave(h.atendimento(), h.data()))
+                && !chaves.contains(new ConciliadorVisitas.Chave(h.atendimento(), null))).toList();
         return new ConciliadorVisitas.Relatorio(base.hospital(), base.arquivoMedico(), base.arquivoHospital(),
                 base.regraStatus(), List.copyOf(visitas), semProducao, resumo, repasse);
     }
 
     public List<ConciliadorVisitas.RegistroHospital> candidatos(ConciliadorVisitas.Relatorio base, String atendimento, java.time.LocalDate data) {
-        return registrosHospital(base).stream().filter(h -> h.atendimento().equals(atendimento) && h.data().equals(data)).toList();
+        return registrosHospital(base).stream().filter(h -> h.atendimento().equals(atendimento)
+                && (data == null || h.data().equals(data))).toList();
     }
     private List<ConciliadorVisitas.RegistroHospital> registrosHospital(ConciliadorVisitas.Relatorio base) {
         Map<Integer, ConciliadorVisitas.RegistroHospital> registros = new java.util.LinkedHashMap<>();

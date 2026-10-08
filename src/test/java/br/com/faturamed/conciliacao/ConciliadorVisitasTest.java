@@ -76,6 +76,39 @@ class ConciliadorVisitasTest {
         return motor.conciliar("Hospital teste", "medico.xlsx", "hospital.xlsb", medico, hospital);
     }
 
+    @Test
+    void aceitaSomenteAtendimentoEPreencheDataDoHospital() {
+        var resultado = conferir(List.of(new LeitorPlanilhaVisitas.Linha(2, Map.of("atendimento", "00123"))),
+                List.of(hospital(2, "Medico A", "Conta1", "2026-01-02")));
+        var visita = resultado.visitas().getFirst();
+        assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visita.data()).isEqualTo(java.time.LocalDate.of(2026, 1, 2));
+        assertThat(visita.original()).containsOnlyKeys("atendimento");
+    }
+
+    @Test
+    void semDataNaoEscolheEntreDatasDistintas() {
+        var resultado = conferir(List.of(new LeitorPlanilhaVisitas.Linha(2, Map.of("atendimento", "00123"))),
+                List.of(hospital(2, "Medico A", "Conta1", "2026-01-02"), hospital(3, "Medico B", "Conta1", "2026-02-03")));
+        assertThat(resultado.visitas().getFirst().data()).isNull();
+        assertThat(resultado.visitas().getFirst().candidatos()).hasSize(2);
+        assertThat(resultado.visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
+    }
+
+    @Test
+    void linhasComESemDataNaoReutilizamMesmoRegistro() {
+        var resultado = conferir(List.of(new LeitorPlanilhaVisitas.Linha(2, Map.of("atendimento", "00123")), medico(3, "2026-01-02")),
+                List.of(hospital(2, "Medico A", "Conta1", "2026-01-02")));
+        assertThat(resultado.visitas()).allMatch(v -> v.hospital() == null && v.status() == ConciliadorVisitas.Status.DIVERGENTE);
+    }
+
+    @Test
+    void repetidosSemCorrespondenciaContinuamPendentes() {
+        var resultado = conferir(List.of(new LeitorPlanilhaVisitas.Linha(2, Map.of("atendimento", "ausente")),
+                new LeitorPlanilhaVisitas.Linha(3, Map.of("atendimento", "ausente"))), List.of());
+        assertThat(resultado.visitas()).hasSize(2).allMatch(v -> v.data() == null && v.status() == ConciliadorVisitas.Status.PENDENTE);
+    }
+
     private LeitorPlanilhaVisitas.Linha medico(int linha, String data) {
         return new LeitorPlanilhaVisitas.Linha(linha, Map.of("atendimento", "00123", "dt.", data));
     }

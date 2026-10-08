@@ -31,6 +31,14 @@ public class RevisaoVisitasService {
     @Transactional(readOnly = true)
     public Estado carregar(Long id) throws Exception { return ler(id, false); }
 
+    @Transactional
+    public void excluir(Long id) {
+        var ids = jdbc.queryForList("select id from conciliacao_visitas where id = ? for update", Long.class, id);
+        if (ids.isEmpty()) throw new RecursoNaoEncontradoException("Relatorio nao encontrado");
+        jdbc.update("delete from revisao_visita where conciliacao_id = ?", id);
+        jdbc.update("delete from conciliacao_visitas where id = ?", id);
+    }
+
     @Transactional(readOnly = true)
     public Detalhe detalhar(Long id, int linha) throws Exception {
         return detalhar(id, linha, null, null);
@@ -41,9 +49,9 @@ public class RevisaoVisitasService {
         Estado estado = ler(id, false);
         var original = visita(estado.original(), linha);
         var atual = visita(estado.atual(), linha);
-        if ((atendimento == null) != (data == null)) throw new IllegalArgumentException("Informe atendimento e data juntos");
+        if (atendimento == null && data != null) throw new IllegalArgumentException("Informe atendimento para buscar pela data");
         var candidatos = aplicador.candidatos(estado.original(), atendimento == null ? atual.atendimento() : atendimento.trim(),
-                data == null ? atual.data() : data).stream().map(h -> new Candidato(h,
+                atendimento == null ? atual.data() : data).stream().map(h -> new Candidato(h,
                 estado.atual().visitas().stream().filter(v -> v.linhaMedico() != linha && v.hospital() != null
                         && v.hospital().linha() == h.linha()).map(ConciliadorVisitas.Visita::linhaMedico).findFirst().orElse(null))).toList();
         return new Detalhe(estado.versao(), original, atual, candidatos,

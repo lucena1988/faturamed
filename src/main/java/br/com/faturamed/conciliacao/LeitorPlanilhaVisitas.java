@@ -36,7 +36,7 @@ public class LeitorPlanilhaVisitas {
                     Map<Integer, String> cabecalho = aba.linhas().get(i);
                     Set<String> campos = new HashSet<>();
                     cabecalho.values().forEach(v -> campos.add(normalizar(v)));
-                    if (!campos.contains("atendimento") || !campos.contains(hospital ? "data consumo" : "dt.")) continue;
+                    if (!campos.contains("atendimento") || (hospital && !campos.contains("data consumo"))) continue;
                     if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "vl. a repassar", "setor"))) {
                         throw new IllegalArgumentException("Cabecalho do hospital incompleto");
                     }

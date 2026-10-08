@@ -54,22 +54,28 @@ public class ConciliadorVisitas {
         }
         Map<Chave, Long> contagens = new HashMap<>();
         for (var linha : medico) contagens.merge(chaveMedico(linha), 1L, Long::sum);
+        var registros = porChave.values().stream().flatMap(List::stream).toList();
+        Map<Integer, Long> disputas = new HashMap<>();
+        for (var chave : contagens.keySet()) for (var h : candidatos(registros, chave)) {
+            disputas.merge(h.linha(), contagens.get(chave), Long::sum);
+        }
         List<Visita> visitas = new ArrayList<>();
         for (var linha : medico) {
             Chave chave = chaveMedico(linha);
-            var candidatos = porChave.getOrDefault(chave, List.of());
-            RegistroHospital unico = candidatos.size() == 1 && contagens.get(chave) == 1 ? candidatos.getFirst() : null;
+            var candidatos = candidatos(registros, chave);
+            boolean disputado = candidatos.stream().anyMatch(h -> disputas.get(h.linha()) > 1);
+            RegistroHospital unico = candidatos.size() == 1 && !disputado ? candidatos.getFirst() : null;
             Status status;
             String motivo;
-            if (contagens.get(chave) > 1) {
-                status = Status.DIVERGENTE;
-                motivo = "Atendimento e data repetidos na producao; medico/procedimento nao identificados";
-            } else if (candidatos.isEmpty()) {
+            if (candidatos.isEmpty()) {
                 status = Status.PENDENTE;
                 motivo = "Sem correspondente no arquivo do hospital; pode constar em outra competencia";
+            } else if (disputado) {
+                status = Status.DIVERGENTE;
+                motivo = "Registro hospitalar disputado por varias linhas da producao; conferir cada visita";
             } else if (candidatos.size() > 1) {
                 status = Status.DIVERGENTE;
-                motivo = "Mais de um registro hospitalar para atendimento e data; conferir medico, procedimento e conta";
+                motivo = "Mais de um registro hospitalar para o atendimento; conferir data, medico, procedimento e conta";
             } else if (unico.medico().isBlank() || unico.codigo().isBlank() || unico.valorTotal() == null || unico.repasse() == null) {
                 status = Status.DIVERGENTE;
                 motivo = "Registro hospitalar com dados incompletos";
@@ -87,11 +93,10 @@ public class ConciliadorVisitas {
                 status = Status.PENDENTE;
                 motivo = "Correspondencia encontrada, mas setor do hospital nao indica Faturado";
             }
-            visitas.add(new Visita(linha.numero(), chave.atendimento(), chave.data(), status, motivo,
+            visitas.add(new Visita(linha.numero(), chave.atendimento(), unico == null ? chave.data() : unico.data(), status, motivo,
                     linha.campos(), unico, List.copyOf(candidatos)));
         }
-        var semProducao = porChave.entrySet().stream().filter(e -> !contagens.containsKey(e.getKey()))
-                .flatMap(e -> e.getValue().stream()).toList();
+        var semProducao = registros.stream().filter(h -> !disputas.containsKey(h.linha())).toList();
         Map<Status, Long> resumo = new EnumMap<>(Status.class);
         for (Status status : Status.values()) resumo.put(status, visitas.stream().filter(v -> v.status() == status).count());
         BigDecimal repasse = visitas.stream().filter(v -> v.status() == Status.PAGA)
@@ -103,7 +108,12 @@ public class ConciliadorVisitas {
 
     private Chave chaveMedico(LeitorPlanilhaVisitas.Linha linha) {
         return new Chave(LeitorPlanilhaVisitas.identificador(linha.campo("Atendimento")),
-                LeitorPlanilhaVisitas.data(linha.campo("Dt."), linha.numero()));
+                linha.campo("Dt.").isBlank() ? null : LeitorPlanilhaVisitas.data(linha.campo("Dt."), linha.numero()));
+    }
+
+    private List<RegistroHospital> candidatos(List<RegistroHospital> registros, Chave chave) {
+        return registros.stream().filter(h -> h.atendimento().equals(chave.atendimento())
+                && (chave.data() == null || h.data().equals(chave.data()))).toList();
     }
 
     private boolean conflita(LeitorPlanilhaVisitas.Linha linha, RegistroHospital hospital) {

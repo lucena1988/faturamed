@@ -134,6 +134,19 @@ class AplicadorRevisaoVisitaTest {
                 "Conferir", Map.of("atendimento", "123"), null,
                 List.of(hospital(10, "Faturado", "Medico A"), hospital(11, "Faturado", "Medico B")));
     }
+
+    @Test
+    void confirmaCandidatoEPreencheDataQuandoProducaoNaoTemData() {
+        var modelo = visita(2);
+        var original = new ConciliadorVisitas.Visita(2, "123", null, modelo.status(), modelo.motivo(),
+                modelo.original(), null, modelo.candidatos());
+        var revista = aplicador.aplicar(original, relatorio(List.of(original)), request(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA, 10));
+        assertThat(revista.data()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(revista.medicoEfetivo()).isEqualTo("Medico A");
+        assertThat(revista.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(aplicador.aplicar(original, relatorio(List.of(revista)), request(RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO, null)))
+                .isEqualTo(original);
+    }
     private ConciliadorVisitas.RegistroHospital hospital(int linha, String setor, String medico) {
         return new ConciliadorVisitas.RegistroHospital(linha, "123", LocalDate.of(2026, 1, 1), "Paciente teste", "Convenio teste",
                 medico, "10102019", "Visita", "C1", setor, new BigDecimal("100.10"), new BigDecimal("0.85"), new BigDecimal("85.085"));

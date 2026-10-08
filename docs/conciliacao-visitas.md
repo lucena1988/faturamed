@@ -56,6 +56,14 @@ O dashboard e o XLSX consultam o resultado revisado. O XLSX inclui a aba Revisoe
 A leitura usa Apache POI. No layout Analia Franco, Planilha2 tem prioridade para evitar importar o mesmo detalhe duas vezes. Nao misture hospitais em um unico arquivo. As tabelas TUSS/AMB ainda nao participam desse cruzamento.
 # Ajustes de dados na revisao
 
+A producao pode conter apenas `Atendimento`. Sem `Dt.`, a busca considera todas
+as datas do hospital: correspondencia unica e exclusiva preenche os dados,
+multiplos candidatos ou disputa entre linhas exigem revisao; ausencia de
+correspondente fica pendente. Com `Dt.` preenchida, o filtro de data existente
+permanece. Visitas sem correspondencia segura nao recebem data presumida e
+podem ser filtradas como `Sem data informada` no dashboard. Relatorios antigos
+nao sao conciliados novamente automaticamente.
+
 A decisao `AJUSTAR_DADOS` permite corrigir data, atendimento, medico, procedimento,
 codigo TUSS/AMB, valor hospital, repasse, status e motivo. A linha identifica a
 origem e nao e editavel. Campos monetarios vazios permanecem desconhecidos,

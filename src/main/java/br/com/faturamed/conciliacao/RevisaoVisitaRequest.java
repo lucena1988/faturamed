@@ -21,7 +21,7 @@ public record RevisaoVisitaRequest(
     public RevisaoVisitaRequest(Acao acao, Integer linhaHospital, String responsavel, String justificativa, Long versao) {
         this(acao, linhaHospital, responsavel, justificativa, versao, null);
     }
-    public record Ajuste(@NotNull LocalDate data, @NotBlank @Size(max = 80) String atendimento,
+    public record Ajuste(LocalDate data, @NotBlank @Size(max = 80) String atendimento,
             @NotNull @Size(max = 180) String medico, @NotNull @Size(max = 2000) String procedimento,
             @Size(max = 40) String codigoProcedimento,
             @DecimalMin("0") @Digits(integer = 12, fraction = 6) BigDecimal valorHospital,
