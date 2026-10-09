@@ -1,0 +1,7 @@
+.git
+.idea
+target
+docs
+examples
+.env
+.env.*

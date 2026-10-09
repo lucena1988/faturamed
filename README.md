@@ -37,13 +37,37 @@ Componentes iniciais:
 - `MotorConferencia`: compara registros de producao e faturamento.
 - `V1__schema_inicial.sql`: migration Flyway com o schema inicial.
 
-Quando Java 21 e Maven estiverem instalados/configurados, os comandos principais serao:
+Para rodar a aplicacao e o PostgreSQL com Docker:
+
+Antes do primeiro inicio, configure `ADMIN_INITIAL_EMAIL` e uma senha exclusiva em
+`ADMIN_INITIAL_PASSWORD` no arquivo local `.env` (modelo em `.env.example`).
+As credenciais criam somente o primeiro administrador. O `.env` nao deve ser commitado.
 
 ```bash
-docker compose up -d
+docker compose up -d --build
+```
+
+Acesse http://localhost:8080/login.html. O administrador gerencia os usuarios em
+**Acessos** e vincula cada login de medico ao respectivo cadastro CRM/UF.
+Detalhes: [Login e permissoes](docs/login-e-permissoes.md).
+Para parar os containers, execute `docker compose down`. Os dados do PostgreSQL ficam persistidos no volume `postgres_data`.
+
+Para executar o backend fora do Docker, com Java 21 e Maven instalados:
+
+Configure tambem as variaveis `ADMIN_INITIAL_EMAIL` e `ADMIN_INITIAL_PASSWORD` no
+ambiente/IntelliJ para o primeiro inicio. O Spring Boot nao carrega `.env` automaticamente.
+
+```bash
+docker compose up -d postgres
 mvn test
 mvn spring-boot:run
 ```
+
+No Windows, o perfil Maven `windows-local-build` grava os arquivos gerados em
+`${java.io.tmpdir}/faturamed-build`, fora do OneDrive, para evitar falhas do
+`mvn clean` causadas por atributos de somente leitura nas pastas sincronizadas.
+Recarregue o projeto Maven no IntelliJ depois de alterar o `pom.xml`.
+No Docker e no Linux, a saida continua em `target`.
 
 Endpoints iniciais:
 
@@ -54,6 +78,22 @@ Endpoints iniciais:
 - `POST /api/importacoes`
 - `POST /api/importacoes/{id}/registros`
 - `GET /api/importacoes/{id}/registros`
+
+## Frontend
+
+O prototipo inicial do sistema esta em `src/main/resources/static`.
+
+Arquivos principais:
+
+- `index.html`
+- `styles.css`
+- `app.js`
+
+Quando a aplicacao Spring Boot estiver rodando, o frontend ficara disponivel em:
+
+```text
+http://localhost:8080/
+```
 
 ## Campos padronizados
 
