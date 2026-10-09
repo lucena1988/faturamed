@@ -28,6 +28,6 @@ public record RevisaoVisitaRequest(
             @DecimalMin("0") @Digits(integer = 12, fraction = 6) BigDecimal repasse,
             @NotNull ConciliadorVisitas.Status status, @NotBlank @Size(max = 2000) String motivo) {}
     public enum Acao {
-        CONFIRMAR_CORRESPONDENCIA, MANTER_PENDENTE, MANTER_DIVERGENTE, RESTAURAR_AUTOMATICO, AJUSTAR_DADOS
+        CONFIRMAR_CORRESPONDENCIA, MANTER_PENDENTE, MANTER_DIVERGENTE, RESTAURAR_AUTOMATICO, AJUSTAR_DADOS, CORRESPONDENCIA_AUTOMATICA
     }
 }

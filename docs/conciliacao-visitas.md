@@ -26,11 +26,44 @@ Os valores enriquecidos sao os informados pelo hospital. A tabela de preco contr
 
 ## Relatorio
 
+O filtro Medico seleciona as visitas pelo nome efetivo, incluindo correcoes de
+revisao. Nomes sao comparados sem diferenciar caixa, acentos e espacos extras;
+nao ha identificador CRM cadastrado nesta etapa. Nao atribua um medico apenas
+porque ele aparece entre os candidatos de uma visita ambigua.
+
+`Medico nao identificado` permite conferencia interna. A exportacao individual
+fica disponivel somente para um medico identificado e inclui todos os status
+desse profissional, independentemente dos filtros locais Status e Atendimento.
+Os indicadores da tela acompanham o filtro Medico. O download geral permanece
+com todas as visitas.
+
+GET `/api/conciliacoes/visitas/{id}/relatorio.xlsx?medico=nome` gera o arquivo
+individual com Resumo e Visitas, totais de repasse conhecido e contagens sem
+valor por status. Candidatos, hospital sem producao e historico detalhado nao
+sao enviados. A coluna Origem da conciliacao diferencia importacao automatica,
+automatica apos revisao e revisao manual. Visitas sem medico ficam no relatorio
+geral ate serem identificadas. A geracao nao envia emails automaticamente.
+
 O XLSX inclui Resumo, Visitas, Candidatos hospital e Hospital sem producao. A ultima aba inclui inclusive datas de outras competencias presentes no arquivo hospitalar, sem classifica-las como erro. Codigo e atendimento sao texto. Valores e datas sao tipados; a precisao do repasse e preservada. Linha medico e Linha hospital permitem rastrear a origem.
 
 Os relatorios sao persistidos no PostgreSQL e podem ser reabertos na tela.
 
 ## Revisao das visitas
+
+A revisao mostra juntas as visitas do mesmo atendimento, com navegacao entre
+linhas e datas dos candidatos hospitalares. Ao trocar de visita, o operador
+confirma o descarte de alteracoes nao salvas.
+
+Depois de associar um registro na revisao, o sistema reavalia o atendimento na
+mesma transacao. Uma visita divergente, ainda nao revisada, pode ser preenchida
+quando resta um unico candidato livre e exclusivo. Dados incompletos, conflitos
+com a producao e repasse inconsistente impedem essa automacao. Candidatos ainda
+disputados permanecem em revisao; a quantidade coincidente nao basta.
+
+Cada preenchimento automatico gera uma revisao `CORRESPONDENCIA_AUTOMATICA`,
+com responsavel Sistema, antes/depois e referencia a revisao que o originou.
+A versao retornada inclui essas decisoes. Restaurar uma visita nao dispara
+automacao nem restaura outras visitas; cada decisao tem seu proprio historico.
 
 Cada linha tem a acao Revisar. Os detalhes exibem os dados da producao, o status automatico, o status atual, os candidatos do hospital e o historico de decisoes.
 

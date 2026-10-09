@@ -16,6 +16,11 @@ public class ExportadorRelatorioVisitas {
 
     public byte[] exportar(ConciliadorVisitas.Relatorio relatorio,
             java.util.List<RevisaoVisitasService.Revisao> revisoes) throws Exception {
+        return exportar(relatorio, revisoes, null);
+    }
+
+    public byte[] exportar(ConciliadorVisitas.Relatorio relatorio,
+            java.util.List<RevisaoVisitasService.Revisao> revisoes, String medico) throws Exception {
         try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
             CellStyle moeda = workbook.createCellStyle();
             moeda.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00########"));
@@ -27,8 +32,10 @@ public class ExportadorRelatorioVisitas {
             titulo.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             Sheet resumo = workbook.createSheet("Resumo");
             preencher(resumo.createRow(0), new Object[]{"Hospital", relatorio.hospital()}, moeda, data);
-            preencher(resumo.createRow(1), new Object[]{"Arquivo medico", relatorio.arquivoMedico()}, moeda, data);
-            preencher(resumo.createRow(2), new Object[]{"Arquivo hospital", relatorio.arquivoHospital()}, moeda, data);
+            preencher(resumo.createRow(1), medico == null ? new Object[]{"Arquivo medico", relatorio.arquivoMedico()}
+                    : new Object[]{"Medico", relatorio.visitas().getFirst().medicoEfetivo()}, moeda, data);
+            preencher(resumo.createRow(2), medico == null ? new Object[]{"Arquivo hospital", relatorio.arquivoHospital()}
+                    : new Object[]{"Visitas do medico", relatorio.visitas().size()}, moeda, data);
             preencher(resumo.createRow(3), new Object[]{"Regra dos status", relatorio.regraStatus()}, moeda, data);
             int index = 5;
             for (var status : ConciliadorVisitas.Status.values()) {
@@ -36,6 +43,17 @@ public class ExportadorRelatorioVisitas {
             }
             preencher(resumo.createRow(index), new Object[]{"Repasse das correspondencias pagas (R$)", relatorio.repasseCorrespondente()}, moeda, data);
             preencher(resumo.createRow(index + 2), new Object[]{"Valores", "Valores informados pelo hospital; preco contratado nao validado."}, moeda, data);
+            int detalhe = index + 4;
+            for (var status : ConciliadorVisitas.Status.values()) {
+                var selecionadas = relatorio.visitas().stream().filter(v -> v.status() == status).toList();
+                var valor = selecionadas.stream().map(ConciliadorVisitas.Visita::repasseEfetivo).filter(java.util.Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                preencher(resumo.createRow(detalhe++), new Object[]{"Repasse conhecido " + status + " (R$)", valor}, moeda, data);
+                preencher(resumo.createRow(detalhe++), new Object[]{"Visitas " + status + " sem repasse informado",
+                        selecionadas.stream().filter(v -> v.repasseEfetivo() == null).count()}, moeda, data);
+            }
+            java.util.Map<Integer, RevisaoVisitaRequest.Acao> ultimas = new java.util.HashMap<>();
+            revisoes.forEach(r -> ultimas.put(r.linhaMedico(), r.acao()));
             resumo.setColumnWidth(0, 48 * 256); resumo.setColumnWidth(1, 90 * 256);
             for (Row row : resumo) { row.setHeightInPoints(32); if (row.getCell(1) != null) {
                 CellStyle wrap = workbook.createCellStyle(); wrap.cloneStyleFrom(row.getCell(1).getCellStyle());
@@ -43,7 +61,7 @@ public class ExportadorRelatorioVisitas {
             } }
             String[] headers = {"Linha medico", "Data", "Atendimento", "Convenio", "Paciente", "Procedimento", "Medico",
                     "Valor Orig (R$)", "Status", "Codigo procedimento", "Conta paciente", "Valor hospital (R$)",
-                    "Regra", "Repasse hospital (R$)", "Linha hospital", "Candidatos", "Motivo"};
+                    "Regra", "Repasse hospital (R$)", "Linha hospital", "Candidatos", "Motivo", "Origem da conciliacao"};
             Sheet visitas = workbook.createSheet("Visitas");
             cabecalho(visitas, headers, titulo);
             for (var visita : relatorio.visitas()) {
@@ -57,9 +75,10 @@ public class ExportadorRelatorioVisitas {
                                 ? (h == null ? null : h.valorTotal()) : visita.original().get("valor orig"), visita.status().name(),
                         visita.codigoEfetivo(), h == null ? null : h.conta(), visita.valorEfetivo(),
                         h == null ? null : h.regra(), visita.repasseEfetivo(), h == null ? null : h.linha(),
-                        visita.candidatos().size(), visita.motivo()}, moeda, data);
+                        medico == null ? visita.candidatos().size() : null, visita.motivo(), origem(ultimas.get(visita.linhaMedico()))}, moeda, data);
             }
             configurar(visitas, headers.length);
+            if (medico == null) {
             Sheet candidatos = workbook.createSheet("Candidatos hospital");
             String[] detailHeaders = {"Linha medico", "Linha hospital", "Data", "Atendimento", "Medico", "Codigo", "Procedimento",
                     "Conta", "Valor total (R$)", "Regra", "Repasse (R$)", "Setor"};
@@ -72,7 +91,8 @@ public class ExportadorRelatorioVisitas {
             cabecalho(semProducao, detailHeaders, titulo);
             for (var h : relatorio.hospitalSemProducao()) hospital(semProducao, null, h, moeda, data);
             configurar(semProducao, detailHeaders.length);
-            if (!revisoes.isEmpty()) {
+            }
+            if (medico == null && !revisoes.isEmpty()) {
                 Sheet historico = workbook.createSheet("Revisoes");
                 String[] reviewHeaders = {"Revisao", "Linha medico", "Data da decisao (UTC)", "Responsavel", "Acao",
                         "Status anterior", "Status revisado", "Linha hospital anterior", "Linha hospital revisada", "Justificativa", "Campos alterados"};
@@ -97,6 +117,11 @@ public class ExportadorRelatorioVisitas {
             workbook.write(output);
             return output.toByteArray();
         }
+    }
+
+    private String origem(RevisaoVisitaRequest.Acao acao) {
+        if (acao == null || acao == RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO) return "Importacao automatica";
+        return acao == RevisaoVisitaRequest.Acao.CORRESPONDENCIA_AUTOMATICA ? "Automatica apos revisao" : "Revisao manual";
     }
 
     private String originalOuHospital(ConciliadorVisitas.Visita visita, String campo, String hospital) {
@@ -141,6 +166,6 @@ public class ExportadorRelatorioVisitas {
     private void configurar(Sheet sheet, int colunas) {
         sheet.createFreezePane(3, 1);
         sheet.setAutoFilter(new CellRangeAddress(0, sheet.getLastRowNum(), 0, colunas - 1));
-        for (int i = 0; i < colunas; i++) sheet.setColumnWidth(i, (i == colunas - 1 && colunas > 12 ? 85 : 28) * 256);
+        for (int i = 0; i < colunas; i++) sheet.setColumnWidth(i, (i == 16 && colunas > 16 ? 85 : 28) * 256);
     }
 }

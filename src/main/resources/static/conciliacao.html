@@ -10,7 +10,7 @@
 <body>
   <main class="conciliation-workspace">
     <header class="conciliation-heading"><div><a href="/">Faturamed</a><h1>Conciliacao de visitas</h1></div>
-      <a id="download" hidden>Baixar relatorio XLSX</a></header>
+      <a id="download" hidden>Baixar relatorio geral XLSX</a></header>
     <form id="conciliation-form" class="conciliation-form">
       <label>Hospital<input name="hospital" required maxlength="180" value="Analia Franco"></label>
       <label>Producao do medico<input name="producao" type="file" accept=".xlsx,.xlsb" required></label>
@@ -21,9 +21,11 @@
     <section id="results" hidden>
       <div class="conciliation-stats" id="stats"></div>
       <div class="conciliation-filters">
+        <label>Medico<select id="doctor-filter"><option value="">Todos os medicos</option></select></label>
         <label>Status<select id="status"><option value="">Todos</option><option>PAGA</option><option>PENDENTE</option><option>DIVERGENTE</option></select></label>
         <label>Atendimento<input id="search" type="search"></label>
         <span id="count"></span>
+        <a id="download-doctor" hidden>Baixar relatorio do medico XLSX</a>
       </div>
       <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Revisao</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
@@ -33,9 +35,12 @@
     <form id="review-form">
       <header class="review-heading"><h2 id="review-title">Revisar visita</h2><button type="button" id="review-close" aria-label="Fechar revisao" title="Fechar revisao">X</button></header>
       <dl id="review-summary" class="review-summary"></dl>
+      <section aria-labelledby="review-group-title"><h3 id="review-group-title">Visitas do atendimento</h3>
+        <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Medico</th><th>Status</th><th>Registro hospitalar</th><th>Revisao</th></tr></thead><tbody id="review-group"></tbody></table></div>
+      </section>
       <h3>Registros do hospital</h3>
       <p id="review-candidate-message"></p>
-      <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Medico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
+      <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Medico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
       <div class="review-fields">
         <label>Decisao<select id="review-action" required>
           <option value="AJUSTAR_DADOS">Ajustar dados da visita</option>

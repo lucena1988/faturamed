@@ -81,6 +81,21 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>windows-local-build</id>
+            <activation>
+                <os>
+                    <family>Windows</family>
+                </os>
+            </activation>
+            <build>
+                <!-- Keep generated files outside OneDrive on Windows. -->
+                <directory>${java.io.tmpdir}/faturamed-build</directory>
+            </build>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>

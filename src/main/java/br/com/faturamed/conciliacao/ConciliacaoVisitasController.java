@@ -18,15 +18,18 @@ public class ConciliacaoVisitasController {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final RevisaoVisitasService revisoes;
+    private final FiltroRelatorioMedico filtroMedico;
 
     public ConciliacaoVisitasController(LeitorPlanilhaVisitas leitor, ConciliadorVisitas conciliador,
-            ExportadorRelatorioVisitas exportador, JdbcTemplate jdbc, ObjectMapper json, RevisaoVisitasService revisoes) {
+            ExportadorRelatorioVisitas exportador, JdbcTemplate jdbc, ObjectMapper json, RevisaoVisitasService revisoes,
+            FiltroRelatorioMedico filtroMedico) {
         this.leitor = leitor;
         this.conciliador = conciliador;
         this.exportador = exportador;
         this.jdbc = jdbc;
         this.json = json;
         this.revisoes = revisoes;
+        this.filtroMedico = filtroMedico;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -73,11 +76,12 @@ public class ConciliacaoVisitasController {
     }
 
     @GetMapping("/{id}/relatorio.xlsx")
-    public ResponseEntity<byte[]> exportar(@PathVariable Long id) throws Exception {
+    public ResponseEntity<byte[]> exportar(@PathVariable Long id, @RequestParam(required = false) String medico) throws Exception {
         var estado = revisoes.carregar(id);
+        var relatorio = medico == null ? estado.atual() : filtroMedico.filtrar(estado.atual(), medico);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=conciliacao-visitas-" + id + ".xlsx")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=conciliacao-visitas-" + id + (medico == null ? "" : "-medico") + ".xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(exportador.exportar(estado.atual(), estado.historico()));
+                .body(exportador.exportar(relatorio, estado.historico(), medico));
     }
 }

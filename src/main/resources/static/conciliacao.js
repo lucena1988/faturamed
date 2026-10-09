@@ -9,7 +9,8 @@ let reviewSaving = false;
 let reviewGeneration = 0;
 const reviewDialog = document.querySelector('#review-dialog');
 const actionLabels = { CONFIRMAR_CORRESPONDENCIA: 'Correspondencia confirmada', MANTER_PENDENTE: 'Mantida pendente',
-  MANTER_DIVERGENTE: 'Mantida divergente', RESTAURAR_AUTOMATICO: 'Resultado automatico restaurado', AJUSTAR_DADOS: 'Dados da visita ajustados' };
+  MANTER_DIVERGENTE: 'Mantida divergente', RESTAURAR_AUTOMATICO: 'Resultado automatico restaurado', AJUSTAR_DADOS: 'Dados da visita ajustados',
+  CORRESPONDENCIA_AUTOMATICA: 'Correspondencia automatica apos revisao' };
 async function request(url, options) {
   const response = await fetch(url, options);
   if (!response.ok) {
@@ -27,6 +28,16 @@ function showReport(id, data) {
   const download = document.querySelector('#download');
   download.href = `/api/conciliacoes/visitas/${id}/relatorio.xlsx`;
   download.hidden = false;
+  const doctors = new Map();
+  const normalize = value => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
+  for (const visit of data.visitas) {
+    const name = visit.medico ?? visit.hospital?.medico ?? visit.original.medico ?? '';
+    if (name.trim()) doctors.set(normalize(name), name.trim());
+  }
+  const select = document.querySelector('#doctor-filter'); const previous = select.value;
+  select.replaceChildren(new Option('Todos os medicos', ''), new Option('Medico nao identificado', '__SEM_MEDICO__'),
+    ...[...doctors].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([key, name]) => new Option(name, key)));
+  if ([...select.options].some(option => option.value === previous)) select.value = previous;
   const stats = document.querySelector('#stats');
   stats.replaceChildren();
   for (const [label, value] of [...Object.entries(data.resumo), ['Repasse correspondente', money.format(data.repasseCorrespondente)]]) {
@@ -42,7 +53,21 @@ function renderRows() {
   if (!report) return;
   const status = document.querySelector('#status').value;
   const search = document.querySelector('#search').value.trim();
-  const filtered = report.visitas.filter(v => (!status || v.status === status) && v.atendimento.includes(search));
+  const doctor = document.querySelector('#doctor-filter');
+  const normalize = value => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const selectedDoctor = report.visitas.filter(v => {
+    const key = normalize(v.medico ?? v.hospital?.medico ?? v.original.medico);
+    return !doctor.value || (doctor.value === '__SEM_MEDICO__' ? !key : key === doctor.value);
+  });
+  const filtered = selectedDoctor.filter(v => (!status || v.status === status) && v.atendimento.includes(search));
+  const doctorDownload = document.querySelector('#download-doctor');
+  doctorDownload.hidden = !doctor.value || doctor.value === '__SEM_MEDICO__';
+  doctorDownload.href = `/api/conciliacoes/visitas/${reportId}/relatorio.xlsx?${new URLSearchParams({ medico: doctor.value })}`;
+  const stats = document.querySelector('#stats'); stats.replaceChildren();
+  for (const [label, value] of ['PAGA', 'PENDENTE', 'DIVERGENTE'].map(status => [status, selectedDoctor.filter(v => v.status === status).length])
+    .concat([['Repasse correspondente', money.format(selectedDoctor.filter(v => v.status === 'PAGA').reduce((sum, v) => sum + Number(v.repasse ?? v.hospital?.repasse ?? 0), 0))]])) {
+    const item = node('div', label); item.append(node('strong', value)); stats.append(item);
+  }
   const rows = document.querySelector('#rows'); rows.replaceChildren();
   for (const visit of filtered) {
     const h = visit.hospital;
@@ -60,7 +85,7 @@ function renderRows() {
     action.append(button); row.append(action);
     rows.append(row);
   }
-  document.querySelector('#count').textContent = `${filtered.length} de ${report.visitas.length} visitas`;
+  document.querySelector('#count').textContent = `${filtered.length} de ${selectedDoctor.length} visitas${doctor.value ? ' no filtro de medico' : ''}`;
 }
 async function loadHistory() {
   const items = await request('/api/conciliacoes/visitas');
@@ -84,6 +109,7 @@ async function loadHistory() {
         if (String(reportId) === String(item.id)) {
           ++reviewGeneration; reviewDetail = null; reviewDialog.close(); report = null; reportId = null;
           document.querySelector('#results').hidden = true; document.querySelector('#download').hidden = true;
+          document.querySelector('#download-doctor').hidden = true;
           document.querySelector('#rows').replaceChildren(); document.querySelector('#stats').replaceChildren();
           const url = new URL(location.href); url.searchParams.delete('relatorio');
           window.history.replaceState(null, '', url);
@@ -108,6 +134,7 @@ form.addEventListener('submit', async event => {
   finally { submit.disabled = false; }
 });
 document.querySelector('#status').addEventListener('change', renderRows);
+document.querySelector('#doctor-filter').addEventListener('change', renderRows);
 document.querySelector('#search').addEventListener('input', renderRows);
 async function initialize() {
   await loadHistory();
@@ -135,7 +162,7 @@ async function openReview(line) {
   document.querySelector('#review-save').disabled = true;
   document.querySelector('#review-reload').hidden = true;
   document.querySelector('#review-message').textContent = 'Carregando detalhes...';
-  for (const selector of ['#review-summary', '#review-candidates', '#review-history']) document.querySelector(selector).replaceChildren();
+  for (const selector of ['#review-summary', '#review-candidates', '#review-history', '#review-group']) document.querySelector(selector).replaceChildren();
   document.querySelector('#review-candidate-message').textContent = '';
   document.querySelector('#review-title').textContent = `Revisar linha ${line}`;
   if (!reviewDialog.open) reviewDialog.showModal();
@@ -144,6 +171,19 @@ async function openReview(line) {
     if (token !== reviewGeneration || !reviewDialog.open || id !== reportId) return;
     reviewDetail = detail;
     const current = detail.atual;
+    const group = report.visitas.filter(v => v.atendimento === current.atendimento);
+    document.querySelector('#review-group-title').textContent = `Atendimento ${current.atendimento} - ${group.length} visitas`;
+    for (const visit of group) {
+      const row = node('tr');
+      if (visit.linhaMedico === line) row.className = 'review-current';
+      for (const value of [visit.linhaMedico, visit.data ? visit.data.split('-').reverse().join('/') : 'Nao informada',
+        visit.medico || 'Nao identificado', visit.status, visit.hospital ? `Linha ${visit.hospital.linha}` : 'Sem vinculo']) row.append(node('td', value));
+      const cell = node('td'); const button = node('button', visit.linhaMedico === line ? 'Em revisao' : 'Revisar');
+      button.type = 'button'; button.disabled = visit.linhaMedico === line;
+      button.setAttribute('aria-label', `Revisar visita do grupo linha ${visit.linhaMedico}`);
+      button.addEventListener('click', () => { if (!reviewSaving && confirm('Trocar de visita? Alteracoes nao salvas serao descartadas.')) openReview(visit.linhaMedico); });
+      cell.append(button); row.append(cell); document.querySelector('#review-group').append(row);
+    }
     for (const [id, value] of [['edit-date', current.data], ['edit-attendance', current.atendimento],
       ['edit-doctor', current.medico], ['edit-procedure', current.procedimento], ['edit-code', current.codigoProcedimento],
       ['edit-value', current.valorHospital], ['edit-repasse', current.repasse], ['edit-status', current.status], ['edit-reason', current.motivo]]) {
@@ -167,7 +207,7 @@ async function openReview(line) {
       radio.title = candidate.associadoALinha != null ? `Associado a linha ${candidate.associadoALinha}` : `Selecionar linha ${h.linha}`;
       radio.checked = detail.atual.hospital?.linha === h.linha;
       radio.setAttribute('aria-label', `Selecionar linha hospital ${h.linha}`); choice.append(radio); row.append(choice);
-      for (const value of [h.linha, h.medico, h.paciente, `${h.codigo} - ${h.procedimento}`, h.conta,
+      for (const value of [h.linha, h.data.split('-').reverse().join('/'), h.medico, h.paciente, `${h.codigo} - ${h.procedimento}`, h.conta,
         h.valorTotal == null ? 'Nao informado' : money.format(h.valorTotal), h.repasse == null ? 'Nao informado' : money.format(h.repasse),
         h.setor, candidate.associadoALinha != null ? `Associado a linha ${candidate.associadoALinha}` : 'Disponivel']) row.append(node('td', value));
       candidates.append(row);
@@ -234,7 +274,7 @@ document.querySelector('#edit-search-candidates').addEventListener('click', asyn
       radio.type = 'radio'; radio.name = 'linhaHospital'; radio.value = h.linha;
       radio.dataset.reserved = candidate.associadoALinha != null ? 'true' : 'false';
       radio.setAttribute('aria-label', `Selecionar linha hospital ${h.linha}`); cell.append(radio); row.append(cell);
-      for (const value of [h.linha, h.medico, h.paciente, `${h.codigo} - ${h.procedimento}`, h.conta,
+      for (const value of [h.linha, h.data.split('-').reverse().join('/'), h.medico, h.paciente, `${h.codigo} - ${h.procedimento}`, h.conta,
         h.valorTotal == null ? 'Nao informado' : money.format(h.valorTotal), h.repasse == null ? 'Nao informado' : money.format(h.repasse),
         h.setor, candidate.associadoALinha != null ? `Associado a linha ${candidate.associadoALinha}` : 'Disponivel']) row.append(node('td', value));
       table.append(row);
@@ -290,7 +330,7 @@ document.querySelector('#review-form').addEventListener('submit', async event =>
           codigoProcedimento: document.querySelector('#edit-code').value, valorHospital: amount('#edit-value'), repasse: amount('#edit-repasse'),
           status: document.querySelector('#edit-status').value, motivo: document.querySelector('#edit-reason').value } : null }) });
     showReport(id, result.relatorio); reviewDialog.close();
-    message.textContent = `Revisao da linha ${line} salva. Indicadores e relatorio atualizados.`;
+    message.textContent = `Revisao da linha ${line} salva. ${result.automaticas || 0} visitas preenchidas automaticamente. Indicadores e relatorio atualizados.`;
   } catch (error) {
     document.querySelector('#review-message').textContent = error.message;
     if (error.status === 409) {

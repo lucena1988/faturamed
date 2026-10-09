@@ -18,14 +18,16 @@ public class RevisaoVisitasService {
     public record Candidato(ConciliadorVisitas.RegistroHospital registro, Integer associadoALinha) {}
     public record Detalhe(long versao, ConciliadorVisitas.Visita original, ConciliadorVisitas.Visita atual,
             List<Candidato> candidatos, List<Revisao> historico) {}
-    public record Resultado(long versao, ConciliadorVisitas.Relatorio relatorio) {}
+    public record Resultado(long versao, ConciliadorVisitas.Relatorio relatorio, int automaticas) {}
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final AplicadorRevisaoVisita aplicador;
+    private final ReavaliadorVisitas reavaliador;
 
-    public RevisaoVisitasService(JdbcTemplate jdbc, ObjectMapper json, AplicadorRevisaoVisita aplicador) {
+    public RevisaoVisitasService(JdbcTemplate jdbc, ObjectMapper json, AplicadorRevisaoVisita aplicador, ReavaliadorVisitas reavaliador) {
         this.jdbc = jdbc; this.json = json; this.aplicador = aplicador;
+        this.reavaliador = reavaliador;
     }
 
     @Transactional(readOnly = true)
@@ -76,8 +78,31 @@ public class RevisaoVisitasService {
                 values (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb) returning id
                 """, Long.class, id, linha, request.acao().name(), request.responsavel().trim(), request.justificativa().trim(),
                 json.writeValueAsString(antes), json.writeValueAsString(depois));
-        var visitas = estado.atual().visitas().stream().map(v -> v.linhaMedico() == linha ? depois : v).toList();
-        return new Resultado(revisaoId, aplicador.recalcular(estado.original(), visitas));
+        var visitas = new ArrayList<>(estado.atual().visitas().stream().map(v -> v.linhaMedico() == linha ? depois : v).toList());
+        int automaticas = 0;
+        if (depois.hospital() != null && (antes.hospital() == null || antes.hospital().linha() != depois.hospital().linha())
+                && request.acao() != RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO) {
+            Set<Integer> revisadas = new HashSet<>();
+            estado.historico().forEach(r -> revisadas.add(r.linhaMedico())); revisadas.add(linha);
+            var propostas = reavaliador.propostas(estado.original(), visitas, depois.atendimento(), revisadas);
+            for (var proposta : propostas.entrySet()) {
+                var anterior = visitas.stream().filter(v -> v.linhaMedico() == proposta.getKey()).findFirst().orElseThrow();
+                var h = proposta.getValue();
+                var automatica = new ConciliadorVisitas.Visita(anterior.linhaMedico(), anterior.atendimento(), h.data(),
+                        LeitorPlanilhaVisitas.normalizar(h.setor()).equals("faturado") ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE,
+                        "Correspondencia unica e exclusiva apos revisao da linha " + linha,
+                        anterior.original(), h, anterior.candidatos());
+                revisaoId = jdbc.queryForObject("""
+                        insert into revisao_visita (conciliacao_id, linha_medico, acao, responsavel, justificativa, antes, depois)
+                        values (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb) returning id
+                        """, Long.class, id, anterior.linhaMedico(), "CORRESPONDENCIA_AUTOMATICA", "Sistema",
+                        "Reavaliacao apos revisao " + request.acao() + " da linha " + linha + " por " + request.responsavel().trim(),
+                        json.writeValueAsString(anterior), json.writeValueAsString(automatica));
+                visitas.replaceAll(v -> v.linhaMedico() == anterior.linhaMedico() ? automatica : v);
+                automaticas++;
+            }
+        }
+        return new Resultado(revisaoId, aplicador.recalcular(estado.original(), visitas), automaticas);
     }
 
     private Estado ler(Long id, boolean bloquear) throws Exception {

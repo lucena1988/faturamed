@@ -53,6 +53,12 @@ mvn test
 mvn spring-boot:run
 ```
 
+No Windows, o perfil Maven `windows-local-build` grava os arquivos gerados em
+`${java.io.tmpdir}/faturamed-build`, fora do OneDrive, para evitar falhas do
+`mvn clean` causadas por atributos de somente leitura nas pastas sincronizadas.
+Recarregue o projeto Maven no IntelliJ depois de alterar o `pom.xml`.
+No Docker e no Linux, a saida continua em `target`.
+
 Endpoints iniciais:
 
 - `POST /api/empresas`
