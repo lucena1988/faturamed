@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="./identidade.css?v=20261009-1">
   <link rel="stylesheet" href="./painel-medico.css?v=20261009-1">
   <link rel="stylesheet" href="./login.css?v=20261009-1">
-</head>
+<link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegacao principal">
@@ -74,7 +74,7 @@
       </a>
       <div class="sidebar-foot">
         <span class="status-dot"></span>
-        <a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button>
+        <span>Ambiente local</span>
       </div>
     </aside>
 
@@ -101,6 +101,7 @@
             <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v6h-6"/></svg>
           </button>
         </div>
+        <div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div>
       </header>
 
       <p id="dashboard-message" role="status" aria-live="polite"></p>

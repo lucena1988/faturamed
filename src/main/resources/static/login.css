@@ -1,7 +1,7 @@
 .access-page { background: #fff; }
 .access-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); min-height: 100vh; }
-.access-identity { display: grid; place-items: center; background: #e9f4f6; padding: 32px; }
-.access-identity img { display: block; max-width: 100%; width: auto; max-height: calc(100vh - 64px); object-fit: contain; }
+.access-identity { display: grid; place-items: center; background: #fff; padding: 32px; border-right: 1px solid var(--line); }
+.access-identity img { display: block; width: min(500px, 100%); height: auto; aspect-ratio: 1; object-fit: contain; }
 .access-form { align-self: center; justify-self: center; width: min(380px, calc(100% - 48px)); padding: 32px 0; }
 .access-form h1 { margin: 24px 0; font-size: 25px; }
 .access-form input { width: 100%; }
@@ -22,8 +22,9 @@ dialog::backdrop { background: rgba(23, 50, 61, .3); }
 .account-table td { overflow-wrap: anywhere; }
 @media (max-width: 720px) {
   .access-layout { display: block; }
-  .access-identity { display: none; }
-  .access-form { margin: 0 auto; padding-top: 64px; }
+  .access-identity { display: grid; padding: 0; border-right: 0; }
+  .access-identity img { width: 220px; }
+  .access-form { margin: 0 auto; padding-top: 16px; }
   .account-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .account-table table, .account-table tbody { display: block; }
   .account-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
