@@ -5,14 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conciliacao de visitas | Faturamed</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="conciliacao.css">
+  <link rel="stylesheet" href="conciliacao.css?v=20261009-tabela">
+  <link rel="stylesheet" href="identidade.css?v=20261009-1">
+  <link rel="stylesheet" href="login.css?v=20261009-1">
 </head>
 <body>
   <main class="conciliation-workspace">
-    <header class="conciliation-heading"><div><a href="/">Faturamed</a><h1>Conciliacao de visitas</h1></div>
-      <a id="download" hidden>Baixar relatorio geral XLSX</a></header>
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliacao de visitas</h1></div>
+      <a href="/#medicos">Cadastro de medicos</a><a id="download" hidden>Baixar relatorio geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
     <form id="conciliation-form" class="conciliation-form">
-      <label>Hospital<input name="hospital" required maxlength="180" value="Analia Franco"></label>
+      <label>Importacao<select name="relatorioBaseId" data-version-base><option value="">Novo relatorio</option></select></label>
+      <label>Hospital<select name="hospitalId" data-hospital-select disabled><option value="">Informar nome manualmente</option></select><input name="hospital" data-hospital-name required maxlength="180" value="Analia Franco"></label>
       <label>Producao do medico<input name="producao" type="file" accept=".xlsx,.xlsb" required></label>
       <label>Faturamento do hospital<input name="faturamento" type="file" accept=".xlsx,.xlsb" required></label>
       <button type="submit" id="submit">Conciliar</button>
@@ -20,14 +23,21 @@
     <p id="message" role="status" aria-live="polite"></p>
     <section id="results" hidden>
       <div class="conciliation-stats" id="stats"></div>
+      <section class="review-progress" aria-labelledby="progress-title">
+        <h2 id="progress-title">Acompanhamento da revisao</h2>
+        <div id="progress-counts" class="progress-counts"></div>
+        <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
+      </section>
       <div class="conciliation-filters">
         <label>Medico<select id="doctor-filter"><option value="">Todos os medicos</option></select></label>
         <label>Status<select id="status"><option value="">Todos</option><option>PAGA</option><option>PENDENTE</option><option>DIVERGENTE</option></select></label>
+        <label>Origem<select id="origin-filter" disabled><option value="">Todas</option><option value="NAO_REVISADA">Nao revisadas</option><option value="MANUAL">Revisadas manualmente</option><option value="AUTOMATICA">Resolvidas automaticamente</option></select></label>
+        <label>Categoria<select id="category-filter" disabled><option value="">Todas</option><option value="AMBIGUIDADE">Ambiguidade</option><option value="DADOS_FALTANTES">Dados faltantes</option><option value="VALOR_DIVERGENTE">Valor divergente</option><option value="SEM_CORRESPONDENCIA">Sem correspondencia</option><option value="AGUARDANDO_FATURAMENTO">Aguardando faturamento</option><option value="DADOS_DIVERGENTES">Dados divergentes</option><option value="CONFERENCIA_MANUAL">Conferencia manual</option><option value="SEM_PENDENCIA">Sem pendencia</option></select></label>
         <label>Atendimento<input id="search" type="search"></label>
         <span id="count"></span>
         <a id="download-doctor" hidden>Baixar relatorio do medico XLSX</a>
       </div>
-      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Revisao</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Codigo do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisao</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="conciliation-history"><h2>Relatorios anteriores</h2><ul id="history"></ul></section>
   </main>
@@ -58,6 +68,7 @@
           <label>Data<input id="edit-date" type="date"></label>
           <label>Atendimento<input id="edit-attendance" required maxlength="80"></label>
           <label>Medico<input id="edit-doctor" maxlength="180"></label>
+          <label>Medico cadastrado<select id="edit-doctor-id"><option value="">Sem vinculo ao cadastro</option></select></label>
           <label>Procedimento<input id="edit-procedure" maxlength="2000"></label>
           <label>Codigo do procedimento<input id="edit-code" maxlength="40"></label>
           <label>Valor hospital (R$)<input id="edit-value" type="number" min="0" step="0.000001"></label>
@@ -73,6 +84,9 @@
       <section class="review-history"><h3>Historico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="conciliacao.js"></script>
+  <script src="auth.js?v=20261009-1"></script>
+  <script src="versoes.js?v=20261009-versoes"></script>
+  <script src="conciliacao.js?v=20261009-tabela"></script>
+  <script src="hospitais.js?v=20261009-hospitais"></script>
 </body>
 </html>

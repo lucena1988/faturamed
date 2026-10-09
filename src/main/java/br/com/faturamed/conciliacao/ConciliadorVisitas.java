@@ -31,12 +31,23 @@ public class ConciliadorVisitas {
         public BigDecimal valorEfetivo() { return camposRevisados != null ? camposRevisados.valorHospital() : hospital == null ? null : hospital.valorTotal(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "repasse", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public BigDecimal repasseEfetivo() { return camposRevisados != null ? camposRevisados.repasse() : hospital == null ? null : hospital.repasse(); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "medicoCadastroId", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public Long medicoCadastroId() { return camposRevisados == null ? null : camposRevisados.medicoCadastroId(); }
     }
     public record CamposRevisados(String medico, String procedimento, String codigoProcedimento,
-            BigDecimal valorHospital, BigDecimal repasse) {}
+            BigDecimal valorHospital, BigDecimal repasse, Long medicoCadastroId) {
+        public CamposRevisados(String medico, String procedimento, String codigoProcedimento, BigDecimal valorHospital, BigDecimal repasse) {
+            this(medico,procedimento,codigoProcedimento,valorHospital,repasse,null);
+        }
+    }
     public record Relatorio(String hospital, String arquivoMedico, String arquivoHospital,
             String regraStatus, List<Visita> visitas, List<RegistroHospital> hospitalSemProducao,
-            Map<Status, Long> resumo, BigDecimal repasseCorrespondente) {}
+            Map<Status, Long> resumo, BigDecimal repasseCorrespondente, Long hospitalCadastroId) {
+        public Relatorio(String hospital,String arquivoMedico,String arquivoHospital,String regraStatus,List<Visita> visitas,
+                List<RegistroHospital> hospitalSemProducao,Map<Status,Long> resumo,BigDecimal repasseCorrespondente) {
+            this(hospital,arquivoMedico,arquivoHospital,regraStatus,visitas,hospitalSemProducao,resumo,repasseCorrespondente,null);
+        }
+    }
 
     public Relatorio conciliar(String hospital, String arquivoMedico, String arquivoHospital,
             List<LeitorPlanilhaVisitas.Linha> medico, List<LeitorPlanilhaVisitas.Linha> hospitalLinhas) {

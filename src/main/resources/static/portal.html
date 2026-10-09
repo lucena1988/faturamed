@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Meu painel | FaturaMed</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="identidade.css?v=20261009-1"><link rel="stylesheet" href="painel-medico.css?v=20261009-1"><link rel="stylesheet" href="login.css?v=20261009-1"></head>
+<body><main class="account-workspace">
+  <header class="account-heading"><div><a class="company-name" href="portal.html">FaturaMed</a><h1>Meu painel</h1><span id="portal-name"></span></div><div class="session-actions"><a href="conta.html">Minha conta</a><button class="text-button" type="button" data-logout>Sair</button></div></header>
+  <div class="doctor-toolbar"><label class="select-field">Hospital<select id="portal-hospital" disabled></select></label><label class="select-field">Relatorio<select id="report-filter" disabled></select></label><label class="select-field">Periodo<select id="portal-period" disabled></select></label></div>
+  <p id="portal-message" role="status"></p>
+  <section data-view="painel-medico">
+    <div hidden><select id="panel-doctor"></select></div><p id="doctor-scope"></p><p id="doctor-message" role="status"></p>
+    <div class="kpi-grid">
+      <article class="kpi-card"><span class="kpi-label">Faturado pelo hospital</span><strong id="doctor-paid">-</strong><small id="doctor-paid-detail"></small></article>
+      <article class="kpi-card"><span class="kpi-label">Aguardando faturamento</span><strong id="doctor-pending">-</strong><small id="doctor-pending-detail"></small></article>
+      <article class="kpi-card"><span class="kpi-label">Valor em conferencia</span><strong id="doctor-blocked">-</strong><small id="doctor-blocked-detail"></small></article>
+      <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondencia nao confirmados</small></article>
+    </div>
+    <section class="doctor-section"><h2>Resumo do hospital</h2><div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Visitas</th><th>Faturado</th><th>Aguardando</th><th>Em conferencia</th></tr></thead><tbody id="doctor-hospitals"></tbody></table></div></section>
+    <section class="doctor-section"><h2>Pendencias da producao</h2><div class="doctor-toolbar"><label class="select-field">Situacao<select id="doctor-status"><option value="">Todas as pendencias</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferencia</option></select></label><label class="select-field">Atendimento<input id="doctor-search" type="search"></label><span id="doctor-count"></span></div><div class="doctor-table"><table><thead><tr><th>Atendimento</th><th>Data</th><th>Procedimento</th><th>Repasse</th><th>Situacao</th><th>Motivo</th></tr></thead><tbody id="doctor-visits"></tbody></table></div></section>
+  </section>
+</main><script src="auth.js?v=20261009-1"></script><script src="painel-medico.js?v=20261009-1"></script><script src="portal.js?v=20261009-1"></script></body></html>

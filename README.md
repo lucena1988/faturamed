@@ -39,13 +39,23 @@ Componentes iniciais:
 
 Para rodar a aplicacao e o PostgreSQL com Docker:
 
+Antes do primeiro inicio, configure `ADMIN_INITIAL_EMAIL` e uma senha exclusiva em
+`ADMIN_INITIAL_PASSWORD` no arquivo local `.env` (modelo em `.env.example`).
+As credenciais criam somente o primeiro administrador. O `.env` nao deve ser commitado.
+
 ```bash
 docker compose up -d --build
 ```
 
-Acesse http://localhost:8080/. Para parar os containers, execute `docker compose down`. Os dados do PostgreSQL ficam persistidos no volume `postgres_data`.
+Acesse http://localhost:8080/login.html. O administrador gerencia os usuarios em
+**Acessos** e vincula cada login de medico ao respectivo cadastro CRM/UF.
+Detalhes: [Login e permissoes](docs/login-e-permissoes.md).
+Para parar os containers, execute `docker compose down`. Os dados do PostgreSQL ficam persistidos no volume `postgres_data`.
 
 Para executar o backend fora do Docker, com Java 21 e Maven instalados:
+
+Configure tambem as variaveis `ADMIN_INITIAL_EMAIL` e `ADMIN_INITIAL_PASSWORD` no
+ambiente/IntelliJ para o primeiro inicio. O Spring Boot nao carrega `.env` automaticamente.
 
 ```bash
 docker compose up -d postgres

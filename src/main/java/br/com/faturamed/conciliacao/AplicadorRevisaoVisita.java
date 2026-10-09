@@ -53,7 +53,7 @@ public class AplicadorRevisaoVisita {
                 if (ajuste == null) throw new IllegalArgumentException("Informe os dados ajustados");
                 atendimento = ajuste.atendimento().trim(); data = ajuste.data(); status = ajuste.status(); motivo = ajuste.motivo().trim();
                 campos = new ConciliadorVisitas.CamposRevisados(ajuste.medico().trim(), ajuste.procedimento().trim(),
-                        ajuste.codigoProcedimento() == null ? null : ajuste.codigoProcedimento().trim(), ajuste.valorHospital(), ajuste.repasse());
+                        ajuste.codigoProcedimento() == null ? null : ajuste.codigoProcedimento().trim(), ajuste.valorHospital(), ajuste.repasse(), ajuste.medicoCadastroId());
                 candidatos = candidatos(base, atendimento, data);
                 if (request.linhaHospital() != null) {
                     int linha = request.linhaHospital();
@@ -101,7 +101,7 @@ public class AplicadorRevisaoVisita {
                 !chaves.contains(new ConciliadorVisitas.Chave(h.atendimento(), h.data()))
                 && !chaves.contains(new ConciliadorVisitas.Chave(h.atendimento(), null))).toList();
         return new ConciliadorVisitas.Relatorio(base.hospital(), base.arquivoMedico(), base.arquivoHospital(),
-                base.regraStatus(), List.copyOf(visitas), semProducao, resumo, repasse);
+                base.regraStatus(), List.copyOf(visitas), semProducao, resumo, repasse, base.hospitalCadastroId());
     }
 
     public List<ConciliadorVisitas.RegistroHospital> candidatos(ConciliadorVisitas.Relatorio base, String atendimento, java.time.LocalDate data) {

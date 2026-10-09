@@ -1,0 +1,11 @@
+.medico-form { display:grid; grid-template-columns:minmax(220px,2fr) minmax(120px,1fr) minmax(90px,1fr); gap:16px; padding:20px 0; border-block:1px solid var(--line); }
+.workspace .medicos-module { padding:0; max-width:none; margin:0; }
+.topbar-actions[hidden] { display:none; }
+.medico-form h2 { grid-column:1/-1; margin:0; font-size:18px; }
+.aliases-field,.medico-actions { grid-column:1/-1; }
+.medico-form textarea { padding:10px; font:inherit; border:1px solid var(--line); border-radius:4px; resize:vertical; }
+.medico-form .active-field { flex-direction:row; align-items:center; }
+.medico-form .active-field input { width:18px; height:18px; }
+.medico-actions { display:flex; gap:12px; flex-wrap:wrap; }
+#medicos-rows td { overflow-wrap:anywhere; }
+@media(max-width:550px) { .medico-form { grid-template-columns:1fr; } }

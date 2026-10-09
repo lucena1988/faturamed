@@ -3,7 +3,7 @@ const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const integer = new Intl.NumberFormat('pt-BR');
 const percentage = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
-const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importacoes', divergencias: 'Divergencias', layouts: 'Layouts' };
+const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importacoes', divergencias: 'Divergencias', layouts: 'Layouts', medicos: 'Medicos', hospitais: 'Hospitais', 'painel-medico': 'Painel do medico' };
 let reports = [];
 let report = null;
 let reportId = null;
@@ -81,6 +81,7 @@ function renderValues(visits) {
 }
 function clearData(message) {
   report = null;
+  window.FaturamedPainel.render(null, []);
   for (const id of ['kpi-repasse', 'kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes',
     'kpi-valor-pagas', 'kpi-valor-pendentes', 'kpi-valor-divergentes',
     'legend-pagas', 'legend-pendentes', 'legend-divergentes', 'paid-percent', 'imports-count']) $(`#${id}`).textContent = '...';
@@ -163,6 +164,7 @@ async function loadReport(id) {
 function renderDashboard() {
   if (!report) return;
   const visits = currentVisits();
+  window.FaturamedPainel.render(report, visits);
   const counts = Object.fromEntries(Object.keys(labels).map(status => [status, visits.filter(visit => visit.status === status).length]));
   const paidRate = visits.length ? counts.PAGA / visits.length : 0;
   $('#report-context').textContent = `${report.hospital} - Conciliacao #${reportId}`;
@@ -262,7 +264,11 @@ function showView(view) {
   document.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.dataset.view === view));
   document.querySelectorAll('[data-view-link]').forEach(button => button.classList.toggle('active', button.dataset.viewLink === view));
   $('#view-title').textContent = viewTitles[view];
+  $('#report-context').hidden = ['medicos','hospitais'].includes(view);
+  document.querySelector('.topbar-actions').hidden = ['medicos','hospitais'].includes(view);
+  if (location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
 }
+window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
 function showToast(message) {
   $('#toast').textContent = message; $('#toast').classList.add('visible');
   setTimeout(() => $('#toast').classList.remove('visible'), 2500);
@@ -286,11 +292,14 @@ $('#import-form').addEventListener('submit', async event => {
   const submit = form.querySelector('[type=submit]'); submit.disabled = true;
   $('#import-message').textContent = 'Processando planilhas...';
   try {
-    const result = await request('/api/conciliacoes/visitas', { method: 'POST', body: new FormData(form) });
+    const data=await window.FaturamedVersoes.prepare(form);
+    if(!data){$('#import-message').textContent='Importacao cancelada.';return;}
+    const result = await request('/api/conciliacoes/visitas', { method: 'POST', body: data });
     await loadReports(result.id);
-    $('#import-message').textContent = `Conciliacao #${result.id} salva.`;
+    $('#import-message').textContent = window.FaturamedVersoes.message(result);
     showView('dashboard'); showToast('Conciliacao concluida');
     form.reset();
+    await window.FaturamedVersoes.load();
   } catch (error) { $('#import-message').textContent = error.message; }
   finally { submit.disabled = false; }
 });

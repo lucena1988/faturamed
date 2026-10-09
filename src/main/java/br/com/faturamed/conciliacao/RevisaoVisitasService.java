@@ -24,10 +24,12 @@ public class RevisaoVisitasService {
     private final ObjectMapper json;
     private final AplicadorRevisaoVisita aplicador;
     private final ReavaliadorVisitas reavaliador;
+    private final MedicoCadastroService medicos;
 
-    public RevisaoVisitasService(JdbcTemplate jdbc, ObjectMapper json, AplicadorRevisaoVisita aplicador, ReavaliadorVisitas reavaliador) {
+    public RevisaoVisitasService(JdbcTemplate jdbc, ObjectMapper json, AplicadorRevisaoVisita aplicador, ReavaliadorVisitas reavaliador, MedicoCadastroService medicos) {
         this.jdbc = jdbc; this.json = json; this.aplicador = aplicador;
         this.reavaliador = reavaliador;
+        this.medicos = medicos;
     }
 
     @Transactional(readOnly = true)
@@ -37,6 +39,7 @@ public class RevisaoVisitasService {
     public void excluir(Long id) {
         var ids = jdbc.queryForList("select id from conciliacao_visitas where id = ? for update", Long.class, id);
         if (ids.isEmpty()) throw new RecursoNaoEncontradoException("Relatorio nao encontrado");
+        if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",id).isEmpty()) throw new ConflitoRevisaoException("Exclua primeiro a versao mais recente deste relatorio");
         jdbc.update("delete from revisao_visita where conciliacao_id = ?", id);
         jdbc.update("delete from conciliacao_visitas where id = ?", id);
     }
@@ -64,6 +67,7 @@ public class RevisaoVisitasService {
     public Resultado revisar(Long id, int linha, RevisaoVisitaRequest request) throws Exception {
         // O bloqueio serializa revisoes da rodada e protege a exclusividade do registro hospitalar.
         Estado estado = ler(id, true);
+        if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",id).isEmpty()) throw new ConflitoRevisaoException("Este relatorio possui nova versao. Abra a versao mais recente para revisar");
         if (estado.versao() != request.versao()) {
             throw new ConflitoRevisaoException("Esta conciliacao recebeu outra revisao. Atualize os detalhes antes de salvar");
         }
@@ -72,6 +76,13 @@ public class RevisaoVisitasService {
         }
         var original = visita(estado.original(), linha);
         var antes = visita(estado.atual(), linha);
+        if(request.ajuste()!=null && request.ajuste().medicoCadastroId()!=null) {
+            var cadastro=medicos.buscar(request.ajuste().medicoCadastroId());
+            if(!cadastro.ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
+            var a=request.ajuste();
+            request=new RevisaoVisitaRequest(request.acao(),request.linhaHospital(),request.responsavel(),request.justificativa(),request.versao(),
+                    new RevisaoVisitaRequest.Ajuste(a.data(),a.atendimento(),cadastro.nome(),a.procedimento(),a.codigoProcedimento(),a.valorHospital(),a.repasse(),a.status(),a.motivo(),cadastro.id()));
+        }
         var depois = aplicador.aplicar(original, estado.atual(), request, estado.original());
         Long revisaoId = jdbc.queryForObject("""
                 insert into revisao_visita (conciliacao_id, linha_medico, acao, responsavel, justificativa, antes, depois)
@@ -122,7 +133,8 @@ public class RevisaoVisitasService {
             historico.add(new Revisao(revisaoId, ((Number) registro.get("linha_medico")).intValue(),
                     RevisaoVisitaRequest.Acao.valueOf(registro.get("acao").toString()),
                     registro.get("responsavel").toString(), registro.get("justificativa").toString(), criado, antes, depois));
-            atualizadas.put(depois.linhaMedico(), depois); versao = revisaoId;
+            var candidatos=aplicador.candidatos(original,depois.atendimento(),depois.data());
+            atualizadas.put(depois.linhaMedico(),new ConciliadorVisitas.Visita(depois.linhaMedico(),depois.atendimento(),depois.data(),depois.status(),depois.motivo(),depois.original(),depois.hospital(),candidatos,depois.camposRevisados())); versao = revisaoId;
         }
         var visitas = original.visitas().stream().map(v -> atualizadas.getOrDefault(v.linhaMedico(), v)).toList();
         return new Estado(original, aplicador.recalcular(original, visitas), List.copyOf(historico), versao);

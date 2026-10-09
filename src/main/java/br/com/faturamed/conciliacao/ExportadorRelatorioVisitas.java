@@ -21,6 +21,10 @@ public class ExportadorRelatorioVisitas {
 
     public byte[] exportar(ConciliadorVisitas.Relatorio relatorio,
             java.util.List<RevisaoVisitasService.Revisao> revisoes, String medico) throws Exception {
+        return exportar(relatorio,revisoes,medico,null);
+    }
+    public byte[] exportar(ConciliadorVisitas.Relatorio relatorio,
+            java.util.List<RevisaoVisitasService.Revisao> revisoes, String medico, MedicoCadastroService.Medico cadastro) throws Exception {
         try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
             CellStyle moeda = workbook.createCellStyle();
             moeda.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00########"));
@@ -33,7 +37,8 @@ public class ExportadorRelatorioVisitas {
             Sheet resumo = workbook.createSheet("Resumo");
             preencher(resumo.createRow(0), new Object[]{"Hospital", relatorio.hospital()}, moeda, data);
             preencher(resumo.createRow(1), medico == null ? new Object[]{"Arquivo medico", relatorio.arquivoMedico()}
-                    : new Object[]{"Medico", relatorio.visitas().getFirst().medicoEfetivo()}, moeda, data);
+                    : new Object[]{"Medico", cadastro==null?relatorio.visitas().getFirst().medicoEfetivo():cadastro.nome()}, moeda, data);
+            if(cadastro!=null) preencher(resumo.createRow(4),new Object[]{"CRM / UF",cadastro.crm()+" / "+cadastro.uf()},moeda,data);
             preencher(resumo.createRow(2), medico == null ? new Object[]{"Arquivo hospital", relatorio.arquivoHospital()}
                     : new Object[]{"Visitas do medico", relatorio.visitas().size()}, moeda, data);
             preencher(resumo.createRow(3), new Object[]{"Regra dos status", relatorio.regraStatus()}, moeda, data);
@@ -130,11 +135,11 @@ public class ExportadorRelatorioVisitas {
     }
 
     private String alteracoes(ConciliadorVisitas.Visita antes, ConciliadorVisitas.Visita depois) {
-        String[] labels = {"Data", "Atendimento", "Medico", "Procedimento", "Codigo", "Valor hospital", "Repasse"};
+        String[] labels = {"Data", "Atendimento", "Medico", "Procedimento", "Codigo", "Valor hospital", "Repasse", "Cadastro medico"};
         Object[] old = {antes.data(), antes.atendimento(), antes.medicoEfetivo(), antes.procedimentoEfetivo(),
-                antes.codigoEfetivo(), antes.valorEfetivo(), antes.repasseEfetivo()};
+                antes.codigoEfetivo(), antes.valorEfetivo(), antes.repasseEfetivo(),antes.medicoCadastroId()};
         Object[] updated = {depois.data(), depois.atendimento(), depois.medicoEfetivo(), depois.procedimentoEfetivo(),
-                depois.codigoEfetivo(), depois.valorEfetivo(), depois.repasseEfetivo()};
+                depois.codigoEfetivo(), depois.valorEfetivo(), depois.repasseEfetivo(),depois.medicoCadastroId()};
         var changes = new java.util.ArrayList<String>();
         for (int i = 0; i < labels.length; i++) if (!java.util.Objects.equals(old[i], updated[i])) {
             changes.add(labels[i] + ": " + java.util.Objects.toString(old[i], "Nao informado")

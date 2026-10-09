@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Medicos | Faturamed</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="conciliacao.css"><link rel="stylesheet" href="medicos.css"></head>
+<body><script>location.replace('/#medicos');</script><main class="conciliation-workspace" data-medicos>
+  <header class="conciliation-heading"><div><a href="/">Faturamed</a><h1>Medicos</h1></div><a href="conciliacao.html">Conciliacao de visitas</a></header>
+  <form id="medico-form" class="medico-form">
+    <h2 id="form-title">Novo medico</h2>
+    <label>Nome completo<input id="nome" required maxlength="180" autocomplete="name"></label>
+    <label>CRM<input id="crm" required pattern="[0-9]{1,20}" maxlength="20" inputmode="numeric"></label>
+    <label>UF<select id="uf" required><option value="">Selecione</option></select></label>
+    <label class="aliases-field">Aliases (um nome por linha)<textarea id="aliases" rows="4"></textarea></label>
+    <label class="active-field"><input id="ativo" type="checkbox" checked>Ativo</label>
+    <div class="medico-actions"><button id="save" type="submit">Salvar medico</button><button id="new" type="button">Novo cadastro</button></div>
+  </form>
+  <p id="message" role="status" aria-live="polite"></p>
+  <div class="conciliation-filters"><label>Buscar medico<input id="medico-search" type="search"></label><label>Situacao<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
+  <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Aliases</th><th>Situacao</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
+</main><script src="medicos.js"></script></body></html>

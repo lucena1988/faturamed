@@ -5,6 +5,9 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/faturamed
       DB_USER: faturamed
       DB_PASSWORD: faturamed
+      ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-admin@faturamed.local}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
     ports:
       - "8080:8080"
     depends_on:

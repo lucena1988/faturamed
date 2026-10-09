@@ -5,21 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faturamed</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./conciliacao.css">
+  <link rel="stylesheet" href="./medicos.css?v=20261009-2">
+  <link rel="stylesheet" href="./identidade.css?v=20261009-1">
+  <link rel="stylesheet" href="./painel-medico.css?v=20261009-1">
+  <link rel="stylesheet" href="./login.css?v=20261009-1">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegacao principal">
       <a class="brand" href="#dashboard" data-view-link="dashboard" aria-label="Faturamed dashboard">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" role="img">
+          <svg id="faturamed-mark" viewBox="0 0 24 24" role="img">
             <path d="M5 4.75A2.75 2.75 0 0 1 7.75 2h8.5A2.75 2.75 0 0 1 19 4.75v14.5A2.75 2.75 0 0 1 16.25 22h-8.5A2.75 2.75 0 0 1 5 19.25V4.75Z"/>
             <path d="M9 7h6M9 11h6M9 15h2.5"/>
             <path d="M14.25 14.25v4.5M12 16.5h4.5"/>
           </svg>
         </span>
         <span>
-          <strong>Faturamed</strong>
-          <small>Auditoria medica</small>
+          <strong>FaturaMed</strong>
+          <small>Faturamento e consultoria</small>
         </span>
       </a>
 
@@ -52,11 +57,24 @@
           </span>
           Layouts
         </button>
+        <a class="nav-item" href="#medicos" data-view-link="medicos" title="Medicos" aria-label="Medicos">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>
+          Medicos
+        </a>
+        <a class="nav-item" href="#hospitais" data-view-link="hospitais" title="Hospitais" aria-label="Hospitais">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>
+          Hospitais
+        </a>
+        <a class="nav-item" href="#painel-medico" data-view-link="painel-medico" title="Painel do medico" aria-label="Painel do medico"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Painel do medico</a>
+        <a class="nav-item" href="usuarios.html" title="Acessos" aria-label="Acessos"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Acessos</a>
       </nav>
 
+      <a class="company-identity" href="./assets/faturamed-identidade.jpeg" target="_blank" rel="noopener" aria-label="Identidade da FaturaMed">
+        <img src="./assets/faturamed-identidade.jpeg" alt="FaturaMed: faturamento de contas medicas e consultoria medica">
+      </a>
       <div class="sidebar-foot">
         <span class="status-dot"></span>
-        <span>Ambiente local</span>
+        <a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button>
       </div>
     </aside>
 
@@ -201,7 +219,8 @@
             <form class="stack-form" id="import-form">
               <label>
                 <span>Hospital</span>
-                <input name="hospital" required maxlength="180" placeholder="Nome do hospital">
+                <select name="hospitalId" data-hospital-select disabled><option value="">Informar nome manualmente</option></select>
+                <input name="hospital" data-hospital-name required maxlength="180" placeholder="Nome do hospital">
               </label>
               <label>
                 <span>Producao do medico</span>
@@ -211,6 +230,7 @@
                 <span>Faturamento do hospital</span>
                 <input name="faturamento" type="file" accept=".xlsx,.xlsb" required>
               </label>
+              <label>Importacao<select name="relatorioBaseId" data-version-base><option value="">Novo relatorio</option></select></label>
               <button class="primary-button" type="submit">Importar e conciliar</button>
               <p id="import-message" role="status" aria-live="polite"></p>
             </form>
@@ -307,10 +327,55 @@
           </section>
         </div>
       </section>
+      <section class="view conciliation-workspace medicos-module" id="medicos-view" data-view="medicos" data-medicos>
+        <form id="medico-form" class="medico-form">
+          <h2 id="form-title">Novo medico</h2>
+          <label>Nome completo<input id="nome" required maxlength="180" autocomplete="name"></label>
+          <label>CRM<input id="crm" required pattern="[0-9]{1,20}" maxlength="20" inputmode="numeric"></label>
+          <label>UF<select id="uf" required><option value="">Selecione</option></select></label>
+          <label class="aliases-field">Aliases (um nome por linha)<textarea id="aliases" rows="4"></textarea></label>
+          <label class="active-field"><input id="ativo" type="checkbox" checked>Ativo</label>
+          <div class="medico-actions"><button id="save" type="submit">Salvar medico</button><button id="new" type="button">Novo cadastro</button></div>
+        </form>
+        <p id="message" role="status" aria-live="polite"></p>
+        <div class="conciliation-filters"><label>Buscar medico<input id="medico-search" type="search"></label><label>Situacao<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Aliases</th><th>Situacao</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
+      </section>
+      <section class="view" data-view="painel-medico" aria-label="Painel do medico">
+        <div class="doctor-toolbar"><label class="select-field">Medico<select id="panel-doctor" disabled><option value="">Selecione um medico</option></select></label><span id="doctor-scope"></span></div>
+        <p id="doctor-message" role="status">Selecione um medico.</p>
+        <div class="kpi-grid">
+          <article class="kpi-card"><span class="kpi-label">Faturado pelo hospital</span><strong id="doctor-paid">-</strong><small id="doctor-paid-detail"></small></article>
+          <article class="kpi-card"><span class="kpi-label">Aguardando faturamento</span><strong id="doctor-pending">-</strong><small id="doctor-pending-detail"></small></article>
+          <article class="kpi-card"><span class="kpi-label">Valor em conferencia</span><strong id="doctor-blocked">-</strong><small id="doctor-blocked-detail"></small></article>
+          <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondencia nao confirmados</small></article>
+        </div>
+        <section class="doctor-section"><h2>Resumo do hospital</h2><div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Visitas</th><th>Faturado</th><th>Aguardando</th><th>Em conferencia</th></tr></thead><tbody id="doctor-hospitals"></tbody></table></div></section>
+        <section class="doctor-section"><h2>Pendencias da producao</h2><div class="doctor-toolbar"><label class="select-field">Situacao<select id="doctor-status"><option value="">Todas as pendencias</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferencia</option></select></label><label class="select-field">Atendimento<input id="doctor-search" type="search"></label><span id="doctor-count"></span></div><div class="doctor-table"><table><thead><tr><th>Atendimento</th><th>Data</th><th>Procedimento</th><th>Repasse</th><th>Situacao</th><th>Motivo</th></tr></thead><tbody id="doctor-visits"></tbody></table></div></section>
+      </section>
+      <section class="view conciliation-workspace medicos-module" id="hospitais-view" data-view="hospitais" data-hospitais>
+        <form id="hospital-form" class="medico-form">
+          <h2 id="h-form-title">Novo hospital</h2>
+          <label>Nome do hospital<input id="h-nome" required maxlength="180"></label>
+          <label>CNPJ / documento (opcional)<input id="h-documento" maxlength="30"></label>
+          <label>UF<select id="h-uf"><option value="">Nao informada</option></select></label>
+          <label>Cidade<input id="h-cidade" maxlength="120"></label>
+          <label class="active-field"><input id="h-ativo" type="checkbox" checked>Ativo</label>
+          <div class="medico-actions"><button id="h-save" type="submit">Salvar hospital</button><button id="h-new" type="button">Novo cadastro</button></div>
+        </form>
+        <p id="h-message" role="status" aria-live="polite"></p>
+        <div class="conciliation-filters"><label>Buscar hospital<input id="h-search" type="search"></label><label>Situacao<select id="h-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="h-count"></span><button id="h-reload" type="button">Atualizar</button></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>Documento</th><th>Cidade</th><th>UF</th><th>Situacao</th><th>Cadastro</th></tr></thead><tbody id="h-rows"></tbody></table></div>
+      </section>
     </main>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js"></script>
+  <script src="./auth.js?v=20261009-1"></script>
+  <script src="./versoes.js?v=20261009-versoes"></script>
+  <script src="./painel-medico.js?v=20261009-1"></script>
+  <script src="./app.js?v=20261009-painel"></script>
+  <script src="./medicos.js?v=20261009-2"></script>
+  <script src="./hospitais.js?v=20261009-hospitais"></script>
 </body>
 </html>

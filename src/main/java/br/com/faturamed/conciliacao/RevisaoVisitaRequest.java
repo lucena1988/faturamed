@@ -26,7 +26,12 @@ public record RevisaoVisitaRequest(
             @Size(max = 40) String codigoProcedimento,
             @DecimalMin("0") @Digits(integer = 12, fraction = 6) BigDecimal valorHospital,
             @DecimalMin("0") @Digits(integer = 12, fraction = 6) BigDecimal repasse,
-            @NotNull ConciliadorVisitas.Status status, @NotBlank @Size(max = 2000) String motivo) {}
+            @NotNull ConciliadorVisitas.Status status, @NotBlank @Size(max = 2000) String motivo, @Positive Long medicoCadastroId) {
+        public Ajuste(LocalDate data,String atendimento,String medico,String procedimento,String codigoProcedimento,
+                BigDecimal valorHospital,BigDecimal repasse,ConciliadorVisitas.Status status,String motivo) {
+            this(data,atendimento,medico,procedimento,codigoProcedimento,valorHospital,repasse,status,motivo,null);
+        }
+    }
     public enum Acao {
         CONFIRMAR_CORRESPONDENCIA, MANTER_PENDENTE, MANTER_DIVERGENTE, RESTAURAR_AUTOMATICO, AJUSTAR_DADOS, CORRESPONDENCIA_AUTOMATICA
     }
