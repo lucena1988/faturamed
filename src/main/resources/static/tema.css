@@ -1,0 +1,35 @@
+.theme-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--primary); cursor: pointer; }
+.theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.theme-toggle:hover { background: var(--surface-soft); }
+.conciliation-workspace .theme-toggle { padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--primary); border-radius: 6px; }
+.access-form > .theme-toggle { float: right; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171b1d; --surface: #22282b; --surface-soft: #293135;
+  --text: #edf3f5; --muted: #b1c2c9; --line: #465158;
+  --primary: #8bcbdc; --primary-strong: #b6e5ef;
+  --blue: #80bdd4; --mint: #9ed6d5; --green: #58ba90; --amber: #e0b55f; --rose: #e58c9c;
+  --shadow: none;
+}
+[data-theme="dark"] :is(.sidebar,.kpi-card,.panel,.conciliation-form,.medico-form,.conciliation-table,dialog,.access-page,.access-identity) { background: var(--surface); color: var(--text); border-color: var(--line); }
+[data-theme="dark"] :is(input,select,textarea,.icon-button,.segmented,.field-tile,.dropzone,.sidebar-foot) { background: var(--surface-soft); color: var(--text); border-color: var(--line); }
+[data-theme="dark"] :is(.brand-mark,.nav-item.active,.nav-item:hover,.text-button,thead,.conciliation-table thead) { background: #30444c; color: var(--primary-strong); border-color: var(--line); }
+[data-theme="dark"] .nav-item { color: var(--muted); }
+[data-theme="dark"] tbody tr:hover { background: var(--surface-soft); }
+[data-theme="dark"] :is(.primary-button,.conciliation-workspace button:not(.theme-toggle):not(.history-open):not(.history-delete)) { background: #286d81; color: #fff; }
+[data-theme="dark"] :is(.primary-button:hover,.conciliation-workspace button:not(.theme-toggle):not(.history-open):not(.history-delete):hover) { background: #34869b; }
+[data-theme="dark"] .bar { background: #364247; }
+[data-theme="dark"] .bar i { background: #67b4c9; }
+[data-theme="dark"] :is(.badge,.pill) { background: #30444c; color: #b6e5ef; }
+[data-theme="dark"] :is(.badge.success,.pill.success) { background: #264739; color: #a0e2bd; }
+[data-theme="dark"] .pill.warning { background: #4b3e24; color: #f1d292; }
+[data-theme="dark"] .pill.danger { background: #4b2d36; color: #f5b1be; }
+[data-theme="dark"] .access-error { color: #f5b1be; }
+[data-theme="dark"] .toast { background: #30444c; color: var(--text); }
+[data-theme="dark"] .segmented button.active { background: var(--surface); color: var(--primary-strong); }
+[data-theme="dark"] .conciliation-table th, [data-theme="dark"] .review-current { background: #30444c; color: var(--text); }
+[data-theme="dark"] #review-dialog { background: var(--surface); color: var(--text); }
+[data-theme="dark"] #review-close { background: var(--surface-soft); color: var(--text); }
+[data-theme="dark"] #review-save { background: #286d81; color: #fff; }
+[data-theme="dark"] #delivery-status[data-state="attention"] { color: #f1d292; }
+[data-theme="dark"] #delivery-status[data-state="ready"] { color: #a0e2bd; }
