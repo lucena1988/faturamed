@@ -2,6 +2,34 @@
 
 Tela: http://localhost:8080/conciliacao.html
 
+## Fila de revisao por categoria
+
+A fila mostra contadores das visitas que ainda precisam de conferencia, respeitando o filtro de medico. Ao selecionar uma categoria, a tabela mostra apenas os casos a conferir dessa categoria e limpa os filtros de status, origem e atendimento. O seletor Categoria permite voltar a consultar todas as visitas, inclusive resolvidas.
+
+`Revisar proxima visita` abre a revisao manual dentro dos filtros atuais, priorizando ambiguidades. Cliques seguintes avancam pelas visitas ainda na fila. Ao salvar, o acompanhamento recalcula categorias e contadores; versoes historicas nao permitem iniciar revisao. A fila nao modifica correspondencias automaticamente.
+
+## Identificacao da producao na importacao
+
+As telas de Conciliacao e Importacoes permitem selecionar **Varios medicos / identificacao por linha** (padrao) ou **Um unico medico**.
+
+- Em producao individual, selecione um cadastro ativo por nome e CRM/UF. O servidor preenche apenas as identificacoes ausentes, armazenando ID e nome do cadastro em metadados separados. A planilha e os campos originais permanecem intactos.
+- Nome/alias preenchido na linha deve identificar unicamente o mesmo cadastro. Outro medico, nome desconhecido ou homonimo fica DIVERGENTE para conferencia, sem sobrescrever a fonte ou atribuir pagamento automaticamente.
+- O preenchimento da importacao nao e uma revisao manual. Visitas sem correspondente hospitalar continuam pendentes, mas passam a ter o medico identificado e podem aparecer no seu painel/portal.
+- Hospital de outro medico ou identificacao hospitalar ambigua nao confirma a visita do medico selecionado.
+- Producao coletiva mantem a identificacao por linha, sem aplicar um medico a todos os registros. As identificacoes ausentes continuam visiveis no acompanhamento e no filtro de medico nao identificado.
+- Novas versoes herdam o modo e o medico da importacao base. Trocar essa configuracao exige **Novo relatorio**. As visitas conciliadas/revisadas e a fonte original continuam preservadas.
+- A resposta da importacao informa quantas linhas tiveram identificacao preenchida e quantas informaram medico diferente. Isso ainda nao e a pre-conferencia das planilhas, prevista para o proximo passo.
+
+## Regra do modelo corrigido (13/10/2026)
+
+- `Dt.` representa a data real da visita e deve corresponder a `Data Consumo` do hospital.
+- `Valor Orig = 0` na producao significa valor ainda nao informado. Nao gera divergencia monetaria; o resultado e a exportacao usam o valor do hospital quando ha correspondencia segura. A fonte original permanece intacta.
+- Valores nao zero informados na producao continuam sendo conferidos.
+- Havendo varios registros para atendimento/data, medico, `Cod Produto` e procedimento preenchidos refinam os candidatos. Se nenhum candidato corresponde aos campos informados, os registros permanecem disponiveis para revisao, sem escolher um arbitrariamente.
+- As disputas sao contadas por linha da producao depois desse refinamento. Um registro hospitalar nao pode ser atribuido automaticamente a duas visitas.
+- Sem data, permanece a compatibilidade com o modelo anterior; datas ou medicos ambiguos exigem revisao.
+- Relatorios salvos e revisoes manuais nao sao alterados automaticamente. Para testar a nova regra com os mesmos arquivos, importe como **Novo relatorio**, pois arquivos identicos em uma atualizacao retornam a versao existente.
+
 ## Dashboard e importacoes
 
 ### Novas versoes da mesma producao
@@ -207,3 +235,10 @@ Os ajustes compoem o resultado efetivo, o dashboard e o Excel, com historico
 de antes/depois, responsavel e justificativa. O total informado pelo hospital
 continua baseado na planilha original. `PAGA` exige uma correspondencia com
 registro faturado do hospital e dados completos; nao comprova recebimento.
+# Diagnostico antes da importacao
+
+Nas telas de Importacoes e Conciliacao, `Analisar planilhas` consulta os arquivos sem salvar relatorio. O envio para conciliacao tambem abre o diagnostico para confirmacao.
+
+O diagnostico informa cobertura por atendimento/data, periodo de cada arquivo, IDs ausentes/repetidos, medico nao identificado e correspondencias ambiguas ou com dados divergentes. Alertas podem se sobrepor; exemplos mostram ate 20 linhas por categoria, mantendo os totais completos. A ausencia de medico no arquivo original e distinta da identificacao efetiva por hospital ou cadastro selecionado.
+
+A coluna ID e analisada, mas nao substitui a regra de correspondencia: um ID composto de data e atendimento nao distingue medicos diferentes. Nenhuma planilha ou revisao anterior e alterada pela consulta. Em atualizacoes, os numeros descrevem os arquivos enviados; a preservacao das revisoes ocorre somente ao criar a nova versao.

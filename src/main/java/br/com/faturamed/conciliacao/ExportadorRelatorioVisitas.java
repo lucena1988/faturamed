@@ -77,6 +77,7 @@ public class ExportadorRelatorioVisitas {
                         originalOuHospital(visita, "nome", h == null ? null : h.paciente()),
                         visita.procedimentoEfetivo(), visita.medicoEfetivo(),
                         visita.camposRevisados() != null ? visita.valorEfetivo() : visita.original().getOrDefault("valor orig", "").isBlank()
+                                || new BigDecimal(visita.original().get("valor orig")).signum() == 0
                                 ? (h == null ? null : h.valorTotal()) : visita.original().get("valor orig"), visita.status().name(),
                         visita.codigoEfetivo(), h == null ? null : h.conta(), visita.valorEfetivo(),
                         h == null ? null : h.regra(), visita.repasseEfetivo(), h == null ? null : h.linha(),

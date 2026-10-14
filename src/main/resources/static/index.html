@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faturamed</title>
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./conciliacao.css">
+  <link rel="stylesheet" href="./conciliacao.css?v=20261013-producao">
   <link rel="stylesheet" href="./medicos.css?v=20261009-2">
   <link rel="stylesheet" href="./identidade.css?v=20261009-1">
   <link rel="stylesheet" href="./painel-medico.css?v=20261009-1">
   <link rel="stylesheet" href="./login.css?v=20261009-1">
+  <link rel="stylesheet" href="./diagnostico.css?v=20261013-1">
 <link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <div class="app-shell">
@@ -218,6 +219,7 @@
               </div>
             </div>
             <form class="stack-form" id="import-form">
+              <fieldset class="production-identity"><legend>Identificacao da producao</legend><label>Producao<select name="modoProducao" data-production-mode><option value="VARIOS">Varios medicos / identificacao por linha</option><option value="UNICO">Um unico medico</option></select></label><label data-production-doctor-label hidden>Medico da producao<select name="medicoProducaoId" data-production-doctor disabled><option value="">Selecione um medico</option></select></label><p data-production-message role="status"></p></fieldset>
               <label>
                 <span>Hospital</span>
                 <select name="hospitalId" data-hospital-select disabled><option value="">Informar nome manualmente</option></select>
@@ -373,7 +375,9 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth.js?v=20261009-1"></script>
-  <script src="./versoes.js?v=20261009-versoes"></script>
+  <script src="./producao.js?v=20261013-1"></script>
+  <script src="./diagnostico.js?v=20261013-1"></script>
+  <script src="./versoes.js?v=20261013-diagnostico"></script>
   <script src="./painel-medico.js?v=20261009-1"></script>
   <script src="./app.js?v=20261009-painel"></script>
   <script src="./medicos.js?v=20261009-2"></script>

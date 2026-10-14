@@ -27,6 +27,11 @@ let reviewDetail;
 let reviewLine;
 let reviewSaving = false;
 let reviewGeneration = 0;
+let queueOnly = false;
+let queueLastLine = null;
+let visibleQueue = [];
+const queuePriority = ['AMBIGUIDADE', 'DADOS_DIVERGENTES', 'VALOR_DIVERGENTE', 'DADOS_FALTANTES',
+  'CONFERENCIA_MANUAL', 'SEM_CORRESPONDENCIA', 'AGUARDANDO_FATURAMENTO'];
 const reviewDialog = document.querySelector('#review-dialog');
 const actionLabels = { CONFIRMAR_CORRESPONDENCIA: 'Correspondencia confirmada', MANTER_PENDENTE: 'Mantida pendente',
   MANTER_DIVERGENTE: 'Mantida divergente', RESTAURAR_AUTOMATICO: 'Resultado automatico restaurado', AJUSTAR_DADOS: 'Dados da visita ajustados',
@@ -42,6 +47,7 @@ async function request(url, options) {
   return response.status === 204 ? null : response.json();
 }
 function showReport(id, data, tracking) {
+  if (String(reportId) !== String(id)) { queueOnly = false; queueLastLine = null; }
   reportId = id;
   report = data;
   const token = ++progressGeneration;
@@ -100,8 +106,10 @@ function renderRows() {
     const item = progress.get(v.linhaMedico);
     return (!status || v.status === status) && v.atendimento.includes(search)
       && (!origin || (origin === 'AUTOMATICA' ? item?.origem.startsWith('AUTOMATICA_') : item?.origem === origin))
-      && (!category || item?.categoria === category);
+      && (!category || item?.categoria === category)
+      && (!queueOnly || item?.precisaConferencia);
   });
+  renderQueue(selectedDoctor, filtered);
   if (progress.size) {
     const items = selectedDoctor.map(v => progress.get(v.linhaMedico)).filter(Boolean);
     const pending = items.filter(item => item.precisaConferencia).length;
@@ -155,6 +163,42 @@ function renderRows() {
   }
   document.querySelector('#count').textContent = `${filtered.length} de ${selectedDoctor.length} visitas${doctor.value ? ' no filtro de medico' : ''}`;
 }
+function renderQueue(selectedDoctor, filtered) {
+  const container = document.querySelector('#queue-categories'); container.replaceChildren();
+  const ready = !document.querySelector('#category-filter').disabled;
+  const pending = selectedDoctor.filter(v => progress.get(v.linhaMedico)?.precisaConferencia);
+  const selectedCategory = document.querySelector('#category-filter').value;
+  for (const category of ['', ...queuePriority]) {
+    const count = pending.filter(v => !category || progress.get(v.linhaMedico)?.categoria === category).length;
+    const button = node('button', `${category ? categoryLabels[category] : 'Todas a conferir'} (${count})`);
+    button.type = 'button'; button.dataset.category = category;
+    button.setAttribute('aria-pressed', String(queueOnly && selectedCategory === category));
+    button.disabled = !ready || !count;
+    button.addEventListener('click', () => {
+      queueOnly = true; queueLastLine = null;
+      document.querySelector('#category-filter').value = category;
+      document.querySelector('#status').value = ''; document.querySelector('#origin-filter').value = '';
+      document.querySelector('#search').value = ''; renderRows();
+    });
+    container.append(button);
+  }
+  const priority = v => { const rank = queuePriority.indexOf(progress.get(v.linhaMedico)?.categoria); return rank < 0 ? queuePriority.length : rank; };
+  visibleQueue = filtered.filter(v => progress.get(v.linhaMedico)?.precisaConferencia).sort((a,b) =>
+    priority(a) - priority(b)
+    || a.linhaMedico - b.linhaMedico);
+  const historical = !!reportsHistory.find(r => String(r.id) === String(reportId))?.proxima_id;
+  document.querySelector('#queue-start').disabled = !ready || historical || !visibleQueue.length;
+  document.querySelector('#queue-message').textContent = !ready ? 'Carregando fila...'
+    : historical ? 'Relatorio historico: abra a versao mais recente para revisar.'
+    : visibleQueue.length ? `${visibleQueue.length} visitas a conferir nos filtros atuais. Prioridade: ambiguidades.`
+    : 'Nenhuma visita a conferir nos filtros atuais.';
+}
+document.querySelector('#queue-start').addEventListener('click', () => {
+  if (!visibleQueue.length) return;
+  const previous = visibleQueue.findIndex(v => v.linhaMedico === queueLastLine);
+  const next = visibleQueue[(previous + 1) % visibleQueue.length];
+  queueLastLine = next.linhaMedico; openReview(next.linhaMedico);
+});
 async function loadHistory() {
   const items = await request('/api/conciliacoes/visitas');
   reportsHistory=items;
@@ -209,7 +253,7 @@ form.addEventListener('submit', async event => {
 document.querySelector('#status').addEventListener('change', renderRows);
 document.querySelector('#doctor-filter').addEventListener('change', renderRows);
 document.querySelector('#origin-filter').addEventListener('change', renderRows);
-document.querySelector('#category-filter').addEventListener('change', renderRows);
+document.querySelector('#category-filter').addEventListener('change', () => { queueOnly = false; queueLastLine = null; renderRows(); });
 document.querySelector('#search').addEventListener('input', renderRows);
 async function initialize() {
   try { medicosCadastro = await request('/api/medicos'); }

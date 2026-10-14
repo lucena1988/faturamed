@@ -39,6 +39,7 @@ public class AcompanhamentoRevisao {
 
     private Categoria categoria(ConciliadorVisitas.Visita v, Set<Integer> ocupados, Map<Integer, Integer> disputas) {
         if (v.status() == ConciliadorVisitas.Status.PAGA) return Categoria.SEM_PENDENCIA;
+        if (v.medicoProducao()!=null && v.medicoProducao().conflito()) return Categoria.DADOS_DIVERGENTES;
         if (v.hospital() == null && v.camposRevisados() == null) {
             var livres = v.candidatos().stream().filter(h -> !ocupados.contains(h.linha())).toList();
             if (livres.size() > 1 || livres.stream().anyMatch(h -> disputas.getOrDefault(h.linha(), 0) > 1)) return Categoria.AMBIGUIDADE;

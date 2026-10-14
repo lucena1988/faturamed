@@ -17,7 +17,7 @@ public class VersoesConciliacaoService {
     }
     @Transactional(rollbackFor=Exception.class)
     public Map<String,Object> atualizar(long baseId,long versao,String hospital,Long hospitalId,String arquivoMedico,String arquivoHospital,
-            List<LeitorPlanilhaVisitas.Linha> producao,List<LeitorPlanilhaVisitas.Linha> faturamento,String hashProducao,String hashHospital) throws Exception {
+            List<LeitorPlanilhaVisitas.Linha> producao,List<LeitorPlanilhaVisitas.Linha> faturamento,String hashProducao,String hashHospital,Long medicoProducaoId) throws Exception {
         var dados=jdbc.queryForList("select * from conciliacao_visitas where id=? for update",baseId);
         if(dados.isEmpty())throw new br.com.faturamed.shared.RecursoNaoEncontradoException("Relatorio base nao encontrado");
         if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",baseId).isEmpty())throw new ConflitoRevisaoException("Esse relatorio ja possui nova versao. Selecione a versao mais recente");
@@ -27,13 +27,15 @@ public class VersoesConciliacaoService {
                 : LeitorPlanilhaVisitas.normalizar(anterior.hospital()).equals(LeitorPlanilhaVisitas.normalizar(hospital));
         if(!mesmoHospital)throw new IllegalArgumentException("A nova versao deve pertencer ao mesmo hospital do relatorio base");
         var row=dados.getFirst();
+        Long medicoAnterior=row.get("medico_producao_id")==null?null:((Number)row.get("medico_producao_id")).longValue();
+        if(!Objects.equals(medicoAnterior,medicoProducaoId)) throw new IllegalArgumentException("Mantenha a identificacao da producao do relatorio base. Para mudar o medico, crie um novo relatorio");
         if(hashProducao.equals(row.get("hash_producao"))&&hashHospital.equals(row.get("hash_hospital")))return Map.of("id",baseId,"relatorio",estado.atual(),"semAlteracoes",true);
         var resultado=atualizador.atualizar(estado,arquivoMedico,arquivoHospital,producao,faturamento);
         int numero=((Number)row.get("numero_versao")).intValue()+1;
         Long id=jdbc.queryForObject("""
-                insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,hash_hospital,linhas_producao)
-                values(?::jsonb,?,?,?,?,?::jsonb) returning id
-                """,Long.class,json.writeValueAsString(resultado.relatorio()),baseId,numero,hashProducao,hashHospital,json.writeValueAsString(resultado.linhasProducao()));
+                insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,hash_hospital,linhas_producao,medico_producao_id)
+                values(?::jsonb,?,?,?,?,?::jsonb,?) returning id
+                """,Long.class,json.writeValueAsString(resultado.relatorio()),baseId,numero,hashProducao,hashHospital,json.writeValueAsString(resultado.linhasProducao()),medicoProducaoId);
         jdbc.update("""
                 insert into revisao_visita(conciliacao_id,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em)
                 select ?,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em from revisao_visita where conciliacao_id=? order by id

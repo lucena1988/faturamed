@@ -102,7 +102,7 @@ public class RevisaoVisitasService {
                 var automatica = new ConciliadorVisitas.Visita(anterior.linhaMedico(), anterior.atendimento(), h.data(),
                         LeitorPlanilhaVisitas.normalizar(h.setor()).equals("faturado") ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE,
                         "Correspondencia unica e exclusiva apos revisao da linha " + linha,
-                        anterior.original(), h, anterior.candidatos());
+                          anterior.original(), h, anterior.candidatos(),null,anterior.medicoProducao());
                 revisaoId = jdbc.queryForObject("""
                         insert into revisao_visita (conciliacao_id, linha_medico, acao, responsavel, justificativa, antes, depois)
                         values (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb) returning id
@@ -134,7 +134,7 @@ public class RevisaoVisitasService {
                     RevisaoVisitaRequest.Acao.valueOf(registro.get("acao").toString()),
                     registro.get("responsavel").toString(), registro.get("justificativa").toString(), criado, antes, depois));
             var candidatos=aplicador.candidatos(original,depois.atendimento(),depois.data());
-            atualizadas.put(depois.linhaMedico(),new ConciliadorVisitas.Visita(depois.linhaMedico(),depois.atendimento(),depois.data(),depois.status(),depois.motivo(),depois.original(),depois.hospital(),candidatos,depois.camposRevisados())); versao = revisaoId;
+            atualizadas.put(depois.linhaMedico(),new ConciliadorVisitas.Visita(depois.linhaMedico(),depois.atendimento(),depois.data(),depois.status(),depois.motivo(),depois.original(),depois.hospital(),candidatos,depois.camposRevisados(),depois.medicoProducao())); versao = revisaoId;
         }
         var visitas = original.visitas().stream().map(v -> atualizadas.getOrDefault(v.linhaMedico(), v)).toList();
         return new Estado(original, aplicador.recalcular(original, visitas), List.copyOf(historico), versao);
