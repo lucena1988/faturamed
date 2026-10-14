@@ -26,9 +26,18 @@ public class ConciliacaoVisitasController {
     private final IdentificacaoProducaoService identificacao;
 
     @PostMapping(value="/diagnostico", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
-    public DiagnosticoPlanilhas.Resultado diagnosticar(@RequestParam MultipartFile producao,
+    public DiagnosticoPlanilhas.Resultado diagnosticar(@RequestParam(required=false) MultipartFile producao,
             @RequestParam MultipartFile faturamento, @RequestParam(defaultValue="VARIOS") String modoProducao,
-            @RequestParam(required=false) Long medicoProducaoId) {
+            @RequestParam(required=false) Long medicoProducaoId, @RequestParam(required=false) Long relatorioBaseId,
+            @RequestParam(defaultValue="COMPLETA") String tipoAtualizacao) throws Exception {
+        if(!List.of("COMPLETA","HOSPITAL").contains(tipoAtualizacao)) throw new IllegalArgumentException("Tipo de atualizacao invalido");
+        if(tipoAtualizacao.equals("HOSPITAL")) {
+            if(relatorioBaseId==null || producao!=null)throw new IllegalArgumentException("Selecione o relatorio base e envie somente o faturamento atualizado");
+            var base=versoes.producaoBase(relatorioBaseId);var h=leitor.ler(faturamento,true);
+            var simulacao=identificacao.conciliar("Diagnostico",base.estado().original().arquivoMedico(),faturamento.getOriginalFilename(),base.linhas(),h,base.medicoId());
+            return new DiagnosticoPlanilhas().analisar(base.linhas(),h,simulacao);
+        }
+        if(producao==null)throw new IllegalArgumentException("Envie a producao do medico");
         if(!List.of("UNICO","VARIOS").contains(modoProducao)) throw new IllegalArgumentException("Modo de producao invalido");
         if(modoProducao.equals("UNICO") && medicoProducaoId==null) throw new IllegalArgumentException("Selecione o medico da producao");
         if(modoProducao.equals("VARIOS") && medicoProducaoId!=null) throw new IllegalArgumentException("Producao coletiva nao recebe medico unico");
@@ -60,7 +69,16 @@ public class ConciliacaoVisitasController {
     public Map<String, Object> criar(@RequestParam(required=false) String hospital, @RequestParam(required=false) Long hospitalId,
             @RequestParam(required=false) Long relatorioBaseId,@RequestParam(required=false) Long versaoBase,
             @RequestParam(defaultValue="VARIOS") String modoProducao,@RequestParam(required=false) Long medicoProducaoId,
-            @RequestParam MultipartFile producao, @RequestParam MultipartFile faturamento) throws Exception {
+            @RequestParam(defaultValue="COMPLETA") String tipoAtualizacao,
+            @RequestParam(required=false) MultipartFile producao, @RequestParam MultipartFile faturamento) throws Exception {
+        if(!List.of("COMPLETA","HOSPITAL").contains(tipoAtualizacao)) throw new IllegalArgumentException("Tipo de atualizacao invalido");
+        if(tipoAtualizacao.equals("HOSPITAL")) {
+            if(relatorioBaseId==null || versaoBase==null || producao!=null)throw new IllegalArgumentException("Selecione o relatorio base, sua versao e envie somente o faturamento atualizado");
+            var linhas=leitor.ler(faturamento,true);
+            String hash=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(faturamento.getBytes()));
+            return comIdentificacao(versoes.atualizarFaturamento(relatorioBaseId,versaoBase,faturamento.getOriginalFilename(),linhas,hash));
+        }
+        if(producao==null)throw new IllegalArgumentException("Envie a producao do medico");
         if(!List.of("UNICO","VARIOS").contains(modoProducao)) throw new IllegalArgumentException("Modo de producao invalido");
         if(modoProducao.equals("UNICO") && medicoProducaoId==null) throw new IllegalArgumentException("Selecione o medico da producao");
         if(modoProducao.equals("VARIOS") && medicoProducaoId!=null) throw new IllegalArgumentException("Producao coletiva nao recebe medico unico");

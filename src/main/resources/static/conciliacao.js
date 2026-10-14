@@ -245,6 +245,7 @@ form.addEventListener('submit', async event => {
     const result = await request('/api/conciliacoes/visitas', { method: 'POST', body: data });
     showReport(result.id, result.relatorio);
     message.textContent = window.FaturamedVersoes.message(result);
+    window.FaturamedVersoes.showSummary(result);
     await loadHistory();
     await window.FaturamedVersoes.load();
   } catch (error) { message.textContent = error.message; }
@@ -283,7 +284,10 @@ async function openReview(line) {
   document.querySelector('#review-save').disabled = true;
   document.querySelector('#review-reload').hidden = true;
   document.querySelector('#review-message').textContent = 'Carregando detalhes...';
-  for (const selector of ['#review-summary', '#review-candidates', '#review-history', '#review-group']) document.querySelector(selector).replaceChildren();
+  for (const selector of ['#review-summary', '#review-candidates', '#review-history', '#review-group', '#candidate-preview-fields']) document.querySelector(selector).replaceChildren();
+  document.querySelector('.candidate-preview').hidden = true;
+  document.querySelector('#candidate-doctor-filter').replaceChildren(new Option('Todos os medicos encontrados',''));
+  document.querySelector('#candidate-filter-count').textContent = '';
   document.querySelector('#review-candidate-message').textContent = '';
   document.querySelector('#review-title').textContent = `Revisar linha ${line}`;
   if (!reviewDialog.open) reviewDialog.showModal();
@@ -362,6 +366,7 @@ async function openReview(line) {
     if (!detail.historico.length) historyList.append(node('li', 'Nenhuma revisao registrada.'));
     document.querySelector('#review-message').textContent = '';
     document.querySelector('#review-save').disabled = false;
+    refreshCandidateDoctors();
     updateReviewAction();
   } catch (error) {
     if (token !== reviewGeneration) return;
@@ -378,7 +383,66 @@ function updateReviewAction() {
   document.querySelectorAll('[name=linhaHospital]').forEach(radio => {
     radio.disabled = !confirm || radio.dataset.reserved === 'true';
   });
+  showCandidatePreview();
 }
+function candidateCadastroLabel(name) {
+  const matches = cadastroCandidates(name);
+  return matches.length === 1 ? `${matches[0].nome} - CRM ${matches[0].crm}/${matches[0].uf}`
+    : matches.length > 1 ? 'Nome ambiguo: selecione o cadastro manualmente' : 'Sem cadastro ativo correspondente';
+}
+function refreshCandidateDoctors() {
+  const select = document.querySelector('#candidate-doctor-filter'), previous = select.value;
+  const groups = new Map();
+  for (const {registro:h} of reviewDetail.candidatos) {
+    const key = normalizeDoctor(h.medico);
+    const item = groups.get(key) || {name:h.medico || 'Medico nao informado',count:0};
+    item.count++; groups.set(key,item);
+  }
+  select.replaceChildren(new Option('Todos os medicos encontrados',''), ...[...groups].map(([key,g])=>new Option(`${g.name} (${g.count})`,key || '__SEM_MEDICO__')));
+  if ([...select.options].some(o=>o.value===previous)) select.value=previous;
+  const rows = [...document.querySelectorAll('#review-candidates tr')];
+  rows.forEach((row,index)=>{
+    const h=reviewDetail.candidatos[index].registro;
+    const cell=row.children[3];
+    cell.replaceChildren(node('strong',h.medico || 'Medico nao informado'),node('small',candidateCadastroLabel(h.medico)));
+  });
+  filterCandidateDoctors();
+}
+function filterCandidateDoctors() {
+  if(!reviewDetail)return;
+  const doctor=document.querySelector('#candidate-doctor-filter').value;
+  let visible=0;
+  [...document.querySelectorAll('#review-candidates tr')].forEach((row,index)=>{
+    const h=reviewDetail.candidatos[index].registro;
+    row.hidden=!!doctor && (normalizeDoctor(h.medico) || '__SEM_MEDICO__')!==doctor;
+    if(row.hidden)row.querySelector('input').checked=false;else visible++;
+  });
+  document.querySelector('#candidate-filter-count').textContent=`${visible} de ${reviewDetail.candidatos.length} registros hospitalares`;
+  showCandidatePreview();
+}
+function showCandidatePreview() {
+  const radio=document.querySelector('[name=linhaHospital]:checked');
+  const candidate=reviewDetail?.candidatos.find(c=>String(c.registro.linha)===radio?.value);
+  document.querySelector('.candidate-preview').hidden=!candidate;
+  document.querySelector('#candidate-use').disabled=!candidate || radio.disabled || reviewSaving;
+  const fields=document.querySelector('#candidate-preview-fields');fields.replaceChildren();
+  if(!candidate)return;
+  const h=candidate.registro;
+  for(const [label,value] of [['Medico no hospital',h.medico || 'Nao informado'],['Cadastro sugerido',candidateCadastroLabel(h.medico)],
+    ['Data',h.data.split('-').reverse().join('/')],['Procedimento',`${h.codigo} - ${h.procedimento}`],
+    ['Valor hospital',h.valorTotal==null?'Nao informado':money.format(h.valorTotal)],['Repasse',h.repasse==null?'Nao informado':money.format(h.repasse)],
+    ['Vinculo',candidate.associadoALinha==null?'Disponivel':`Associado a linha ${candidate.associadoALinha}`]]) {
+    const item=node('div');item.append(node('dt',label),node('dd',value));fields.append(item);
+  }
+}
+document.querySelector('#candidate-doctor-filter').addEventListener('change',filterCandidateDoctors);
+document.querySelector('#review-candidates').addEventListener('change',showCandidatePreview);
+document.querySelector('#candidate-use').addEventListener('click',()=>{
+  if(reviewSaving || !document.querySelector('[name=linhaHospital]:checked:not(:disabled)'))return;
+  document.querySelector('#review-action').value='AJUSTAR_DADOS';updateReviewAction();
+  document.querySelector('#edit-fill-candidate').click();
+  document.querySelector('#review-edit-fields').scrollIntoView({block:'start',behavior:'smooth'});
+});
 document.querySelector('#edit-search-candidates').addEventListener('click', async () => {
   if (!reviewDetail || reviewSaving) return;
   const atendimento = document.querySelector('#edit-attendance').value.trim();
@@ -407,6 +471,7 @@ document.querySelector('#edit-search-candidates').addEventListener('click', asyn
     }
     document.querySelector('#review-candidate-message').textContent = `${detail.candidatos.length} registros para atendimento e data informados.`;
     document.querySelector('#review-message').textContent = '';
+    refreshCandidateDoctors();
     updateReviewAction();
   } catch (error) {
     if (token !== reviewGeneration || !reviewDialog.open) return;

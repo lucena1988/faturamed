@@ -8,6 +8,7 @@
 #import-form input, #import-form select { width: 100%; min-width: 0; }
 #import-form .production-identity { grid-template-columns: minmax(0,1fr); }
 .production-identity [hidden] { display: none; }
+[data-version-kind-label][hidden], [data-version-production][hidden] { display: none; }
 .production-identity p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
 .production-identity p:empty { display: none; }
 @media (max-width:720px) { .production-identity { grid-template-columns: minmax(0,1fr); } }
@@ -100,6 +101,11 @@
 .review-history li { margin-bottom: 16px; }
 .review-history p { margin: 6px 0; overflow-wrap: anywhere; }
 .review-candidates input { width: 18px; height: 18px; }
+.candidate-doctor-filter { max-width: 460px; margin: 16px 0; }
+.candidate-preview { padding: 16px 0; border-block: 1px solid var(--line); margin: 16px 0; }
+.candidate-preview .review-summary { margin: 0; padding: 12px 0; border: 0; }
+.review-candidates small { display: block; margin-top: 6px; color: var(--muted); }
+.review-candidates tr[hidden], .candidate-preview[hidden] { display: none; }
 .review-candidates td:last-child { min-width: 140px; }
 .review-candidates td:nth-child(9) { min-width: 90px; }
 #review-edit-fields { margin: 24px 0 0; padding: 16px; border: 1px solid var(--line); border-radius: 4px; }

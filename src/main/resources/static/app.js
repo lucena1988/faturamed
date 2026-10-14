@@ -298,6 +298,7 @@ $('#import-form').addEventListener('submit', async event => {
     await loadReports(result.id);
     $('#import-message').textContent = window.FaturamedVersoes.message(result);
     showView('dashboard'); showToast('Conciliacao concluida');
+    window.FaturamedVersoes.showSummary(result);
     form.reset();
     await window.FaturamedVersoes.load();
   } catch (error) { $('#import-message').textContent = error.message; }

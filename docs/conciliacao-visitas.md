@@ -2,7 +2,15 @@
 
 Tela: http://localhost:8080/conciliacao.html
 
+## Atualizacao somente do faturamento hospitalar
+
+Ao selecionar um relatorio para atualizar, escolha `Somente faturamento completo do hospital`. A producao original, inclusive linhas repetidas e sua identificacao, e reutilizada do relatorio base. O servidor herda hospital e medico da versao salva, valida a versao de revisao e cria uma nova versao sem alterar a anterior.
+
+Envie o faturamento completo atualizado: registros previamente conciliados ou envolvidos em revisoes devem permanecer presentes e inalterados. Arquivos identicos mantem a versao existente. Uma janela de conclusao informa visitas preservadas, novas visitas faturadas, pendentes, divergentes e seus repasses conhecidos. Visitas sem valor sao contadas separadamente; faturamento nao comprova recebimento financeiro.
+
 ## Fila de revisao por categoria
+
+Na revisao, o filtro `Medico no hospital` restringe os candidatos sem selecionar uma correspondencia automaticamente. Cada registro exibe o cadastro ativo sugerido por nome/alias e CRM/UF, ou avisa sobre homonimos e ausencia de cadastro. A previa do registro selecionado mostra procedimento, data, valores e disponibilidade. `Preencher dados para revisao` copia os dados para o formulario; somente `Salvar revisao` persiste a decisao. Trocar o filtro limpa selecoes ocultas, e registros reservados continuam indisponiveis.
 
 A fila mostra contadores das visitas que ainda precisam de conferencia, respeitando o filtro de medico. Ao selecionar uma categoria, a tabela mostra apenas os casos a conferir dessa categoria e limpa os filtros de status, origem e atendimento. O seletor Categoria permite voltar a consultar todas as visitas, inclusive resolvidas.
 

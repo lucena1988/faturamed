@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conciliacao de visitas | Faturamed</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="conciliacao.css?v=20261013-fila">
+  <link rel="stylesheet" href="conciliacao.css?v=20261013-faturamento">
   <link rel="stylesheet" href="identidade.css?v=20261009-1">
   <link rel="stylesheet" href="login.css?v=20261009-1">
   <link rel="stylesheet" href="diagnostico.css?v=20261013-1">
@@ -57,6 +57,13 @@
       </section>
       <h3>Registros do hospital</h3>
       <p id="review-candidate-message"></p>
+      <label class="candidate-doctor-filter">Medico no hospital<select id="candidate-doctor-filter"><option value="">Todos os medicos encontrados</option></select></label>
+      <p id="candidate-filter-count" role="status"></p>
+      <section class="candidate-preview" aria-labelledby="candidate-preview-title" hidden>
+        <h3 id="candidate-preview-title">Registro selecionado</h3>
+        <dl id="candidate-preview-fields" class="review-summary"></dl>
+        <button type="button" id="candidate-use" disabled>Preencher dados para revisao</button>
+      </section>
       <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Medico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
       <div class="review-fields">
         <label>Decisao<select id="review-action" required>
@@ -94,8 +101,8 @@
   <script src="auth.js?v=20261009-1"></script>
   <script src="producao.js?v=20261013-1"></script>
   <script src="diagnostico.js?v=20261013-1"></script>
-  <script src="versoes.js?v=20261013-diagnostico"></script>
-  <script src="conciliacao.js?v=20261013-fila"></script>
+  <script src="versoes.js?v=20261013-faturamento"></script>
+  <script src="conciliacao.js?v=20261013-faturamento"></script>
   <script src="hospitais.js?v=20261009-hospitais"></script>
 </body>
 </html>
