@@ -1,0 +1,8 @@
+.base-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
+.base-steps > section { border: 1px solid var(--line, #ddd); border-radius: 12px; padding: 24px; }
+.base-steps input, .base-steps select { max-width: 100%; }
+.conciliation-workspace > section { margin-top: 32px; }
+#decision-dialog { max-width: 620px; width: calc(100% - 32px); }
+#history-dialog { max-width: 700px; }
+td a, td button { margin: 4px; }
+@media (max-width: 760px) { .base-steps { grid-template-columns: 1fr; } }

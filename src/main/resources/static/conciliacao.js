@@ -1,4 +1,3 @@
-const form = document.querySelector('#conciliation-form');
 const message = document.querySelector('#message');
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 5 });
 let report;
@@ -234,25 +233,10 @@ async function loadHistory() {
         await loadHistory();
       } catch (error) { message.textContent = error.message; remove.disabled = false; button.disabled = false; }
     });
-    li.append(button, remove); list.append(li);
+    li.append(button); if (!item.base_hospitalar) li.append(remove); list.append(li);
   }
   if (!items.length) list.append(node('li', 'Nenhum relatorio salvo.'));
 }
-form.addEventListener('submit', async event => {
-  event.preventDefault(); const submit = document.querySelector('#submit'); submit.disabled = true;
-  message.textContent = 'Processando planilhas...';
-  try {
-    const data=await window.FaturamedVersoes.prepare(form);
-    if(!data){message.textContent='Importacao cancelada.';return;}
-    const result = await request('/api/conciliacoes/visitas', { method: 'POST', body: data });
-    showReport(result.id, result.relatorio);
-    message.textContent = window.FaturamedVersoes.message(result);
-    window.FaturamedVersoes.showSummary(result);
-    await loadHistory();
-    await window.FaturamedVersoes.load();
-  } catch (error) { message.textContent = error.message; }
-  finally { submit.disabled = false; }
-});
 document.querySelector('#status').addEventListener('change', renderRows);
 document.querySelector('#doctor-filter').addEventListener('change', renderRows);
 document.querySelector('#origin-filter').addEventListener('change', renderRows);

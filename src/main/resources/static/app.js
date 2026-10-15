@@ -294,23 +294,6 @@ document.querySelectorAll('[data-chart]').forEach(button => button.addEventListe
   });
   renderChart();
 }));
-$('#import-form').addEventListener('submit', async event => {
-  event.preventDefault(); const form = event.currentTarget;
-  const submit = form.querySelector('[type=submit]'); submit.disabled = true;
-  $('#import-message').textContent = 'Processando planilhas...';
-  try {
-    const data=await window.FaturamedVersoes.prepare(form);
-    if(!data){$('#import-message').textContent='Importacao cancelada.';return;}
-    const result = await request('/api/conciliacoes/visitas', { method: 'POST', body: data });
-    await loadReports(result.id);
-    $('#import-message').textContent = window.FaturamedVersoes.message(result);
-    showView('dashboard'); showToast('Conciliacao concluida');
-    window.FaturamedVersoes.showSummary(result);
-    form.reset();
-    await window.FaturamedVersoes.load();
-  } catch (error) { $('#import-message').textContent = error.message; }
-  finally { submit.disabled = false; }
-});
 
 const layoutFields = [['A', 'data_atendimento', 'dd/MM/yyyy'], ['B', 'paciente_nome', 'texto'],
   ['C', 'paciente_documento', 'CPF/carteirinha'], ['D', 'procedimento_codigo', 'codigo TUSS'],

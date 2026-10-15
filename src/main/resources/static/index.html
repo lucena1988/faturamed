@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="./identidade.css?v=20261009-1">
   <link rel="stylesheet" href="./painel-medico.css?v=20261009-1">
   <link rel="stylesheet" href="./login.css?v=20261009-1">
-  <link rel="stylesheet" href="./diagnostico.css?v=20261013-1">
 <link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <div class="app-shell">
@@ -30,6 +29,7 @@
       </a>
 
       <nav class="nav-list" aria-label="Modulos">
+        <a class="nav-item" href="base-hospitalar.html"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Base hospitalar</a>
         <a class="nav-item" href="recebimentos.html" title="Recebimentos">
           <span class="nav-icon" aria-hidden="true"><svg class="lucide lucide-banknote" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span>
           Recebimentos
@@ -226,25 +226,8 @@
                 <p>Visitas hospitalares</p>
               </div>
             </div>
-            <form class="stack-form" id="import-form">
-              <fieldset class="production-identity"><legend>Identificacao da producao</legend><label>Producao<select name="modoProducao" data-production-mode><option value="VARIOS">Varios medicos / identificacao por linha</option><option value="UNICO">Um unico medico</option></select></label><label data-production-doctor-label hidden>Medico da producao<select name="medicoProducaoId" data-production-doctor disabled><option value="">Selecione um medico</option></select></label><p data-production-message role="status"></p></fieldset>
-              <label>
-                <span>Hospital</span>
-                <select name="hospitalId" data-hospital-select disabled><option value="">Informar nome manualmente</option></select>
-                <input name="hospital" data-hospital-name required maxlength="180" placeholder="Nome do hospital">
-              </label>
-              <label>
-                <span>Producao do medico</span>
-                <input name="producao" type="file" accept=".xlsx,.xlsb" required>
-              </label>
-              <label>
-                <span>Faturamento do hospital</span>
-                <input name="faturamento" type="file" accept=".xlsx,.xlsb" required>
-              </label>
-              <label>Importacao<select name="relatorioBaseId" data-version-base><option value="">Novo relatorio</option></select></label>
-              <button class="primary-button" type="submit">Importar e conciliar</button>
-              <p id="import-message" role="status" aria-live="polite"></p>
-            </form>
+            <p>Primeiro armazene as visitas do hospital com IDs permanentes. Depois importe a produção individual ou coletiva por atendimento, data e identificação médica.</p>
+            <a class="primary-button" href="base-hospitalar.html">Abrir base hospitalar e importar</a>
           </section>
 
           <section class="panel wide">
@@ -385,11 +368,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth.js?v=20261009-1"></script>
-  <script src="./producao.js?v=20261013-1"></script>
-  <script src="./diagnostico.js?v=20261013-1"></script>
-  <script src="./versoes.js?v=20261013-faturamento"></script>
   <script src="./painel-medico.js?v=20261014-financeiro"></script>
-  <script src="./app.js?v=20261014-financeiro"></script>
+  <script src="./app.js?v=20261015-base"></script>
   <script src="./medicos.js?v=20261009-2"></script>
   <script src="./hospitais.js?v=20261009-hospitais"></script>
 </body>

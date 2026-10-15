@@ -38,6 +38,8 @@ public class VersoesConciliacaoService {
     @Transactional(rollbackFor=Exception.class)
     public Map<String,Object> atualizar(long baseId,long versao,String hospital,Long hospitalId,String arquivoMedico,String arquivoHospital,
             List<LeitorPlanilhaVisitas.Linha> producao,List<LeitorPlanilhaVisitas.Linha> faturamento,String hashProducao,String hashHospital,Long medicoProducaoId) throws Exception {
+        if(!jdbc.queryForList("select id from conciliacao_visitas where id=? and base_hospitalar=true",baseId).isEmpty())
+            throw new ConflitoRevisaoException("Use a base hospitalar para novas importacoes. Este relatorio preserva os vinculos permanentes da producao");
         var dados=jdbc.queryForList("select * from conciliacao_visitas where id=? for update",baseId);
         if(dados.isEmpty())throw new br.com.faturamed.shared.RecursoNaoEncontradoException("Relatorio base nao encontrado");
         if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",baseId).isEmpty())throw new ConflitoRevisaoException("Esse relatorio ja possui nova versao. Selecione a versao mais recente");

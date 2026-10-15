@@ -17,7 +17,8 @@ O objetivo do MVP e receber planilhas de producao e faturamento, padronizar os d
 
 ## Documentos iniciais
 
-- [Manual do usuário para administradores e médicos](docs/manual-do-usuario.md)
+- [Novo fluxo de base hospitalar e conciliação em duas etapas](docs/base-hospitalar.md)
+- [Manual do usuário para administradores e médicos](docs/manual-do-usuario-v2.md)
 - [Modelo de negocio](docs/modelo-negocio.md)
 - [Regras de conferencia](docs/regras-conferencia.md)
 - [Checklist da planilha real](docs/checklist-planilha-real.md)
@@ -51,6 +52,10 @@ docker compose up -d --build
 Acesse http://localhost:8080/login.html. O administrador gerencia os usuarios em
 **Acessos** e vincula cada login de medico ao respectivo cadastro CRM/UF.
 Detalhes: [Login e permissoes](docs/login-e-permissoes.md).
+Para novas importacoes, acesse http://localhost:8080/base-hospitalar.html:
+importe primeiro o hospital e depois a producao de cada medico. O envio simultaneo
+das duas planilhas foi substituido. Relatorios anteriores permanecem no historico;
+nao sao migrados automaticamente para a nova base.
 Para parar os containers, execute `docker compose down`. Os dados do PostgreSQL ficam persistidos no volume `postgres_data`.
 
 Para executar o backend fora do Docker, com Java 21 e Maven instalados:

@@ -1,5 +1,7 @@
 # Conciliacao de visitas hospitalares
 
+> A partir da base hospitalar, novas importacoes seguem o [fluxo em duas etapas](base-hospitalar.md). As instrucoes abaixo sobre envio simultaneo e atualizacao por duas planilhas descrevem o funcionamento anterior. Consultas, revisoes, publicacoes e financeiro continuam disponiveis para o historico preservado.
+
 Tela: http://localhost:8080/conciliacao.html
 
 ## Fila de cobranca ao hospital
