@@ -17,6 +17,7 @@ O objetivo do MVP e receber planilhas de producao e faturamento, padronizar os d
 
 ## Documentos iniciais
 
+- [Manual do usuário para administradores e médicos](docs/manual-do-usuario.md)
 - [Modelo de negocio](docs/modelo-negocio.md)
 - [Regras de conferencia](docs/regras-conferencia.md)
 - [Checklist da planilha real](docs/checklist-planilha-real.md)
