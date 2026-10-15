@@ -81,6 +81,7 @@ function renderValues(visits) {
 }
 function clearData(message) {
   report = null;
+  for(const field of ['recebido','saldo']){$(`#kpi-${field}`).textContent='-';$(`#kpi-${field}-detail`).textContent='';}
   window.FaturamedPainel.render(null, []);
   for (const id of ['kpi-repasse', 'kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes',
     'kpi-valor-pagas', 'kpi-valor-pendentes', 'kpi-valor-divergentes',
@@ -145,7 +146,8 @@ async function loadReport(id) {
   const token = ++generation;
   clearData('Carregando resultados...');
   try {
-    const data = await request(`/api/conciliacoes/visitas/${id}`, { signal: controller.signal });
+    const [data,financeiro] = await Promise.all([request(`/api/conciliacoes/visitas/${id}`, { signal: controller.signal }),request(`/api/conciliacoes/visitas/${id}/recebimentos`, { signal: controller.signal })]);
+    for(const visit of data.visitas){const saldo=financeiro.visitas.find(v=>v.linha===visit.linhaMedico);visit.financeiro=saldo?{recebido:saldo.inconsistente?null:saldo.recebido,saldo:saldo.inconsistente?null:saldo.saldo,inconsistente:saldo.inconsistente}:null;}
     if (token !== generation) return;
     report = data; reportId = id;
     const previousPeriod = $('#period-filter').value;
@@ -169,6 +171,11 @@ function renderDashboard() {
   const paidRate = visits.length ? counts.PAGA / visits.length : 0;
   $('#report-context').textContent = `${report.hospital} - Conciliacao #${reportId}`;
   renderValues(visits);
+  for(const field of ['recebido','saldo']){
+    const known=visits.filter(v=>v.financeiro?.[field]!=null),missing=visits.filter(v=>field==='recebido'?v.financeiro?.[field]==null:v.status==='PAGA'&&v.financeiro?.[field]==null).length;
+    $(`#kpi-${field}`).textContent=known.length||!visits.length?currency.format(known.reduce((s,v)=>s+Number(v.financeiro[field]),0)):'Nao informado';
+    $(`#kpi-${field}-detail`).textContent=missing?`${missing} visitas com financeiro nao confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos';
+  }
   $('#kpi-total').textContent = integer.format(visits.length);
   $('#kpi-total-detail').textContent = `${new Set(visits.map(v => v.atendimento)).size} atendimentos`;
   $('#kpi-pagas-detail').textContent = `${percentage.format(paidRate)} das visitas`;
@@ -298,6 +305,7 @@ $('#import-form').addEventListener('submit', async event => {
     await loadReports(result.id);
     $('#import-message').textContent = window.FaturamedVersoes.message(result);
     showView('dashboard'); showToast('Conciliacao concluida');
+    window.FaturamedVersoes.showSummary(result);
     form.reset();
     await window.FaturamedVersoes.load();
   } catch (error) { $('#import-message').textContent = error.message; }

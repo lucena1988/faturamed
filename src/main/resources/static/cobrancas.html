@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fila de cobranca | FaturaMed</title>
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="conciliacao.css?v=20261014-cobranca">
+  <link rel="stylesheet" href="identidade.css?v=20261009-1"><link rel="stylesheet" href="login.css?v=20261009-1">
+  <link rel="stylesheet" href="tema.css?v=20261009-1"><link rel="stylesheet" href="cobrancas.css?v=20261014-lote"><script src="tema.js?v=20261009-1"></script>
+</head>
+<body>
+  <main class="conciliation-workspace">
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Fila de cobranca</h1></div><a id="conciliation-link" href="conciliacao.html">Conciliacao de visitas</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+    <div class="conciliation-filters charge-filters">
+      <label>Hospital<select id="charge-hospital"><option value="">Todos os hospitais</option></select></label>
+      <label>Relatorio<select id="charge-report"><option value="">Selecione um relatorio</option></select></label>
+      <label>Medico<select id="charge-doctor" disabled><option value="">Todos os medicos</option></select></label>
+      <label>Dias desde a visita<select id="charge-age"><option value="0">Todos</option><option value="30">30 dias ou mais</option><option value="60">60 dias ou mais</option><option value="90">90 dias ou mais</option></select></label>
+      <button type="button" id="charge-reload">Atualizar</button><a id="charge-export" hidden>Baixar cobranca XLSX</a>
+    </div>
+    <p id="charge-message" role="status" aria-live="polite">Selecione um relatorio.</p>
+    <div class="conciliation-stats" id="charge-stats"></div>
+    <section class="charge-priorities" aria-labelledby="charge-priorities-title"><h2 id="charge-priorities-title">Prioridades de contato</h2><div id="charge-priorities" role="group" aria-label="Prioridade da cobranca"></div></section>
+    <section aria-labelledby="charge-title"><h2 id="charge-title">Visitas sem correspondencia no hospital</h2><p id="charge-reference"></p>
+      <div class="charge-batch"><label><input id="charge-select-all" type="checkbox" disabled>Selecionar todas</label><span id="charge-selected" role="status">0 visitas selecionadas</span><button id="charge-batch" type="button" disabled>Registrar lote</button><button id="charge-unselect" type="button" disabled>Limpar selecao</button></div>
+      <div class="conciliation-table charge-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Codigo</th><th>Procedimento</th><th>Dias</th><th>Repasse informado</th><th>Cobranca</th><th>Proximo contato</th><th>Acoes</th></tr></thead><tbody id="charge-rows"></tbody></table></div>
+    </section>
+    <section class="charge-archive" aria-labelledby="charge-archive-title"><h2 id="charge-archive-title">Cobrancas acompanhadas fora da fila</h2>
+      <p id="charge-archive-message">Nenhum acompanhamento fora da fila.</p>
+      <div class="conciliation-table charge-table"><table><thead><tr><th>Linha</th><th>Atendimento</th><th>Medico</th><th>Conciliacao</th><th>Cobranca</th><th>Historico</th></tr></thead><tbody id="charge-archive-rows"></tbody></table></div>
+    </section>
+  </main>
+  <dialog id="contact-dialog" aria-labelledby="contact-title">
+    <form id="contact-form">
+      <header class="review-heading"><h2 id="contact-title">Acompanhamento da cobranca</h2><button type="button" id="contact-close">Fechar</button></header>
+      <fieldset id="contact-fields" class="review-fields">
+        <label>Situacao<select name="situacao"><option value="NAO_COBRADA">Nao cobrada</option><option value="ENVIADA">Enviada</option><option value="AGUARDANDO_RETORNO">Aguardando retorno</option><option value="RETORNO_RECEBIDO">Retorno recebido</option></select></label>
+        <label>Data da cobranca<input name="dataCobranca" type="date"></label>
+        <label>Proximo contato<input name="proximoContato" type="date"></label>
+        <label class="review-justification">Resposta do hospital<textarea name="resposta" maxlength="2000" rows="3"></textarea></label>
+        <label class="review-justification">Observacoes<textarea name="observacoes" maxlength="2000" rows="3"></textarea></label>
+      </fieldset>
+      <p id="contact-message" role="status" aria-live="polite"></p>
+      <div class="review-actions"><button type="button" id="contact-reload" hidden>Recarregar</button><button type="submit" id="contact-save" disabled>Salvar acompanhamento</button></div>
+      <section class="review-history"><h3>Historico de contatos</h3><ol id="contact-history"></ol></section>
+    </form>
+  </dialog>
+  <script src="auth.js?v=20261009-1"></script><script src="cobrancas.js?v=20261014-lote"></script>
+</body>
+</html>

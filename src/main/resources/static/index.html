@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faturamed</title>
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./conciliacao.css">
+  <link rel="stylesheet" href="./conciliacao.css?v=20261013-faturamento">
   <link rel="stylesheet" href="./medicos.css?v=20261009-2">
   <link rel="stylesheet" href="./identidade.css?v=20261009-1">
   <link rel="stylesheet" href="./painel-medico.css?v=20261009-1">
   <link rel="stylesheet" href="./login.css?v=20261009-1">
+  <link rel="stylesheet" href="./diagnostico.css?v=20261013-1">
 <link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <div class="app-shell">
@@ -29,6 +30,12 @@
       </a>
 
       <nav class="nav-list" aria-label="Modulos">
+        <a class="nav-item" href="recebimentos.html" title="Recebimentos">
+          <span class="nav-icon" aria-hidden="true"><svg class="lucide lucide-banknote" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span>
+          Recebimentos
+        </a>
+        <a class="nav-item" href="cobrancas.html" title="Fila de cobranca"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Fila de cobranca</a>
+        <a class="nav-item" href="solicitacoes-medicos.html"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Solicitacoes dos medicos</a>
         <a class="nav-item" href="conciliacao.html" title="Conciliacao de visitas" aria-label="Conciliacao de visitas">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/></svg></span>
           Conciliacao de visitas
@@ -128,6 +135,8 @@
             <strong id="kpi-valor-pagas">...</strong>
             <small id="kpi-valor-pagas-detail"></small>
           </article>
+            <article class="kpi-card"><span class="kpi-label">Recebido</span><strong id="kpi-recebido">-</strong><small id="kpi-recebido-detail"></small></article>
+            <article class="kpi-card"><span class="kpi-label">A receber</span><strong id="kpi-saldo">-</strong><small id="kpi-saldo-detail"></small></article>
           <article class="kpi-card alert">
             <span class="kpi-label">Pendentes</span>
             <strong id="kpi-pendentes">...</strong>
@@ -218,6 +227,7 @@
               </div>
             </div>
             <form class="stack-form" id="import-form">
+              <fieldset class="production-identity"><legend>Identificacao da producao</legend><label>Producao<select name="modoProducao" data-production-mode><option value="VARIOS">Varios medicos / identificacao por linha</option><option value="UNICO">Um unico medico</option></select></label><label data-production-doctor-label hidden>Medico da producao<select name="medicoProducaoId" data-production-doctor disabled><option value="">Selecione um medico</option></select></label><p data-production-message role="status"></p></fieldset>
               <label>
                 <span>Hospital</span>
                 <select name="hospitalId" data-hospital-select disabled><option value="">Informar nome manualmente</option></select>
@@ -347,6 +357,8 @@
         <p id="doctor-message" role="status">Selecione um medico.</p>
         <div class="kpi-grid">
           <article class="kpi-card"><span class="kpi-label">Faturado pelo hospital</span><strong id="doctor-paid">-</strong><small id="doctor-paid-detail"></small></article>
+          <article class="kpi-card"><span class="kpi-label">Recebido</span><strong id="doctor-received">-</strong><small id="doctor-received-detail"></small></article>
+          <article class="kpi-card"><span class="kpi-label">A receber</span><strong id="doctor-balance">-</strong><small id="doctor-balance-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Aguardando faturamento</span><strong id="doctor-pending">-</strong><small id="doctor-pending-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Valor em conferencia</span><strong id="doctor-blocked">-</strong><small id="doctor-blocked-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondencia nao confirmados</small></article>
@@ -373,9 +385,11 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth.js?v=20261009-1"></script>
-  <script src="./versoes.js?v=20261009-versoes"></script>
-  <script src="./painel-medico.js?v=20261009-1"></script>
-  <script src="./app.js?v=20261009-painel"></script>
+  <script src="./producao.js?v=20261013-1"></script>
+  <script src="./diagnostico.js?v=20261013-1"></script>
+  <script src="./versoes.js?v=20261013-faturamento"></script>
+  <script src="./painel-medico.js?v=20261014-financeiro"></script>
+  <script src="./app.js?v=20261014-financeiro"></script>
   <script src="./medicos.js?v=20261009-2"></script>
   <script src="./hospitais.js?v=20261009-hospitais"></script>
 </body>

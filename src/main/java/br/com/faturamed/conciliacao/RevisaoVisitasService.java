@@ -40,6 +40,10 @@ public class RevisaoVisitasService {
         var ids = jdbc.queryForList("select id from conciliacao_visitas where id = ? for update", Long.class, id);
         if (ids.isEmpty()) throw new RecursoNaoEncontradoException("Relatorio nao encontrado");
         if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",id).isEmpty()) throw new ConflitoRevisaoException("Exclua primeiro a versao mais recente deste relatorio");
+        if(!jdbc.queryForList("select id from liberacao_relatorio where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty())throw new ConflitoRevisaoException("Relatorio possui historico de liberacao e nao pode ser excluido");
+        if(!jdbc.queryForList("select id from recebimento_visita where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty()
+                ||!jdbc.queryForList("select id from pagamento_visitas where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty())
+            throw new ConflitoRevisaoException("Relatorio possui historico financeiro e nao pode ser excluido, mesmo apos estorno");
         jdbc.update("delete from revisao_visita where conciliacao_id = ?", id);
         jdbc.update("delete from conciliacao_visitas where id = ?", id);
     }
@@ -102,7 +106,7 @@ public class RevisaoVisitasService {
                 var automatica = new ConciliadorVisitas.Visita(anterior.linhaMedico(), anterior.atendimento(), h.data(),
                         LeitorPlanilhaVisitas.normalizar(h.setor()).equals("faturado") ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE,
                         "Correspondencia unica e exclusiva apos revisao da linha " + linha,
-                        anterior.original(), h, anterior.candidatos());
+                          anterior.original(), h, anterior.candidatos(),null,anterior.medicoProducao());
                 revisaoId = jdbc.queryForObject("""
                         insert into revisao_visita (conciliacao_id, linha_medico, acao, responsavel, justificativa, antes, depois)
                         values (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb) returning id
@@ -134,7 +138,7 @@ public class RevisaoVisitasService {
                     RevisaoVisitaRequest.Acao.valueOf(registro.get("acao").toString()),
                     registro.get("responsavel").toString(), registro.get("justificativa").toString(), criado, antes, depois));
             var candidatos=aplicador.candidatos(original,depois.atendimento(),depois.data());
-            atualizadas.put(depois.linhaMedico(),new ConciliadorVisitas.Visita(depois.linhaMedico(),depois.atendimento(),depois.data(),depois.status(),depois.motivo(),depois.original(),depois.hospital(),candidatos,depois.camposRevisados())); versao = revisaoId;
+            atualizadas.put(depois.linhaMedico(),new ConciliadorVisitas.Visita(depois.linhaMedico(),depois.atendimento(),depois.data(),depois.status(),depois.motivo(),depois.original(),depois.hospital(),candidatos,depois.camposRevisados(),depois.medicoProducao())); versao = revisaoId;
         }
         var visitas = original.visitas().stream().map(v -> atualizadas.getOrDefault(v.linhaMedico(), v)).toList();
         return new Estado(original, aplicador.recalcular(original, visitas), List.copyOf(historico), versao);

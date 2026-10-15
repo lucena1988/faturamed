@@ -8,11 +8,16 @@ import org.springframework.stereotype.Component;
 public class AtualizadorConciliacao {
     public record Resultado(ConciliadorVisitas.Relatorio relatorio,int preservadas,int reavaliadas,int novas,Map<Integer,Integer> linhasProducao) {}
     private final ConciliadorVisitas motor;
-    public AtualizadorConciliacao(ConciliadorVisitas motor) { this.motor=motor; }
+    private final IdentificacaoProducaoService identificacao;
+    public AtualizadorConciliacao(ConciliadorVisitas motor) { this(motor,null); }
+    @org.springframework.beans.factory.annotation.Autowired
+    public AtualizadorConciliacao(ConciliadorVisitas motor,IdentificacaoProducaoService identificacao) { this.motor=motor; this.identificacao=identificacao; }
 
     public Resultado atualizar(RevisaoVisitasService.Estado anterior, String arquivoMedico,String arquivoHospital,
             List<LeitorPlanilhaVisitas.Linha> producao,List<LeitorPlanilhaVisitas.Linha> faturamento) {
         var base=anterior.original();
+        Long medicoId=base.visitas().stream().map(ConciliadorVisitas.Visita::medicoProducao).filter(Objects::nonNull)
+                .map(ConciliadorVisitas.MedicoProducao::id).findFirst().orElse(null);
         Set<Integer> revisadas=new HashSet<>();anterior.historico().forEach(r->revisadas.add(r.linhaMedico()));
         Map<Integer,ConciliadorVisitas.Visita> atuais=new HashMap<>();anterior.atual().visitas().forEach(v->atuais.put(v.linhaMedico(),v));
         Map<Map<String,String>,Deque<ConciliadorVisitas.Visita>> grupos=new LinkedHashMap<>();
@@ -27,7 +32,7 @@ public class AtualizadorConciliacao {
             origem.put(id,linha.numero());linhas.add(new LeitorPlanilhaVisitas.Linha(id,linha.campos()));
         }
         if(grupos.values().stream().anyMatch(g->!g.isEmpty())) throw new ConflitoRevisaoException("A producao reduziu ou alterou visitas anteriores. Envie a versao completa ou confira o relatorio antes de atualizar");
-        var novo=motor.conciliar(base.hospital(),arquivoMedico,arquivoHospital,linhas,faturamento);
+        var novo=conciliar(base.hospital(),arquivoMedico,arquivoHospital,linhas,faturamento,medicoId);
         List<ConciliadorVisitas.RegistroHospital> novos=registros(novo);
         var antigos=registros(base);
         Map<Integer,ConciliadorVisitas.RegistroHospital> remapeados=new HashMap<>();Set<Integer> usados=new HashSet<>();
@@ -57,18 +62,21 @@ public class AtualizadorConciliacao {
             var v=atuais.get(l.numero());Map<String,String> campos=new HashMap<>();campos.put("atendimento",v.atendimento());
             if(v.data()!=null)campos.put("dt.",v.data().toString());return new LeitorPlanilhaVisitas.Linha(l.numero(),campos);
         }).toList();
-        var recalculado=motor.conciliar(base.hospital(),arquivoMedico,arquivoHospital,restantes,livres);
+        var recalculado=conciliar(base.hospital(),arquivoMedico,arquivoHospital,restantes,livres,medicoId);
         Map<Integer,ConciliadorVisitas.Visita> calculadas=new HashMap<>();recalculado.visitas().forEach(v->calculadas.put(v.linhaMedico(),v));
         List<ConciliadorVisitas.Visita> visitas=new ArrayList<>();
         for(var l:linhas) {
             var v=preservadas.contains(l.numero())?originais.get(l.numero()):calculadas.get(l.numero());
             var candidatos=hospital.stream().filter(h->h.atendimento().equals(v.atendimento())&&(v.data()==null||v.data().equals(h.data()))).toList();
-            visitas.add(new ConciliadorVisitas.Visita(v.linhaMedico(),v.atendimento(),v.data(),v.status(),v.motivo(),v.original(),v.hospital(),candidatos,v.camposRevisados()));
+            visitas.add(new ConciliadorVisitas.Visita(v.linhaMedico(),v.atendimento(),v.data(),v.status(),v.motivo(),v.original(),v.hospital(),candidatos,v.camposRevisados(),v.medicoProducao()));
         }
         var resultado=new ConciliadorVisitas.Relatorio(base.hospital(),arquivoMedico,arquivoHospital,base.regraStatus(),visitas,hospital,
                 Map.of(),BigDecimal.ZERO,base.hospitalCadastroId());
         resultado=new AplicadorRevisaoVisita().recalcular(resultado,visitas);
         return new Resultado(resultado,preservadas.size(),originais.size()-preservadas.size(),linhas.size()-originais.size(),origem);
+    }
+    private ConciliadorVisitas.Relatorio conciliar(String hospital,String medico,String faturamento,List<LeitorPlanilhaVisitas.Linha> producao,List<LeitorPlanilhaVisitas.Linha> linhasHospital,Long id) {
+        return id==null?motor.conciliar(hospital,medico,faturamento,producao,linhasHospital):identificacao.conciliar(hospital,medico,faturamento,producao,linhasHospital,id);
     }
     private Map<String,String> chave(Map<String,String> campos) {
         var copia=new TreeMap<>(campos);copia.entrySet().removeIf(e->e.getValue().isBlank());

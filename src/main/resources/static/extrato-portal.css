@@ -1,0 +1,20 @@
+.extrato-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.extrato-heading h2 { margin: 0; }
+.extrato-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.extrato-filters fieldset { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 0; padding: 12px; border: 1px solid var(--line); flex: 1 1 300px; min-width: 0; }
+.extrato-filters legend { font-size: 14px; color: var(--muted); }
+.extrato-filters label { min-width: 0; }
+.extrato-filters input { width: 100%; min-width: 0; }
+.extrato-filters button { padding: 10px 14px; min-height: 42px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); cursor: pointer; font: inherit; }
+.extrato-filters button:disabled { opacity: .5; cursor: default; }
+.extrato-stats { display: flex; gap: 24px; flex-wrap: wrap; padding: 12px 0 20px; }
+.extrato-stats > div { flex: 1 1 160px; font-size: 13px; color: var(--muted); }
+.extrato-stats strong { display: block; font-size: 20px; color: var(--text); margin-top: 6px; }
+#extrato-section h3 { font-size: 18px; margin: 24px 0 8px; }
+#extrato-section .doctor-table { overflow-x: visible; }
+#extrato-section table { width: 100%; }
+#extrato-section th, #extrato-section td { white-space: normal; overflow-wrap: anywhere; padding: 10px 6px; }
+#extrato-section th:last-child { width: auto; }
+#extrato-scope, #extrato-attention { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.extrato-negative { color: var(--rose,#b42318); }
+@media(max-width:550px){ .extrato-filters fieldset { flex-basis: 100%; } .extrato-filters button { flex: 1; } }

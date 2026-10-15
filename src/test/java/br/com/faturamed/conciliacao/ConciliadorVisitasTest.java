@@ -109,6 +109,35 @@ class ConciliadorVisitasTest {
         assertThat(resultado.visitas()).hasSize(2).allMatch(v -> v.data() == null && v.status() == ConciliadorVisitas.Status.PENDENTE);
     }
 
+    @Test void zeroNoModeloNaoGeraDivergenciaEPreservaFonte() {
+        var campos = new java.util.HashMap<>(medico(2,"2026-01-01").campos());
+        campos.put("valor orig","0.00");
+        var visita = conferir(List.of(new LeitorPlanilhaVisitas.Linha(2,campos)),List.of(hospital(2,"Medico A","1","2026-01-01"))).visitas().getFirst();
+        assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visita.valorEfetivo()).isEqualByComparingTo("103.84");
+        assertThat(visita.original()).containsEntry("valor orig","0.00");
+    }
+    @Test void medicosDistintosNoMesmoDiaNaoDisputamRegistrosDiferentes() {
+        var a = new java.util.HashMap<>(medico(2,"2026-01-01").campos()); a.put("medico","Medico A");
+        var b = new java.util.HashMap<>(medico(3,"2026-01-01").campos()); b.put("medico","Medico B");
+        var resultado = conferir(List.of(new LeitorPlanilhaVisitas.Linha(2,a),new LeitorPlanilhaVisitas.Linha(3,b)),
+                List.of(hospital(2,"Medico A","1","2026-01-01"),hospital(3,"Medico B","1","2026-01-01")));
+        assertThat(resultado.visitas()).allMatch(v->v.status()==ConciliadorVisitas.Status.PAGA);
+        assertThat(resultado.visitas().get(0).hospital().linha()).isEqualTo(2);
+        assertThat(resultado.visitas().get(1).hospital().linha()).isEqualTo(3);
+    }
+    @Test void codigoDoProdutoSeparaProcedimentosDoMesmoAtendimento() {
+        var m = new java.util.HashMap<>(medico(2,"2026-01-01").campos()); m.put("cod produto","10102019");
+        var outro = new java.util.HashMap<>(hospital(3,"Medico A","1","2026-01-01").campos()); outro.put("cod produto","999");
+        var resultado=conferir(List.of(new LeitorPlanilhaVisitas.Linha(2,m)),List.of(hospital(2,"Medico A","1","2026-01-01"),new LeitorPlanilhaVisitas.Linha(3,outro)));
+        assertThat(resultado.visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(resultado.hospitalSemProducao()).hasSize(1);
+    }
+    @Test void codigoIncompativelNaoEIgnorado() {
+        var m = new java.util.HashMap<>(medico(2,"2026-01-01").campos()); m.put("cod produto","999");
+        var resultado=conferir(List.of(new LeitorPlanilhaVisitas.Linha(2,m)),List.of(hospital(2,"Medico A","1","2026-01-01")));
+        assertThat(resultado.visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
+    }
     private LeitorPlanilhaVisitas.Linha medico(int linha, String data) {
         return new LeitorPlanilhaVisitas.Linha(linha, Map.of("atendimento", "00123", "dt.", data));
     }

@@ -29,6 +29,10 @@
   }
   window.FaturamedAuth = {request, resetCsrf: () => { tokenPromise = null; }};
   document.addEventListener('DOMContentLoaded', () => {
+    if(location.pathname!=='/login.html'){
+      const css=document.createElement('link');css.rel='stylesheet';css.href='/notificacoes.css?v=20261015-1';document.head.append(css);
+      const script=document.createElement('script');script.src='/notificacoes.js?v=20261015-1';document.body.append(script);
+    }
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
       try { await request('/api/auth/logout', {method: 'POST'}); location.replace('/login.html'); }

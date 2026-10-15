@@ -5,28 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conciliacao de visitas | Faturamed</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="conciliacao.css?v=20261009-tabela">
+  <link rel="stylesheet" href="conciliacao.css?v=20261013-faturamento">
   <link rel="stylesheet" href="identidade.css?v=20261009-1">
   <link rel="stylesheet" href="login.css?v=20261009-1">
+  <link rel="stylesheet" href="diagnostico.css?v=20261013-1">
 <link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
     <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliacao de visitas</h1></div>
-      <a href="/#medicos">Cadastro de medicos</a><a id="download" hidden>Baixar relatorio geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+      <a href="/#medicos">Cadastro de medicos</a><a href="solicitacoes-medicos.html">Solicitacoes dos medicos</a><a id="download" hidden>Baixar relatorio geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
     <form id="conciliation-form" class="conciliation-form">
       <label>Importacao<select name="relatorioBaseId" data-version-base><option value="">Novo relatorio</option></select></label>
+      <fieldset class="production-identity"><legend>Identificacao da producao</legend><label>Producao<select name="modoProducao" data-production-mode><option value="VARIOS">Varios medicos / identificacao por linha</option><option value="UNICO">Um unico medico</option></select></label><label data-production-doctor-label hidden>Medico da producao<select name="medicoProducaoId" data-production-doctor disabled><option value="">Selecione um medico</option></select></label><p data-production-message role="status"></p></fieldset>
       <label>Hospital<select name="hospitalId" data-hospital-select disabled><option value="">Informar nome manualmente</option></select><input name="hospital" data-hospital-name required maxlength="180" value="Analia Franco"></label>
       <label>Producao do medico<input name="producao" type="file" accept=".xlsx,.xlsb" required></label>
       <label>Faturamento do hospital<input name="faturamento" type="file" accept=".xlsx,.xlsb" required></label>
       <button type="submit" id="submit">Conciliar</button>
     </form>
     <p id="message" role="status" aria-live="polite"></p>
+    <a id="charge-link" href="cobrancas.html">Fila de cobranca ao hospital</a>
     <section id="results" hidden>
       <div class="conciliation-stats" id="stats"></div>
       <section class="review-progress" aria-labelledby="progress-title">
         <h2 id="progress-title">Acompanhamento da revisao</h2>
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
+      </section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberacao para o medico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observacao da liberacao<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendencias, divergencias e visitas sem medico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o medico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberacao</button><h3>Historico de liberacoes</h3><ol id="release-history"></ol></section>
+      <section class="review-queue" aria-labelledby="queue-title">
+        <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
+        <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
+        <p id="queue-message" role="status" aria-live="polite"></p>
       </section>
       <div class="conciliation-filters">
         <label>Medico<select id="doctor-filter"><option value="">Todos os medicos</option></select></label>
@@ -50,6 +59,13 @@
       </section>
       <h3>Registros do hospital</h3>
       <p id="review-candidate-message"></p>
+      <label class="candidate-doctor-filter">Medico no hospital<select id="candidate-doctor-filter"><option value="">Todos os medicos encontrados</option></select></label>
+      <p id="candidate-filter-count" role="status"></p>
+      <section class="candidate-preview" aria-labelledby="candidate-preview-title" hidden>
+        <h3 id="candidate-preview-title">Registro selecionado</h3>
+        <dl id="candidate-preview-fields" class="review-summary"></dl>
+        <button type="button" id="candidate-use" disabled>Preencher dados para revisao</button>
+      </section>
       <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Medico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
       <div class="review-fields">
         <label>Decisao<select id="review-action" required>
@@ -85,8 +101,11 @@
     </form>
   </dialog>
   <script src="auth.js?v=20261009-1"></script>
-  <script src="versoes.js?v=20261009-versoes"></script>
-  <script src="conciliacao.js?v=20261009-tabela"></script>
+  <script src="producao.js?v=20261013-1"></script>
+  <script src="diagnostico.js?v=20261013-1"></script>
+  <script src="versoes.js?v=20261013-faturamento"></script>
+  <script src="liberacao.js?v=20261015-1"></script>
+  <script src="conciliacao.js?v=20261015-liberacao"></script>
   <script src="hospitais.js?v=20261009-hospitais"></script>
 </body>
 </html>
