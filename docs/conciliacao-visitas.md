@@ -2,6 +2,30 @@
 
 Tela: http://localhost:8080/conciliacao.html
 
+## Fila de cobranca ao hospital
+
+### Acompanhamento manual
+
+#### Prioridades de contato
+
+A fila possui filtros Todas, Nao cobradas, Contato para hoje, Contatos atrasados e Aguardando retorno. Hoje/atrasados usam o proximo contato agendado, com referencia America/Sao_Paulo, e nao a idade da visita ou prazo financeiro. Sem data de proximo contato nao ha atraso presumido. Visitas nao cobradas com contato agendado podem aparecer tambem nos grupos de data: os contadores nao sao exclusivos.
+
+Contadores respeitam medico e dias desde a visita, antes do filtro de prioridade. A ordem usa o proximo contato mais antigo, deixando visitas sem agenda por ultimo; empates usam data da visita e linha. O XLSX respeita a prioridade selecionada, mantendo os dados internos de contato fora da exportacao. A tabela identifica o responsavel pelo ultimo acompanhamento. Nao ha notificacoes automaticas nem alteracao dos status da conciliacao.
+
+`Acompanhar` registra situacao (Nao cobrada, Enviada, Aguardando retorno ou Retorno recebido), data da cobranca, resposta, observacoes e proximo contato. O responsavel e o usuario autenticado, registrado pelo servidor. Cada salvamento acrescenta um evento ao historico; nao modifica a conciliacao nem envia emails.
+
+O historico e compartilhado pela familia de versoes e pela linha interna estavel da visita, nao pelo numero de atendimento ou pelo ID da planilha. Assim, visitas repetidas mantem acompanhamentos distintos. Eventos ficam vinculados tambem a versao em que foram registrados: excluir essa versao apaga seus contatos, evitando reaproveitar historicos de visitas removidas por exclusao de relatorio.
+
+Uma nova versao herda os contatos sem copiar eventos. Visitas que saem da fila continuam acessiveis em `Cobrancas acompanhadas fora da fila`, com historico somente para consulta. Edicoes concorrentes, versoes historicas e visitas que ja sairam da fila sao bloqueadas. Os registros internos de contato nao sao incluidos no XLSX destinado ao hospital.
+
+Tela: http://localhost:8080/cobrancas.html. Acesso administrativo pelo menu principal ou pelo relatorio de conciliacao. Selecione hospital e relatorio; somente a versao mais recente de cada cadeia aparece na lista. Relatorios independentes nao sao somados nem deduplicados entre si nesta etapa.
+
+A fila inclui somente visitas PENDENTE sem registro hospitalar vinculado e sem candidatos. Ambiguidades, divergencias e correspondencias aguardando faturamento ficam na revisao, nao na cobranca por ausencia de registro. Identificacoes manuais e de producao sao respeitadas. Linhas repetidas representam visitas distintas e permanecem na fila.
+
+Filtros de medico e dias desde a visita tambem se aplicam ao XLSX. O tempo e calculado pela data efetiva da visita, com referencia no fuso America/Sao_Paulo; nao representa dias desde uma cobranca enviada. Visitas sem data aparecem apenas no filtro de tempo Todos. Valores desconhecidos sao exibidos como nao informados e exportados em branco. Nao ha estimativa baseada em Valor Orig, nem comprovacao de recebimento ou inadimplencia. Dados de paciente nao constam deste relatorio.
+
+O link Revisar abre a visita especifica na conciliacao. A consulta e a exportacao nao alteram status nem enviam cobrancas. Registro de contato, responsavel e retorno do hospital fica para a proxima etapa.
+
 ## Atualizacao somente do faturamento hospitalar
 
 Ao selecionar um relatorio para atualizar, escolha `Somente faturamento completo do hospital`. A producao original, inclusive linhas repetidas e sua identificacao, e reutilizada do relatorio base. O servidor herda hospital e medico da versao salva, valida a versao de revisao e cria uma nova versao sem alterar a anterior.
@@ -250,3 +274,54 @@ Nas telas de Importacoes e Conciliacao, `Analisar planilhas` consulta os arquivo
 O diagnostico informa cobertura por atendimento/data, periodo de cada arquivo, IDs ausentes/repetidos, medico nao identificado e correspondencias ambiguas ou com dados divergentes. Alertas podem se sobrepor; exemplos mostram ate 20 linhas por categoria, mantendo os totais completos. A ausencia de medico no arquivo original e distinta da identificacao efetiva por hospital ou cadastro selecionado.
 
 A coluna ID e analisada, mas nao substitui a regra de correspondencia: um ID composto de data e atendimento nao distingue medicos diferentes. Nenhuma planilha ou revisao anterior e alterada pela consulta. Em atualizacoes, os numeros descrevem os arquivos enviados; a preservacao das revisoes ocorre somente ao criar a nova versao.
+
+## Acompanhamento de cobranca em lote
+
+Na Fila de cobranca, o administrador pode selecionar de 1 a 500 visitas visiveis do mesmo relatorio e registrar situacao, data da cobranca, resposta, observacoes e proximo contato comuns. A confirmacao identifica hospital, relatorio e quantidade. Trocar filtros ou atualizar a fila limpa a selecao.
+
+`POST /api/conciliacoes/visitas/{id}/cobranca/lote` recebe `visitas` com `linha` e `versao` do ultimo contato (zero quando inexistente), alem dos campos comuns de acompanhamento. Retorna `registradas`. A transacao valida todas as visitas sob bloqueio do relatorio; selecao duplicada, versao historica, visita fora da fila ou contato desatualizado impedem a gravacao integral. Cada visita recebe seu proprio evento com o usuario autenticado. Nao envia email nem altera status de conciliacao ou valores.
+
+## Recebimento financeiro real
+
+`recebimentos.html` permite ao administrador selecionar hospital, relatorio e medico e registrar manualmente recebimentos por visita, inclusive parciais. Tambem permite pagamentos distribuidos manualmente entre visitas, descritos abaixo. Nao existe rateio automatico, conciliacao bancaria ou envio de email.
+
+- Faturado: repasse efetivo das visitas PAGA, arredondado por visita para centavos (HALF_UP).
+- Recebido: soma dos lancamentos menos os estornos.
+- A receber: faturado menos recebido; nao inclui estimativas de pendencias ou divergencias.
+- Em conferencia: valores/identidade financeira alterados ou faturamento nao confirmado. Valores desconhecidos nao sao tratados como divida zero.
+
+Registro exige visita faturada, medico identificado no cadastro, valor positivo de ate duas casas decimais, data nao futura e valor dentro do saldo. A versao financeira e o ID do ultimo evento da visita (zero quando nenhum). Bloqueio transacional do relatorio impede duplicacao por concorrencia. `PAGA` continua significando faturamento, nao recebimento.
+
+O estorno integral de um lancamento exige justificativa e cria evento negativo independente, preservando o original, data, observacao e usuario autenticado. Lancamentos nao podem ser apagados ou editados. Relatorios com historico financeiro nao podem ser excluidos, mesmo apos estorno. Historico e saldo acompanham as versoes do mesmo relatorio; relatorios independentes nao sao consolidados automaticamente, pois podem conter a mesma producao.
+
+Mudancas de medico, atendimento, data ou codigo de uma visita com recebimentos ativos sinalizam conferencia e bloqueiam novos recebimentos. Tambem sao sinalizados saldo negativo e visita que deixou de estar faturada. O administrador pode conferir/estornar o registro. Identidade nao capturada em registros legados exige conferencia conservadora.
+
+APIs administrativas: GET `/api/conciliacoes/visitas/{id}/recebimentos`, POST `/visitas/{linha}` com `valor`, `data`, `observacoes`, `versao`, e POST `/visitas/{linha}/{evento}/estorno` com `justificativa`, `versao` (ambos relativos ao caminho de recebimentos). Somente a ultima versao permite gravacao.
+
+Dashboard e Painel do medico mostram Recebido e A receber respeitando o periodo da visita selecionado, nao o mes bancario do recebimento. O portal consulta GET `/api/medico/relatorios/{id}/recebimentos`: usa o cadastro do login e retorna apenas saldos das visitas autorizadas, sem historico interno ou dados de outros medicos. Financeiro inconsistente aparece como nao confirmado.
+
+## Extrato financeiro do medico
+
+No portal, a secao Extrato financeiro usa o hospital e relatorio selecionados. Os filtros De/Ate de visitas e de recebimentos sao independentes do filtro mensal do painel. Datas limite sao inclusivas; limites invertidos sao rejeitados. Visitas sem data aparecem sem filtros de visita, mas nao sao presumidas dentro de um intervalo.
+
+O periodo de visitas define as visitas do extrato e os movimentos vinculados a elas. O periodo dos recebimentos filtra somente recebimentos/estornos dessas visitas: nao altera o saldo atual nem o recebido acumulado. Entradas representam eventos positivos, estornos representam o total positivo dos eventos negativos e liquido e entradas menos estornos. Um recebimento estornado permanece no mes em que foi registrado; o evento negativo aparece na data do estorno. Isso permite periodos com liquido negativo.
+
+Faturado confirmado, recebido acumulado e saldo atual usam os valores efetivos das visitas e todo o historico financeiro. Aguardando faturamento e divergencias sao apresentados separadamente com valores informados e contagem de visitas sem valor. Totais monetarios sao subtotais conhecidos; dados desconhecidos ou financeiros inconsistentes permanecem nao confirmados nos detalhes. Movimentos de visitas com financeiro inconsistente nao sao divulgados no extrato enquanto exigem conferencia.
+
+GET `/api/medico/relatorios/{id}/extrato` e `/extrato.xlsx` aceitam `visitaDe`, `visitaAte`, `recebimentoDe`, `recebimentoAte` no formato yyyy-MM-dd. O cadastro do login define o medico, nao um parametro. Movimentos tambem sao filtrados pelo medico gravado no lancamento, alem das linhas atualmente autorizadas. Observacoes internas, justificativas de estorno, usuario responsavel, pacientes e candidatos hospitalares nao fazem parte do extrato.
+
+A exportacao tem Resumo (escopo, datas, totais e criterio), Visitas (posicao atual, inclusive pendencias/divergencias) e Movimentos (recebimentos e estornos do periodo). Valores sao numericos com formato monetario, datas sao nativas do Excel e valores desconhecidos ficam em branco. O download aplica os mesmos filtros da consulta. Nao consolida relatorios independentes ou versoes, evitando soma duplicada de producoes possivelmente repetidas.
+
+## Pagamento distribuido entre visitas
+
+Na tela Recebimentos, selecione um medico cadastrado, marque de 1 a 500 visitas faturadas com saldo confirmado do relatorio selecionado e use Registrar pagamento. Informe data, valor total, referencia e observacoes. Distribua manualmente um valor positivo por visita; Usar saldo preenche apenas a visita escolhida, sem decidir automaticamente quais visitas receberam dinheiro. Remover retira a visita da distribuicao preservando os demais valores. Mudar hospital, relatorio, medico ou atualizar limpa a selecao.
+
+A tela mostra total, valor distribuido e diferenca em centavos exatos. A confirmacao identifica medico, hospital, relatorio, quantidade, referencia e valor total. Cada alocacao pode ser parcial, mas nao pode exceder o saldo e a soma deve corresponder exatamente ao total recebido. Nao existe saldo solto ou rateio presumido.
+
+POST `/api/conciliacoes/visitas/{id}/recebimentos/pagamentos` recebe `medicoId`, `data`, `valorTotal`, `referencia` (obrigatoria, ate 120 caracteres), `observacoes` (ate 2000), `versaoConciliacao` e `visitas` com `linha`, `versao`, `valor`. Retorna `pagamentoId`, `visitas` (quantidade), `valorTotal`. A versao por visita e o ultimo evento financeiro. `versaoConciliacao` vem do GET de recebimentos e bloqueia a gravacao quando uma revisao alterou os dados, mesmo sem novos eventos financeiros.
+
+Somente a ultima versao do relatorio aceita gravacao. O servico bloqueia o relatorio e valida toda a distribuicao antes de inserir o cabecalho e os eventos. Visita desatualizada, fora do faturamento, de outro medico, saldo excedido, linha duplicada ou soma incorreta impedem a gravacao integral. Falhas posteriores tambem revertem a transacao. O usuario responsavel vem da sessao, nao do corpo da requisicao.
+
+Uma referencia nao pode ser repetida para o mesmo medico na mesma cadeia de relatorios, desconsiderando espacos nas extremidades e maiusculas/minusculas. Isso bloqueia repeticao do pagamento, inclusive tentativas apos estorno. A referencia nao verifica transferencias bancarias nem impede duplicidade entre relatorios independentes. Correcao de lancamento requer estorno e nova referencia identificavel.
+
+Cada visita recebe seu proprio evento ligado ao pagamento comum. Historico administrativo, extrato do medico e Excel exibem pagamento e referencia. Estornar uma alocacao cria evento negativo independente, ligado ao mesmo pagamento; nao estorna as outras visitas automaticamente nem apaga o cabecalho. Referencia e vinculos acompanham as versoes preservadas. Observacoes e justificativas internas continuam fora do extrato do medico.

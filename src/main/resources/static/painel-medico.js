@@ -46,6 +46,11 @@
       $('doctor-' + suffix + '-detail').textContent = selected ? `${summary[status].count} visitas${summary[status].missing ? `; ${summary[status].missing} sem valor definido` : ''}` : '';
     }
     $('doctor-unknown').textContent = selected ? summary.unknown : '-';
+    for(const [field,id] of [['recebido','doctor-received'],['saldo','doctor-balance']]){
+      const known=visits.filter(v=>v.financeiro?.[field]!=null),missing=visits.filter(v=>field==='recebido'?v.financeiro?.[field]==null:v.status==='PAGA'&&v.financeiro?.[field]==null).length;
+      $(id).textContent=selected?format(known.length||!visits.length?known.reduce((s,v)=>s+Number(v.financeiro[field]),0):null):'-';
+      $(id+'-detail').textContent=selected?(missing?`${missing} visitas com financeiro nao confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos'):'';
+    }
     $('doctor-hospitals').replaceChildren();
     if (selected && currentReport) row($('doctor-hospitals'), [currentReport.hospital, visits.length, format(summary.PAGA.value), format(summary.PENDENTE.value), format(summary.DIVERGENTE.value)]);
     const search = $('doctor-search').value.trim();

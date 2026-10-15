@@ -1,0 +1,19 @@
+#financial-fields { border: 0; padding: 16px 0; margin: 0; }
+#financial-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#financial-fields input, #financial-fields textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; }
+#financial-history p { overflow-wrap: anywhere; white-space: pre-wrap; }
+#financial-history li { padding-bottom: 12px; }
+#financial-detail-message { overflow-wrap: anywhere; }
+#payment-dialog { width: min(1000px,calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 24px; background: var(--surface); color: var(--text); }
+#payment-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+#payment-title { min-width: 0; overflow-wrap: anywhere; font-size: 20px; }
+#payment-close { flex-shrink: 0; }
+#payment-fields { border: 0; padding: 16px 0; margin: 0; }
+#payment-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#payment-fields input, #payment-fields textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--text); background: var(--surface); font: inherit; }
+#payment-dialog button { padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+#payment-dialog button:disabled { opacity: .5; cursor: default; }
+#payment-dialog .charge-table { overflow-x: visible; }
+#payment-dialog .charge-row-actions button { display: block; width: 100%; margin-bottom: 6px; }
+#payment-summary { padding: 16px 0; }
+#payment-message { overflow-wrap: anywhere; }

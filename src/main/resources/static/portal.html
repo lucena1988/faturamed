@@ -1,14 +1,16 @@
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Meu painel | FaturaMed</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="identidade.css?v=20261009-1"><link rel="stylesheet" href="painel-medico.css?v=20261009-1"><link rel="stylesheet" href="login.css?v=20261009-1"><link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Meu painel | FaturaMed</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="identidade.css?v=20261009-1"><link rel="stylesheet" href="painel-medico.css?v=20261009-1"><link rel="stylesheet" href="extrato-portal.css?v=20261014-1"><link rel="stylesheet" href="login.css?v=20261009-1"><link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
 <body><main class="account-workspace">
   <header class="account-heading"><div><a class="company-name" href="portal.html">FaturaMed</a><h1>Meu painel</h1><span id="portal-name"></span></div><div class="session-actions"><a href="conta.html">Minha conta</a><button class="text-button" type="button" data-logout>Sair</button></div></header>
-  <div class="doctor-toolbar"><label class="select-field">Hospital<select id="portal-hospital" disabled></select></label><label class="select-field">Relatorio<select id="report-filter" disabled></select></label><label class="select-field">Periodo<select id="portal-period" disabled></select></label></div>
+  <div class="doctor-toolbar"><label class="select-field">Hospital<select id="portal-hospital" disabled></select></label><label class="select-field">Relatorio<select id="report-filter" disabled></select></label><label class="select-field">Periodo das visitas (painel)<select id="portal-period" disabled></select></label></div>
   <p id="portal-message" role="status"></p>
   <section data-view="painel-medico">
     <div hidden><select id="panel-doctor"></select></div><p id="doctor-scope"></p><p id="doctor-message" role="status"></p>
     <div class="kpi-grid">
       <article class="kpi-card"><span class="kpi-label">Faturado pelo hospital</span><strong id="doctor-paid">-</strong><small id="doctor-paid-detail"></small></article>
+      <article class="kpi-card"><span class="kpi-label">Recebido</span><strong id="doctor-received">-</strong><small id="doctor-received-detail"></small></article>
+      <article class="kpi-card"><span class="kpi-label">A receber</span><strong id="doctor-balance">-</strong><small id="doctor-balance-detail"></small></article>
       <article class="kpi-card"><span class="kpi-label">Aguardando faturamento</span><strong id="doctor-pending">-</strong><small id="doctor-pending-detail"></small></article>
       <article class="kpi-card"><span class="kpi-label">Valor em conferencia</span><strong id="doctor-blocked">-</strong><small id="doctor-blocked-detail"></small></article>
       <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondencia nao confirmados</small></article>
@@ -16,4 +18,17 @@
     <section class="doctor-section"><h2>Resumo do hospital</h2><div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Visitas</th><th>Faturado</th><th>Aguardando</th><th>Em conferencia</th></tr></thead><tbody id="doctor-hospitals"></tbody></table></div></section>
     <section class="doctor-section"><h2>Pendencias da producao</h2><div class="doctor-toolbar"><label class="select-field">Situacao<select id="doctor-status"><option value="">Todas as pendencias</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferencia</option></select></label><label class="select-field">Atendimento<input id="doctor-search" type="search"></label><span id="doctor-count"></span></div><div class="doctor-table"><table><thead><tr><th>Atendimento</th><th>Data</th><th>Procedimento</th><th>Repasse</th><th>Situacao</th><th>Motivo</th></tr></thead><tbody id="doctor-visits"></tbody></table></div></section>
   </section>
-</main><script src="auth.js?v=20261009-1"></script><script src="painel-medico.js?v=20261009-1"></script><script src="portal.js?v=20261009-1"></script></body></html>
+  <section class="doctor-section" id="extrato-section" aria-labelledby="extrato-title">
+    <header class="extrato-heading"><h2 id="extrato-title">Extrato financeiro</h2><a id="extrato-export" hidden>Baixar extrato XLSX</a></header>
+    <form id="extrato-filters" class="extrato-filters">
+      <fieldset><legend>Periodo das visitas (extrato)</legend><label class="select-field">De<input name="visitaDe" type="date"></label><label class="select-field">Ate<input name="visitaAte" type="date"></label></fieldset>
+      <fieldset><legend>Periodo dos recebimentos e estornos</legend><label class="select-field">De<input name="recebimentoDe" type="date"></label><label class="select-field">Ate<input name="recebimentoAte" type="date"></label></fieldset>
+      <button id="extrato-apply" type="submit" disabled>Filtrar</button><button id="extrato-clear" type="button" disabled>Limpar filtros</button>
+    </form>
+    <p id="extrato-message" role="status" aria-live="polite"></p><p id="extrato-scope"></p>
+    <h3>Posicao atual das visitas</h3><div id="extrato-balances" class="extrato-stats"></div><p id="extrato-attention"></p>
+    <div class="doctor-table"><table><thead><tr><th>Linha</th><th>Atendimento</th><th>Data da visita</th><th>Procedimento / codigo</th><th>Valor informado</th><th>Faturado</th><th>Recebido acumulado</th><th>Saldo atual</th><th>Situacao</th></tr></thead><tbody id="extrato-visits"></tbody></table></div>
+    <h3>Recebimentos e estornos do periodo</h3><div id="extrato-movement-stats" class="extrato-stats"></div>
+    <div class="doctor-table"><table><thead><tr><th>Lancamento</th><th>Data do movimento</th><th>Linha</th><th>Atendimento</th><th>Data da visita</th><th>Tipo</th><th>Valor</th><th>Estorno de</th><th>Pagamento / referencia</th></tr></thead><tbody id="extrato-movements"></tbody></table></div>
+  </section>
+</main><script src="auth.js?v=20261009-1"></script><script src="painel-medico.js?v=20261014-financeiro"></script><script src="extrato-portal.js?v=20261014-pagamento"></script><script src="portal.js?v=20261014-extrato"></script></body></html>

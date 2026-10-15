@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Recebimentos | FaturaMed</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="conciliacao.css"><link rel="stylesheet" href="identidade.css"><link rel="stylesheet" href="login.css"><link rel="stylesheet" href="tema.css"><link rel="stylesheet" href="cobrancas.css"><link rel="stylesheet" href="recebimentos.css?v=20261014-pagamento"><script src="tema.js"></script></head>
+<body><main class="conciliation-workspace">
+<header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Recebimentos</h1></div><a href="/#painel-medico">Painel do medico</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+<div class="conciliation-filters charge-filters"><label>Hospital<select id="financial-hospital"></select></label><label>Relatorio<select id="financial-report"></select></label><label>Medico<select id="financial-doctor"></select></label><button id="financial-reload" type="button">Atualizar</button></div>
+<p id="financial-message" role="status" aria-live="polite"></p><div id="financial-stats" class="conciliation-stats"></div>
+<div class="charge-batch"><label><input id="payment-select-all" type="checkbox" disabled>Selecionar visitas disponiveis</label><span id="payment-selected" role="status">0 visitas selecionadas</span><button id="payment-open" type="button" disabled>Registrar pagamento</button><button id="payment-unselect" type="button" disabled>Limpar selecao</button></div>
+<div class="conciliation-table charge-table"><table><thead><tr><th>Linha</th><th>Atendimento</th><th>Data da visita</th><th>Medico</th><th>Faturado</th><th>Recebido</th><th>A receber</th><th>Situacao</th><th>Acoes</th></tr></thead><tbody id="financial-rows"></tbody></table></div>
+</main>
+<dialog id="contact-dialog" aria-labelledby="contact-title"><header class="review-heading"><h2 id="contact-title">Recebimento</h2><button id="financial-close" type="button">Fechar</button></header>
+<form id="financial-form"><fieldset id="financial-fields" class="review-fields"><label>Data do recebimento<input name="data" type="date" required></label><label>Valor recebido (R$)<input name="valor" type="number" min="0.01" step="0.01" required></label><label class="review-justification">Observacoes<textarea name="observacoes" rows="3" maxlength="2000"></textarea></label></fieldset><button id="financial-save" type="submit">Registrar recebimento</button></form>
+<p id="financial-detail-message" role="status"></p><section class="review-history"><h3>Historico financeiro</h3><ol id="financial-history"></ol></section></dialog>
+<dialog id="payment-dialog" aria-labelledby="payment-title"><header class="review-heading"><h2 id="payment-title">Distribuir pagamento</h2><button id="payment-close" type="button">Fechar</button></header>
+<form id="payment-form"><fieldset id="payment-fields"><div class="review-fields">
+<label>Data do recebimento<input name="data" type="date" required></label><label>Valor total recebido (R$)<input name="valorTotal" type="number" min="0.01" max="99999999999999.99" step="0.01" required></label>
+<label class="review-justification">Referencia do pagamento<input name="referencia" maxlength="120" required></label><label class="review-justification">Observacoes<textarea name="observacoes" rows="2" maxlength="2000"></textarea></label></div>
+<div id="payment-summary" class="conciliation-stats" role="status" aria-live="polite"></div>
+<div class="conciliation-table charge-table"><table><thead><tr><th>Linha</th><th>Atendimento</th><th>Data da visita</th><th>Saldo atual</th><th>Valor para a visita (R$)</th><th>Acoes</th></tr></thead><tbody id="payment-rows"></tbody></table></div>
+</fieldset><p id="payment-message" role="status"></p><div class="review-actions"><button id="payment-reload" type="button" hidden>Atualizar saldos</button><button id="payment-save" type="submit" disabled>Confirmar pagamento</button></div></form></dialog>
+<script src="auth.js"></script><script src="pagamento-valores.js?v=20261014-1"></script><script src="recebimentos.js?v=20261014-selecao"></script></body></html>

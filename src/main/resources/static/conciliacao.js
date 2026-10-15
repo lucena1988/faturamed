@@ -49,6 +49,7 @@ async function request(url, options) {
 function showReport(id, data, tracking) {
   if (String(reportId) !== String(id)) { queueOnly = false; queueLastLine = null; }
   reportId = id;
+  document.querySelector('#charge-link').href=`/cobrancas.html?relatorio=${id}`;
   report = data;
   const token = ++progressGeneration;
   progress = new Map((tracking?.visitas || []).map(item => [item.linhaMedico, item]));
@@ -267,6 +268,9 @@ async function initialize() {
     const status = params.get('status');
     if (['PAGA', 'PENDENTE', 'DIVERGENTE'].includes(status)) document.querySelector('#status').value = status;
     showReport(id, await request(`/api/conciliacoes/visitas/${id}`));
+      const line=Number(params.get('linha'));
+      if(Number.isInteger(line)&&report.visitas.some(v=>v.linhaMedico===line)
+          &&!reportsHistory.find(r=>String(r.id)===String(id))?.proxima_id)await openReview(line);
   }
 }
 initialize().catch(error => { message.textContent = error.message; });

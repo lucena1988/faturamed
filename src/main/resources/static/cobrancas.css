@@ -1,0 +1,45 @@
+.charge-filters { padding: 18px 0; border-block: 1px solid var(--line); }
+.charge-filters label { flex: 1 1 180px; max-width: 360px; }
+.charge-filters select { max-width: 100%; }
+.charge-batch { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.conciliation-workspace .charge-batch label, .conciliation-workspace .charge-selection { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.conciliation-workspace .charge-batch input, .conciliation-workspace .charge-selection input { width: 16px; height: 16px; flex: 0 0 16px; padding: 0; }
+#charge-title { font-size: 18px; }
+#charge-reference { color: var(--muted); font-size: 14px; }
+.charge-table table { table-layout: fixed; min-width: 0; width: 100%; }
+.charge-table th, .charge-table td { min-width: 0; padding: 10px 8px; overflow-wrap: anywhere; white-space: normal; }
+.charge-table td span { min-width: 0; overflow-wrap: anywhere; }
+.charge-table small { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; overflow-wrap: anywhere; }
+.charge-priorities { padding: 12px 0 20px; border-bottom: 1px solid var(--line); }
+.charge-priorities h2 { font-size: 18px; margin: 0 0 12px; }
+#charge-priorities { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px; }
+#charge-priorities button { min-height: 70px; padding: 8px 0; text-align: left; border-radius: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text); }
+#charge-priorities strong { display: block; font-size: 20px; margin-top: 6px; }
+#charge-priorities button[aria-pressed="true"] { border-bottom-color: var(--primary); font-weight: bold; }
+#charge-priorities button:hover, #charge-priorities button:focus-visible { background: var(--surface-soft); color: var(--text); }
+#charge-priorities button:disabled { background: transparent; opacity: .5; cursor: default; }
+.charge-table .charge-overdue { color: var(--rose,#b42318); font-weight: bold; }
+.charge-table .charge-due-today { color: var(--primary); font-weight: bold; }
+.charge-table td:last-child { min-width: 0; }
+.charge-row-actions a { display: block; margin-bottom: 8px; }
+.conciliation-workspace .charge-table button { padding: 8px; max-width: 100%; overflow-wrap: anywhere; }
+.charge-archive { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 16px; }
+.charge-archive h2 { font-size: 18px; }
+#contact-dialog { width: min(760px,calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 24px; background: var(--surface,white); color: var(--text); }
+#contact-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+#contact-dialog input, #contact-dialog select, #contact-dialog textarea { font: inherit; color: var(--text); background: var(--surface,white); }
+#contact-fields { border: 0; padding: 16px 0; margin: 0; }
+#contact-title { min-width: 0; overflow-wrap: anywhere; }
+#contact-close { flex-shrink: 0; }
+#contact-history p { overflow-wrap: anywhere; white-space: pre-wrap; }
+#contact-dialog button { padding: 10px 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface,white); color: var(--text); font: inherit; cursor: pointer; }
+#contact-dialog button:disabled { opacity: .5; cursor: default; }
+@media(max-width:700px){
+ .charge-filters label { max-width: none; flex-basis: 100%; }
+ .charge-table thead { display: none; }
+ .charge-table table, .charge-table tbody, .charge-table tr, .charge-table td { display: block; width: 100%; }
+ .charge-table tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+ .charge-table td { display: grid; grid-template-columns: 120px minmax(0,1fr); border: 0; }
+ .charge-table td::before { content: attr(data-label); font-weight: bold; color: var(--muted); }
+ .charge-table td small { grid-column: 2; margin-top: 2px; }
+}

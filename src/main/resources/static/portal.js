@@ -13,16 +13,19 @@
   }
   async function load() {
     const token = ++generation; report = null; render(); $('portal-message').textContent = '';
+    FaturamedExtrato.carregar(null);
     optionList($('portal-period'), []);
     const id = $('report-filter').value;
     if (!id) return;
     try {
-      const result = await FaturamedAuth.request(`/api/medico/relatorios/${encodeURIComponent(id)}`);
+      const [result,financeiro] = await Promise.all([FaturamedAuth.request(`/api/medico/relatorios/${encodeURIComponent(id)}`),FaturamedAuth.request(`/api/medico/relatorios/${encodeURIComponent(id)}/recebimentos`)]);
+      for(const visit of result.visitas)visit.financeiro=financeiro.find(v=>v.linha===visit.linhaMedico)||null;
       if (token !== generation) return;
       report = result;
       const periods = [...new Set(report.visitas.filter(v => v.data).map(v => v.data.slice(0,7)))].sort().reverse();
       optionList($('portal-period'), [['','Todos os meses'], ...(report.visitas.some(v=>!v.data) ? [['SEM_DATA','Sem data informada']] : []), ...periods.map(p=>[p,new Date(p+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})])]);
       render();
+      FaturamedExtrato.carregar(id);
     } catch(error) { if (token === generation) $('portal-message').textContent = error.message; }
   }
   async function hospitals() {

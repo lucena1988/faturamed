@@ -34,6 +34,18 @@ class SegurancaTest {
         mvc.perform(get("/")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/login.html"));
     }
     @Test void medicoNaoAcessaAdministracao() throws Exception {
+        mvc.perform(post("/api/conciliacoes/visitas/10/recebimentos/pagamentos").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/recebimentos").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/conciliacoes/visitas/10/recebimentos/visitas/2").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/conciliacoes/visitas/10/cobranca/lote").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/cobranca").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/cobranca.xlsx").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/cobranca/acompanhamento").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/conciliacoes/visitas/10/cobranca/visitas/2").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
         mvc.perform(get("/api/usuarios").with(user(medico))).andExpect(status().isForbidden());
         mvc.perform(post("/api/usuarios").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
                 .andExpect(status().isForbidden());
