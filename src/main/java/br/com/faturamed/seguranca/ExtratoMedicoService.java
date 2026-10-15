@@ -33,8 +33,14 @@ public class ExtratoMedicoService {
     @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Extrato buscar(long id,Filtros filtros,UsuarioAutenticado user) throws Exception {
         filtros.validar();var autorizado=portal.buscar(id,user);
-        var financeiro=recebimentos.listar(id).visitas().stream().filter(v->Objects.equals(v.medicoId(),user.medicoId())).toList();
-        return montar(autorizado,financeiro,recebimentos.movimentosDoMedico(id,user.medicoId()),filtros,autorizado.visitas().getFirst().medico(),Instant.now());
+        var movimentos=recebimentos.movimentosDoMedico(id,user.medicoId());
+        return montarPublicado(autorizado,movimentos,filtros);
+    }
+    static Extrato montarPublicado(PortalMedicoController.Relatorio autorizado,List<RecebimentoService.Movimento> movimentos,Filtros filtros) {
+        filtros.validar();
+        Map<Integer,PortalMedicoController.Visita> porLinha=new HashMap<>();autorizado.visitas().forEach(v->porLinha.put(v.linhaMedico(),v));
+        var vinculados=movimentos.stream().filter(m->porLinha.containsKey(m.linha())&&FinanceiroPublicado.mesmaIdentidade(porLinha.get(m.linha()),m)).toList();
+        return montar(autorizado,FinanceiroPublicado.analisar(autorizado,movimentos),vinculados,filtros,autorizado.visitas().getFirst().medico(),Instant.now());
     }
     static Extrato montar(PortalMedicoController.Relatorio relatorio,List<RecebimentoService.Visita> financeiro,
             List<RecebimentoService.Movimento> movimentos,Filtros filtros,String medico,Instant agora) {

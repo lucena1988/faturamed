@@ -13,7 +13,7 @@
 <body>
   <main class="conciliation-workspace">
     <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliacao de visitas</h1></div>
-      <a href="/#medicos">Cadastro de medicos</a><a id="download" hidden>Baixar relatorio geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+      <a href="/#medicos">Cadastro de medicos</a><a href="solicitacoes-medicos.html">Solicitacoes dos medicos</a><a id="download" hidden>Baixar relatorio geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
     <form id="conciliation-form" class="conciliation-form">
       <label>Importacao<select name="relatorioBaseId" data-version-base><option value="">Novo relatorio</option></select></label>
       <fieldset class="production-identity"><legend>Identificacao da producao</legend><label>Producao<select name="modoProducao" data-production-mode><option value="VARIOS">Varios medicos / identificacao por linha</option><option value="UNICO">Um unico medico</option></select></label><label data-production-doctor-label hidden>Medico da producao<select name="medicoProducaoId" data-production-doctor disabled><option value="">Selecione um medico</option></select></label><p data-production-message role="status"></p></fieldset>
@@ -31,6 +31,7 @@
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberacao para o medico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observacao da liberacao<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendencias, divergencias e visitas sem medico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o medico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberacao</button><h3>Historico de liberacoes</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
@@ -103,7 +104,8 @@
   <script src="producao.js?v=20261013-1"></script>
   <script src="diagnostico.js?v=20261013-1"></script>
   <script src="versoes.js?v=20261013-faturamento"></script>
-  <script src="conciliacao.js?v=20261014-cobranca"></script>
+  <script src="liberacao.js?v=20261015-1"></script>
+  <script src="conciliacao.js?v=20261015-liberacao"></script>
   <script src="hospitais.js?v=20261009-hospitais"></script>
 </body>
 </html>

@@ -325,3 +325,67 @@ Somente a ultima versao do relatorio aceita gravacao. O servico bloqueia o relat
 Uma referencia nao pode ser repetida para o mesmo medico na mesma cadeia de relatorios, desconsiderando espacos nas extremidades e maiusculas/minusculas. Isso bloqueia repeticao do pagamento, inclusive tentativas apos estorno. A referencia nao verifica transferencias bancarias nem impede duplicidade entre relatorios independentes. Correcao de lancamento requer estorno e nova referencia identificavel.
 
 Cada visita recebe seu proprio evento ligado ao pagamento comum. Historico administrativo, extrato do medico e Excel exibem pagamento e referencia. Estornar uma alocacao cria evento negativo independente, ligado ao mesmo pagamento; nao estorna as outras visitas automaticamente nem apaga o cabecalho. Referencia e vinculos acompanham as versoes preservadas. Observacoes e justificativas internas continuam fora do extrato do medico.
+
+## Consulta administrativa de pagamentos
+
+A secao Pagamentos por referencia, na tela Recebimentos, apresenta pagamentos distribuidos da cadeia do relatorio selecionado, sem repetir os pagamentos entre versoes. O medico selecionado no filtro principal tambem filtra essa secao. A busca por referencia aceita trecho sem diferenciar maiusculas/minusculas. Data De/Ate e a data original do pagamento, com limites inclusivos; estornos posteriores continuam no valor liquido atual, nao sao excluidos pelo periodo.
+
+Cada pagamento mostra total original uma unica vez, quantidade de alocacoes, estornos acumulados, liquido e situacao: Sem estorno, Parcialmente estornado, Estornado ou Em conferencia (incompatibilidade entre cabecalho e eventos). Os totais da secao respeitam os filtros e nao incluem lancamentos individuais sem pagamento comum.
+
+Ver pagamento abre consulta dos valores financeiros com visitas vinculadas, valores alocados, estornos por alocacao, liquido e historico com justificativas, observacoes e responsavel. As identificacoes de atendimento/data/codigo sao as capturadas no lancamento, nao valores substituidos silenciosamente pela revisao atual. Estornos continuam sendo feitos no historico financeiro de cada visita. A secao de comprovantes permite gerenciar documentos sem alterar esses valores.
+
+GET `/api/conciliacoes/visitas/{id}/recebimentos/pagamentos` aceita `referencia`, `medicoId`, `de`, `ate`, `situacao` (TODOS, SEM_ESTORNO, PARCIALMENTE_ESTORNADO, ESTORNADO, CONFERENCIA). GET `/pagamentos/{pagamento}` no mesmo caminho consulta detalhes e rejeita IDs de outras cadeias com 404. Ambos sao exclusivos de ADMIN. A leitura usa uma transacao de snapshot consistente e nao altera registros financeiros ou conciliacao.
+
+## Liberacao do relatorio para o medico
+
+Relatorios novos e ja existentes comecam sem liberacao. Na Conciliacao de visitas, o administrador seleciona o relatorio e usa Liberar para o medico, registrando observacao opcional. Quando ha pendencias, divergencias ou visitas sem medico cadastrado, e obrigatorio confirmar expressamente a conferencia. Visitas sem vinculo seguro com medico nao sao publicadas; pelo menos uma visita identificada e necessaria. Nao e obrigatorio resolver todas as pendencias antes de liberar.
+
+GET `/api/conciliacoes/visitas/{id}/liberacao` informa EM_REVISAO/LIBERADO, versao de revisao, contagens, publicacao atual da cadeia e historico. POST recebe `versao`, `observacao` (ate 2000), `confirmaPendencias`. Responsavel e data vem da sessao/servidor. O bloqueio do relatorio impede publicacao concorrente com revisoes/importacoes; versao desatualizada, revisao ja publicada ou relatorio historico retornam conflito.
+
+Cada liberacao guarda copia imutavel sanitizada, separada por ID do medico identificado naquele momento. Dados originais, candidatos hospitalares, pacientes e observacoes administrativas da liberacao nao integram o payload do portal. Mudancas posteriores no cadastro/aliases nao transferem a copia publicada para outro medico.
+
+O portal lista somente a publicacao mais recente de cada cadeia, para o cadastro associado ao login. Criar nova versao ou revisar o relatorio deixa o trabalho atual EM_REVISAO, mas a copia anterior permanece visivel ate a liberacao seguinte. A nova liberacao substitui a publicacao visivel da cadeia; URLs de versoes anteriores deixam de estar acessiveis ao medico. Copias e auditoria anteriores permanecem no banco. Relatorios com historico de liberacao nao podem ser excluidos.
+
+Detalhes, saldos, extrato e Excel do portal exigem publicacao, inclusive por URL direta. Os dados de conciliacao vem da copia publicada. Recebimentos/estornos continuam dinamicos, filtrados pelo medico do lancamento e pela identidade da visita publicada; novas linhas de um rascunho nao aparecem. Valores financeiros incompativeis com a identidade/faturamento publicado exigem conferencia e nao sao apresentados como saldos confirmados. Eventos de identidades anteriores integralmente estornados nao bloqueiam um novo vinculo publicado.
+
+## Conferencia pelo medico
+
+No portal, Conferencia do relatorio permite registrar ciencia da publicacao atual e solicitar revisao de qualquer visita visivel, com motivo de 5 a 2000 caracteres. Ciencia nao e aprovacao dos valores nem confirmacao de pagamento. E idempotente por publicacao e cadastro, com data e usuario autenticado. Uma nova liberacao exige nova ciencia; a anterior fica preservada no banco.
+
+Solicitacoes guardam publicacao imutavel, medico, linha, motivo, data e usuario. A visita e validada contra a copia publicada, nunca contra o rascunho. E permitido somente um pedido aberto por visita/publicacao/medico. Apos resposta, pode haver novo pedido. O portal mostra os 500 pedidos mais recentes do proprio cadastro na cadeia, incluindo publicacoes anteriores identificadas como tais. Nao recebe dados de outros medicos nem identidade administrativa do respondente. Troca de publicacao exige atualizar a conferencia antes de enviar.
+
+Na administracao, Solicitacoes dos medicos esta no menu principal e no cabecalho da Conciliacao. A fila filtra abertas, respondidas ou todas (500 mais recentes); mostra identificacao congelada da visita, motivo e resposta. Responder exige de 5 a 2000 caracteres; registra usuario e data e encerra o pedido, sem permitir sobrescrita. Pedidos de publicacoes anteriores continuam respondiveis. A secao Ciencia das publicacoes atuais mostra os pares publicacao/medico atuais e a data de ciencia, ou Aguardando ciencia (ate 500 registros). Historico anterior permanece no banco. Nenhuma destas operacoes altera conciliacao, valores, recebimentos ou envia email. Se houver correcao, o administrador revisa e libera uma nova copia separadamente.
+
+APIs MEDICO: GET `/api/medico/relatorios/{id}/conferencia`, POST `/ciencia` com `publicacao`, POST `/solicitacoes` com `publicacao`, `linha`, `motivo` (relativos ao mesmo relatorio). Cadastro e usuario vem da sessao. APIs ADMIN: GET `/api/solicitacoes-medicos?situacao=ABERTAS|RESPONDIDAS|TODAS`, POST `/api/solicitacoes-medicos/{id}/resposta` com `resposta`, GET `/api/ciencias-medicos`. Escritas exigem CSRF; ciencia/pedido e nova liberacao serializam no relatorio raiz; resposta bloqueia o pedido para impedir sobrescrita concorrente.
+
+## Demonstrativo de recebimentos em PDF
+
+Em Recebimentos, selecione hospital, relatorio e um medico cadastrado e use Demonstrativo do medico > Baixar PDF. O relatorio selecionado deve estar liberado para esse cadastro; rascunhos e publicacoes substituidas nao sao exportados. Se houver nova versao em revisao, revise e libere essa versao antes de gerar seu demonstrativo por Recebimentos. Enquanto isso, o medico pode continuar baixando a copia anterior ainda publicada no portal. O portal oferece Baixar demonstrativo PDF na secao Extrato financeiro, com os mesmos filtros do XLSX.
+
+O documento usa a logo FaturaMed e identifica medico, hospital, relatorio, data de emissao em Brasilia e periodos separados para visitas e movimentos. Inclui faturado, recebido acumulado, saldo atual, subtotais conhecidos de pendencias/divergencias, contagens de valores desconhecidos/financeiro nao confirmado, visitas e recebimentos/estornos. Totais e regras sao os mesmos do extrato; filtro de recebimentos nao recalcula saldo historico. Valores desconhecidos permanecem Nao informado/Nao confirmado, nunca sao apresentados como quitacao. Ha cabecalhos repetidos e rodapes numerados em todas as paginas. Caracteres nao representaveis em WinAnsi sao substituidos por ?; acentos latinos sao preservados.
+
+O PDF e um demonstrativo de acompanhamento, nao comprovante bancario, recibo de quitacao ou nota fiscal. Nao inclui paciente, observacoes internas ou identidade de usuarios administrativos. Nao registra ciencia, leitura, pagamento nem libera relatorio. O envio por email/WhatsApp e manual; o arquivo contem dados financeiros do medico e deve ser compartilhado somente com o destinatario correto.
+
+GET administrativo `/api/conciliacoes/visitas/{id}/demonstrativo.pdf` exige ADMIN e `medicoId`. GET `/api/medico/relatorios/{id}/demonstrativo.pdf` exige MEDICO e usa somente o cadastro do login. Ambos aceitam `visitaDe`, `visitaAte`, `recebimentoDe`, `recebimentoAte` em yyyy-MM-dd; usam copia publicada e movimentos autorizados em snapshot transacional consistente. Retornam attachment application/pdf com no-store e nosniff. Geracao Java usa Apache PDFBox 3.0.8, sem depender de Python ou servico externo em producao.
+
+## Notificacoes no sistema
+
+O sino nos cabecalhos autenticados consulta eventos persistidos: pedidos de revisao para ADMIN; publicacao atual e respostas para MEDICO. Notificacoes anteriores a esta etapa tambem aparecem quando ainda acessiveis. Nao ha email nem envio fora do navegador. O contador atualiza ao abrir/atualizar a caixa e a cada 60 segundos enquanto a pagina estiver visivel e a caixa fechada.
+
+A caixa tem todas/nao lidas e paginas de 20 itens, com contagem integral. Leitura e individual por usuario e escopo de perfil/cadastro; outro administrador nao perde seu aviso. Marcar como lida e idempotente, preserva a primeira data e nao registra ciencia, nao responde pedidos nem altera conciliacao/financeiro. Abrir um aviso marca leitura e navega para o item; abrir em nova aba pelo menu do navegador nao marca automaticamente. A confirmacao de ciencia permanece uma acao independente no portal.
+
+O feed e derivado dos eventos originais, sem copias de paciente, motivo, resposta ou observacoes internas. Uma nova liberacao substitui o aviso de liberacao anterior e tem sua propria leitura. Respostas antigas continuam acessiveis pela publicacao atual da mesma cadeia, apenas se o cadastro autenticado ainda integra essa publicacao. Eventos sem acesso atual nao aparecem nem podem ser marcados como lidos. Os registros de leitura ficam em leitura_notificacao; nao alteram os eventos de origem.
+
+GET `/api/auth/notificacoes` aceita `naoLidas` e `pagina` (base zero) e retorna `naoLidas`, `total` do filtro, pagina, tamanho e itens. POST `/api/auth/notificacoes/{tipo}/{evento}/leitura` exige CSRF e valida o publico do evento; outro usuario/cadastro nunca vem do cliente. Leitura e pagina usam o mesmo criterio de autorizacao. Links sao construidos no servidor para rotas locais conhecidas. Consultas pontuais de pedidos no administrador/portal permitem abrir itens fora dos limites das listas, com as mesmas verificacoes de papel, cadastro e cadeia.
+
+## Comprovantes dos pagamentos
+
+Em Recebimentos > Pagamentos por referencia > Ver pagamento > Comprovantes, o administrador pode anexar um PDF, PNG ou JPEG de ate 5 MiB. Ha limite de 10 documentos ativos por pagamento. Extensao e assinatura binaria devem ser compativeis; o MIME enviado pelo navegador nao e considerado autoridade. Nome de arquivo e reduzido ao nome base e validado. Arquivos identicos ativos no mesmo pagamento sao bloqueados pelo SHA-256.
+
+Documento, hash, tamanho, tipo, data e usuario autenticado sao armazenados no PostgreSQL, junto aos metadados do pagamento. Nao existe pasta publica de comprovantes nem caminho de arquivo definido pelo cliente. O volume e o backup do PostgreSQL precisam incluir os documentos; o armazenamento pode crescer com o historico.
+
+Retirar de uso exige justificativa e registra responsavel/data, sem apagar conteudo ou historico. O download de documento retirado deixa de estar disponivel. Um arquivo retirado pode ser anexado novamente como novo registro, preservando o anterior. Nao ha descarte automatico nem politica de retencao nesta etapa.
+
+APIs relativas a `/api/conciliacoes/visitas/{id}/recebimentos/pagamentos/{pagamento}/comprovantes`: GET lista metadados; POST multipart `arquivo` anexa; GET `/{comprovante}` baixa como attachment com `nosniff` e `no-store`; POST `/{comprovante}/retirada` recebe `justificativa`. Todas exigem ADMIN, validam cadeia do relatorio e pertencimento do documento ao pagamento. Somente a versao mais recente permite anexar/retirar; versoes anteriores podem consultar documentos ativos. Escritas bloqueiam relatorio e pagamento para evitar concorrencia no limite e duplicidade.
+
+Anexar ou retirar um comprovante nao cria/estorna recebimentos, nao altera valores, nao confirma pagamento e nao envia documentos ao medico. O portal do medico nao recebe metadados ou conteudo dos comprovantes. A verificacao de assinatura nao e antivirus nem analise completa de PDF/imagem; arquivos so devem ser baixados de origens confiaveis, e protecao antimalware e politica de retencao devem ser definidas antes da producao.

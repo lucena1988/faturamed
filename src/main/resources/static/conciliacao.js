@@ -90,6 +90,7 @@ function showReport(id, data, tracking) {
     item.append(number); stats.append(item);
   }
   renderRows();
+  FaturamedLiberacao.carregar(id);
 }
 function renderRows() {
   if (!report) return;

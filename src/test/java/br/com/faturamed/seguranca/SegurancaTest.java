@@ -34,6 +34,18 @@ class SegurancaTest {
         mvc.perform(get("/")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/login.html"));
     }
     @Test void medicoNaoAcessaAdministracao() throws Exception {
+        mvc.perform(get("/api/solicitacoes-medicos").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/ciencias-medicos").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/solicitacoes-medicos/1/resposta").with(user(medico)).with(csrf()).contentType("application/json").content("{\"resposta\":\"Tentativa indevida\"}")) .andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/liberacao").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/conciliacoes/visitas/10/liberacao").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/conciliacoes/visitas/10/recebimentos/pagamentos/55/comprovantes").with(user(medico)).with(csrf())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/recebimentos/pagamentos/55/comprovantes").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/recebimentos/pagamentos/55/comprovantes/1").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/conciliacoes/visitas/10/recebimentos/pagamentos/55/comprovantes/1/retirada").with(user(medico)).with(csrf()).contentType("application/json").content("{\"justificativa\":\"teste\"}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/recebimentos/pagamentos").with(user(medico))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/conciliacoes/visitas/10/recebimentos/pagamentos/55").with(user(medico))).andExpect(status().isForbidden());
         mvc.perform(post("/api/conciliacoes/visitas/10/recebimentos/pagamentos").with(user(medico)).with(csrf()).contentType("application/json").content("{}"))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/conciliacoes/visitas/10/recebimentos").with(user(medico))).andExpect(status().isForbidden());

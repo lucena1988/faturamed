@@ -24,8 +24,8 @@ public class SegurancaConfig {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error").permitAll()
-                .requestMatchers("/api/auth/**", "/conta.html", "/conta.js").authenticated()
-                .requestMatchers("/api/medico/**", "/portal.html", "/portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
+                .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css").authenticated()
+                .requestMatchers("/api/medico/**", "/portal.html", "/portal.js", "/conferencia-portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
                 .requestMatchers("/api/**").hasRole("ADMIN")
                 .anyRequest().hasRole("ADMIN"))
             .requestCache(cache -> cache.disable())

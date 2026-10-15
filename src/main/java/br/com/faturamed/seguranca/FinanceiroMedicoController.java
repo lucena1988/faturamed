@@ -13,9 +13,10 @@ public class FinanceiroMedicoController {
     private final PortalMedicoController portal;
     private final RecebimentoService recebimentos;
     public FinanceiroMedicoController(PortalMedicoController portal,RecebimentoService recebimentos) { this.portal=portal;this.recebimentos=recebimentos; }
+    @org.springframework.transaction.annotation.Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     @GetMapping public List<Saldo> listar(@PathVariable long id,@AuthenticationPrincipal UsuarioAutenticado user) throws Exception {
-        var autorizado=portal.buscar(id,user);Set<Integer> linhas=new HashSet<>();autorizado.visitas().forEach(v->linhas.add(v.linhaMedico()));
-        return recebimentos.listar(id).visitas().stream().filter(v->linhas.contains(v.linha())&&Objects.equals(v.medicoId(),user.medicoId()))
+        var autorizado=portal.buscar(id,user);
+        return FinanceiroPublicado.analisar(autorizado,recebimentos.movimentosDoMedico(id,user.medicoId())).stream()
                 .map(v->new Saldo(v.linha(),v.inconsistente()?null:v.recebido(),v.inconsistente()?null:v.saldo(),v.inconsistente())).toList();
     }
 }

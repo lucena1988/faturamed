@@ -114,3 +114,13 @@
 @media (max-width: 550px) { #review-dialog { padding: 16px; } .review-summary, .review-fields { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .conciliation-form { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 550px) { .conciliation-workspace { padding: 16px; } .conciliation-form { grid-template-columns: 1fr; } .conciliation-heading { align-items: start; flex-direction: column; } }
+.report-release { border-block: 1px solid var(--line); padding: 18px 0; margin: 18px 0; }
+.report-release h2, .report-release h3 { font-size: 18px; }
+#release-fields { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+#release-fields > label:first-child { flex: 1 1 320px; min-width: 0; }
+#release-fields textarea { width: 100%; min-width: 0; min-height: 76px; padding: 10px; font: inherit; background: var(--surface,white); color: var(--text); border: 1px solid var(--line); border-radius: 4px; }
+#release-fields .release-ack { flex-direction: row; align-items: center; max-width: 340px; }
+#release-fields .release-ack[hidden] { display: none; }
+#release-fields .release-ack input { width: 16px; height: 16px; flex: 0 0 16px; }
+#release-history { overflow-wrap: anywhere; white-space: pre-wrap; }
+#release-refresh { margin-top: 12px; }

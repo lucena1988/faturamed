@@ -40,6 +40,7 @@ public class RevisaoVisitasService {
         var ids = jdbc.queryForList("select id from conciliacao_visitas where id = ? for update", Long.class, id);
         if (ids.isEmpty()) throw new RecursoNaoEncontradoException("Relatorio nao encontrado");
         if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",id).isEmpty()) throw new ConflitoRevisaoException("Exclua primeiro a versao mais recente deste relatorio");
+        if(!jdbc.queryForList("select id from liberacao_relatorio where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty())throw new ConflitoRevisaoException("Relatorio possui historico de liberacao e nao pode ser excluido");
         if(!jdbc.queryForList("select id from recebimento_visita where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty()
                 ||!jdbc.queryForList("select id from pagamento_visitas where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty())
             throw new ConflitoRevisaoException("Relatorio possui historico financeiro e nao pode ser excluido, mesmo apos estorno");

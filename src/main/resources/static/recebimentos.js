@@ -14,6 +14,8 @@
   function clearSelection(){selected.clear();selectionChanged();}
   function options(){const current=reportId();$('financial-report').replaceChildren(new Option('Selecione um relatorio',''),...reports.filter(r=>!$('financial-hospital').value||r.hospital===$('financial-hospital').value).map(r=>new Option(`#${r.id} - ${r.hospital}`,r.id)));if([...$('financial-report').options].some(o=>o.value===current))$('financial-report').value=current;}
   function render(){
+    FaturamedDemonstrativo.selecionar(result?reportId():null,$('financial-doctor').value,result?.hospital||'',$('financial-doctor').selectedOptions[0]?.textContent||'');
+    FaturamedConsultaPagamentos.carregar(result?reportId():null,$('financial-doctor').value);
     const visits=(result?.visitas||[]).filter(v=>!$('financial-doctor').value||String(v.medicoId||'sem')===$('financial-doctor').value);
     $('financial-rows').replaceChildren();$('financial-stats').replaceChildren();
     const known=visits.filter(v=>v.faturado!=null),unknown=visits.filter(v=>v.faturado==null).length;

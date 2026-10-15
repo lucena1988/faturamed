@@ -5,7 +5,7 @@
   const fields=['visitaDe','visitaAte','recebimentoDe','recebimentoAte'];let reportId=null,generation=0,controller=null;
   const financialLabels={CONFERENCIA:'Financeiro em conferencia',SEM_FATURAMENTO:'Sem faturamento confirmado',RECEBIDO:'Recebido',PARCIAL:'Recebido parcialmente',A_RECEBER:'A receber'};
   const statusLabels={PAGA:'Faturado',PENDENTE:'Aguardando faturamento',DIVERGENTE:'Divergente'};
-  function clear(){for(const id of ['extrato-visits','extrato-movements','extrato-balances','extrato-movement-stats'])$(id).replaceChildren();$('extrato-scope').textContent='';$('extrato-attention').textContent='';$('extrato-export').hidden=true;}
+  function clear(){for(const id of ['extrato-visits','extrato-movements','extrato-balances','extrato-movement-stats'])$(id).replaceChildren();$('extrato-scope').textContent='';$('extrato-attention').textContent='';$('extrato-export').hidden=true;$('extrato-pdf').hidden=true;}
   function stats(id,entries){for(const [label,value] of entries){const e=node('div',label);e.append(node('strong',format(value)));$(id).append(e);}}
   function row(id,values){const tr=node('tr','');values.forEach((value,i)=>{const td=node('td',value);td.dataset.label=$(id).closest('table').querySelectorAll('th')[i].textContent;tr.append(td);});$(id).append(tr);return tr;}
   async function load(){controller?.abort();controller=new AbortController();const token=++generation;clear();$('extrato-apply').disabled=!reportId;$('extrato-clear').disabled=!reportId;
@@ -23,6 +23,7 @@
       if(!data.visitas.length)row('extrato-visits',['Nenhuma visita.','','','','','','','','']);
       if(!data.movimentos.length)row('extrato-movements',['Nenhum movimento neste periodo.','','','','','','','','']);
       $('extrato-export').href=`/api/medico/relatorios/${reportId}/extrato.xlsx?${params}`;$('extrato-export').hidden=false;
+      $('extrato-pdf').href=`/api/medico/relatorios/${reportId}/demonstrativo.pdf?${params}`;$('extrato-pdf').hidden=false;
     }catch(e){if(token===generation&&e.name!=='AbortError')$('extrato-message').textContent=e.message;}
   }
   $('extrato-filters').onsubmit=e=>{e.preventDefault();load();};$('extrato-clear').onclick=()=>{$('extrato-filters').reset();load();};
