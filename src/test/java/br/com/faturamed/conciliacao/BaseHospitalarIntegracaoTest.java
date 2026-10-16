@@ -2,6 +2,10 @@ package br.com.faturamed.conciliacao;
 
 import static org.assertj.core.api.Assertions.*;
 import br.com.faturamed.seguranca.UsuarioAutenticado;
+import br.com.faturamed.seguranca.LiberacaoRelatorioService;
+import br.com.faturamed.seguranca.PortalMedicoController;
+import br.com.faturamed.seguranca.ExtratoMedicoService;
+import br.com.faturamed.seguranca.ExportadorDemonstrativoPdf;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +27,11 @@ class BaseHospitalarIntegracaoTest {
     @Autowired RevisaoVisitasService revisoes;
     @Autowired RecebimentoService recebimentos;
     @Autowired JdbcTemplate jdbc;
+    @Autowired AcompanhamentoBaseHospitalarService acompanhamento;
+    @Autowired LiberacaoRelatorioService liberacoes;
+    @Autowired PortalMedicoController portal;
+    @Autowired ExtratoMedicoService extratos;
+    @Autowired ExportadorDemonstrativoPdf pdf;
     long hospital, ana, bruno;
     UsuarioAutenticado usuario;
 
@@ -42,6 +51,10 @@ class BaseHospitalarIntegracaoTest {
         return planilha(linhas);
     }
     MockMultipartFile producao() throws Exception { return planilha(List.of(List.of("Atendimento","Dt."),List.of("123","2026-09-01"))); }
+    MockMultipartFile hospitalSituacao(String setor,String valor,String repasse) throws Exception {
+        return planilha(List.of(List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor"),
+                List.of("123","2026-09-01",nome(ana),"101","Visita",valor,"1",repasse,setor)));
+    }
     MockMultipartFile planilha(List<List<String>> linhas) throws Exception {
         try(var workbook=new XSSFWorkbook();var output=new ByteArrayOutputStream()) {
             var sheet=workbook.createSheet("Planilha2");
@@ -288,5 +301,93 @@ class BaseHospitalarIntegracaoTest {
         assertThat(visita.medicoCadastroId()).isEqualTo(ana);
         assertThat(visita.hospital()).isNotNull();
         assertThat(visita.original().getOrDefault("medico","")).isEmpty();
+    }
+
+    @Test void atualizacaoHospitalarMantemIdETransformaPendenteEmFaturada() throws Exception {
+        var original=hospitalSituacao("Em analise","100","100");
+        var arquivoOriginal=service.importarHospital(hospital,"2026-09",original,usuario);
+        var producao=service.importarProducao(hospital,null,"VARIOS","2026-09",producao(),usuario);
+        var primeira=revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst();
+        assertThat(primeira.status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        var resultado=service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
+        assertThat(resultado.atualizadas()).isEqualTo(1);
+        assertThat(resultado.divergencias()).isZero();
+        assertThat(service.visitas(hospital)).hasSize(1);
+        long nova=service.atualizar(producao.relatorioId(),0);
+        var visita=revisoes.carregar(nova).atual().visitas().getFirst();
+        assertThat(visita.hospital().linha()).isEqualTo(primeira.hospital().linha());
+        assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat((byte[])service.arquivo(arquivoOriginal.arquivoId()).get("conteudo")).isEqualTo(original.getBytes());
+        assertThat(service.historico(visita.hospital().linha())).singleElement().satisfies(evento->assertThat(evento.get("decisao")).isEqualTo("ATUALIZACAO_HOSPITALAR"));
+    }
+
+    @Test void atualizacaoNaoEscolheEntreDuasVisitasEquivalentes() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospital(nome(ana),nome(ana)),usuario);
+        var repetida=service.visitas(hospital).stream().filter(visita->visita.get("decisao").equals("EM_ANALISE")).findFirst().orElseThrow();
+        service.decidir(id(repetida),new BaseHospitalarService.Decisao("VISITA_DISTINTA",null,"Duas visitas legitimas distintas",null),usuario);
+        var resultado=service.importarHospital(hospital,"2026-10","ATUALIZAR",hospitalSituacao("Em analise","100","100"),usuario);
+        assertThat(resultado.atualizadas()).isZero();
+        assertThat(resultado.divergencias()).isEqualTo(1);
+    }
+
+    @Test void repeticaoNoArquivoDeAtualizacaoNaoAtualizaOriginal() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
+        var resultado=service.importarHospital(hospital,"2026-09","ATUALIZAR",hospital(nome(ana),nome(ana)),usuario);
+        assertThat(resultado.atualizadas()).isZero();
+        assertThat(resultado.divergencias()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select campos->>'setor' from visita_base_hospitalar where hospital_id=? and decisao='ORIGINAL'",String.class,hospital)).isEqualTo("Em analise");
+    }
+
+    @Test void atualizacaoMantemRevisaoManualESeusValores() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        var decisao=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.MANTER_PENDENTE,null,"Teste","Aguardando apuracao administrativa",0L,null));
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
+        long nova=service.atualizar(producao.relatorioId(),decisao.versao());
+        assertThat(revisoes.carregar(nova).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(revisoes.carregar(nova).historico()).hasSize(1);
+    }
+
+    @Test void diminuicaoDoRepasseNaoApagaRecebimentosESinalizaConferencia() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospital(nome(ana)),usuario);
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        recebimentos.registrar(producao.relatorioId(),2,new RecebimentoService.Dados(new BigDecimal("80"),LocalDate.of(2026,9,2),"Confirmado",0L),usuario);
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","50","50"),usuario);
+        long nova=service.atualizar(producao.relatorioId(),0);
+        assertThat(recebimentos.listar(nova).visitas().getFirst().inconsistente()).isTrue();
+        var resumo=acompanhamento.consultar(hospital);
+        assertThat(resumo.etapas().get(AcompanhamentoBaseHospitalarService.Etapa.EM_CONFERENCIA)).isEqualTo(1);
+        assertThat(resumo.faturado()).isEqualByComparingTo("0");
+    }
+
+    @Test void cicloCompletoPublicaRecebeExportaEEstornaSemDuplicarVersoes() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
+        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_PRODUCAO)).isEqualTo(1);
+        var producao=service.importarProducao(hospital,null,"VARIOS","2026-09",producao(),usuario);
+        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_FATURAMENTO)).isEqualTo(1);
+        var medicoUser=new UsuarioAutenticado(999,"medico@teste.local","Medico","","MEDICO",ana,true,false,0);
+        liberacoes.liberar(producao.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao inicial",true),usuario);
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
+        long nova=service.atualizar(producao.relatorioId(),0);
+        assertThat(portal.buscar(producao.relatorioId(),medicoUser).visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        var visita=revisoes.carregar(nova).atual().visitas().getFirst();
+        var revisao=revisoes.revisar(nova,2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA,visita.hospital().linha(),"Teste","Correspondencia conferida pelo administrador",0L,null));
+        liberacoes.liberar(nova,new LiberacaoRelatorioService.Dados(revisao.versao(),"Faturamento confirmado",false),usuario);
+        assertThat(portal.buscar(nova,medicoUser).visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThatThrownBy(()->portal.buscar(producao.relatorioId(),medicoUser)).isInstanceOf(br.com.faturamed.shared.RecursoNaoEncontradoException.class);
+        recebimentos.registrar(nova,2,new RecebimentoService.Dados(new BigDecimal("40"),LocalDate.of(2026,9,2),"Recebimento parcial",0L),usuario);
+        var resumo=acompanhamento.consultar(hospital);
+        assertThat(resumo.visitasDistintas()).isEqualTo(1);
+        assertThat(resumo.faturado()).isEqualByComparingTo("100");
+        assertThat(resumo.recebido()).isEqualByComparingTo("40");
+        assertThat(resumo.saldo()).isEqualByComparingTo("60");
+        assertThat(resumo.etapas().get(AcompanhamentoBaseHospitalarService.Etapa.RECEBIDO_PARCIALMENTE)).isEqualTo(1);
+        var extrato=extratos.buscar(nova,new ExtratoMedicoService.Filtros(null,null,null,null),medicoUser);
+        assertThat(extrato.resumo().recebidoAcumulado()).isEqualByComparingTo("40");
+        assertThat(pdf.exportar(extrato)).startsWith("%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        var financeiro=recebimentos.listar(nova).visitas().getFirst();
+        recebimentos.estornar(nova,2,financeiro.historico().getFirst().id(),new RecebimentoService.Estorno("Estorno para conferir documentacao",financeiro.versao()),usuario);
+        assertThat(extratos.buscar(nova,new ExtratoMedicoService.Filtros(null,null,null,null),medicoUser).resumo().recebidoAcumulado()).isEqualByComparingTo("0");
+        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO)).isEqualTo(1);
     }
 }

@@ -51,8 +51,13 @@ public class VinculoBaseHospitalar {
                 throw new ConflitoRevisaoException("Resolva a possivel duplicidade na base hospitalar antes de vincular esta visita");
             if(medicoId!=null && visita.medicoCadastroId()!=null && !visita.medicoCadastroId().equals(medicoId))
                 throw new IllegalArgumentException("O medico deve corresponder ao selecionado na importacao da producao");
-            if(medicoId==null && (visita.medicoCadastroId()==null || !visita.medicoCadastroId().equals(cadastroService.identificarNome(visita.hospital().medico(),cadastros))))
-                throw new IllegalArgumentException("Identifique o medico cadastrado da visita e confira o medico hospitalar antes de vincular a producao coletiva");
+            if(medicoId==null) {
+                Long efetivo=cadastroService.identificar(visita,cadastros);
+                Long origem=cadastroService.identificarNome(visita.original().getOrDefault("medico",""),cadastros);
+                if(efetivo==null || !efetivo.equals(cadastroService.identificarNome(visita.hospital().medico(),cadastros))
+                        || visita.camposRevisados()==null && origem!=null && !origem.equals(efetivo))
+                    throw new IllegalArgumentException("Identifique o medico cadastrado da visita e confira o medico hospitalar antes de vincular a producao coletiva");
+            }
         }
         jdbc.update("delete from vinculo_base_hospitalar where relatorio_id=?",relatorioId);
         for(var visita:relatorio.visitas()) if(visita.hospital()!=null) {

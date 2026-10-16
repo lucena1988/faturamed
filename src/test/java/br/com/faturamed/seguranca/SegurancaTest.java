@@ -34,6 +34,7 @@ class SegurancaTest {
         mvc.perform(get("/")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/login.html"));
     }
     @Test void medicoNaoAcessaAdministracao() throws Exception {
+        mvc.perform(get("/api/base-hospitalar/acompanhamento?hospitalId=1").with(user(medico))).andExpect(status().isForbidden());
         mvc.perform(get("/api/base-hospitalar/visitas?hospitalId=1").with(user(medico))).andExpect(status().isForbidden());
         mvc.perform(get("/api/base-hospitalar/arquivos/1/original").with(user(medico))).andExpect(status().isForbidden());
         mvc.perform(post("/api/base-hospitalar/hospital").with(user(medico)).with(csrf())).andExpect(status().isForbidden());

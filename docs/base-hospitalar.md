@@ -37,7 +37,11 @@ Importações e revisões são transacionais e serializadas por hospital. Confli
 
 ## Atualização e financeiro
 
-Atualizar conciliação usa a produção já armazenada e a base atual. Vínculos existentes e decisões manuais são preservados; visitas ainda sem vínculo e sem revisão são recalculadas. Casos revisados precisam de nova decisão manual quando necessário. A atualização mantém a cadeia usada pelos recebimentos e publicações.
+Ao receber um arquivo com mudanças de faturamento, selecione **Atualizar faturamento de visitas existentes** na etapa 1. O sistema atualiza somente identidades únicas por hospital, atendimento, data, cadastro médico, código, procedimento e conta, sem repetição no arquivo ou divergência de duplicidade aberta. O ID e o arquivo original são preservados; o histórico mostra os estados antes e depois e o responsável. Ambiguidades continuam para análise. Use **Novos registros ou reapresentação para análise** quando o objetivo for verificar repetições.
+
+Depois, use **Atualizar conciliação** na produção armazenada. Vínculos automáticos são recalculados com os dados atuais do mesmo ID; assim, uma visita pode passar de PENDENTE para PAGA quando o hospital informar Faturado. Decisões manuais e recebimentos são preservados. Casos revisados precisam de nova decisão manual quando necessário. A atualização mantém a cadeia usada pelos recebimentos e publicações.
+
+O **Acompanhamento por etapa** separa produção, faturamento e recebimento, mostrando cada ID hospitalar uma vez e usando apenas a versão atual de cada produção. Valores desconhecidos ou inconsistentes não são apresentados como saldos confirmados. A fila de cobrança de registros ausentes continua separada, com acesso ao acompanhamento por etapa.
 
 CONCILIADA na base significa vínculo com produção. PAGA no relatório continua significando faturamento hospitalar identificado. Recebimentos reais e estornos continuam sendo registrados em Recebimentos. A publicação anterior continua visível ao médico até uma nova liberação.
 
@@ -49,7 +53,8 @@ Novas produções vinculadas à base não podem ser excluídas pela listagem de 
 
 ## API administrativa
 
-- POST `/api/base-hospitalar/hospital`: multipart `hospitalId`, `competencia` em AAAA-MM e `arquivo`.
+- POST `/api/base-hospitalar/hospital`: multipart `hospitalId`, `competencia` em AAAA-MM, `arquivo` e `modoHospital` (`NOVO` ou `ATUALIZAR`, padrão `NOVO`).
+- GET `/api/base-hospitalar/acompanhamento?hospitalId=...`: etapas e subtotais confirmados, sem somar versões.
 - POST `/api/base-hospitalar/producao`: multipart `hospitalId`, `modoProducao` (`UNICO` ou `VARIOS`, padrão `UNICO`), `competencia` e `arquivo`. `medicoId` é obrigatório no modo individual e não deve ser enviado no coletivo.
 - GET `/api/base-hospitalar/visitas?hospitalId=...`: ocorrências e vínculos.
 - GET `/api/base-hospitalar/arquivos?hospitalId=...`: arquivos e relatório atual de cada produção.

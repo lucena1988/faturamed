@@ -13,7 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class BaseHospitalarService {
-    public record Resultado(long arquivoId, Long relatorioId, int visitas, int divergencias, boolean repetido) {}
+    public record Resultado(long arquivoId, Long relatorioId, int visitas, int divergencias, boolean repetido, int atualizadas) {
+        public Resultado(long arquivoId,Long relatorioId,int visitas,int divergencias,boolean repetido) {
+            this(arquivoId,relatorioId,visitas,divergencias,repetido,0);
+        }
+    }
     public record Decisao(String acao, Integer anteriorId, String justificativa, String evidencia) {}
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
@@ -24,17 +28,25 @@ public class BaseHospitalarService {
     private final IdentificacaoProducaoService identificacao;
     private final VinculoBaseHospitalar vinculos;
     private final RevisaoVisitasService revisoes;
+    private final AtualizacaoHospitalarService atualizacoes;
 
     public BaseHospitalarService(JdbcTemplate jdbc, ObjectMapper json, LeitorPlanilhaVisitas leitor,
             ConciliadorVisitas motor, HospitalCadastroService hospitais, MedicoCadastroService medicos,
-            IdentificacaoProducaoService identificacao, VinculoBaseHospitalar vinculos, RevisaoVisitasService revisoes) {
+            IdentificacaoProducaoService identificacao, VinculoBaseHospitalar vinculos, RevisaoVisitasService revisoes, AtualizacaoHospitalarService atualizacoes) {
         this.jdbc=jdbc; this.json=json; this.leitor=leitor; this.motor=motor; this.hospitais=hospitais;
         this.medicos=medicos; this.identificacao=identificacao; this.vinculos=vinculos;
         this.revisoes=revisoes;
+        this.atualizacoes=atualizacoes;
     }
 
     @Transactional(rollbackFor=Exception.class)
     public Resultado importarHospital(long hospitalId, String competencia, MultipartFile arquivo, UsuarioAutenticado usuario) throws Exception {
+        return importarHospital(hospitalId,competencia,"NOVO",arquivo,usuario);
+    }
+
+    @Transactional(rollbackFor=Exception.class)
+    public Resultado importarHospital(long hospitalId,String competencia,String modoHospital,MultipartFile arquivo,UsuarioAutenticado usuario) throws Exception {
+        if(!List.of("NOVO","ATUALIZAR").contains(Objects.toString(modoHospital,""))) throw new IllegalArgumentException("Modo hospitalar invalido");
         validarHospital(hospitalId); validarCompetencia(competencia); vinculos.bloquear(hospitalId);
         var linhas=leitor.ler(arquivo,true);
         var registros=motor.conciliar("Base", "", arquivo.getOriginalFilename(), List.of(), linhas).hospitalSemProducao();
@@ -42,21 +54,28 @@ public class BaseHospitalarService {
         var repetidos=jdbc.queryForList("select id from arquivo_base_hospitalar where hospital_id=? and tipo='HOSPITAL' and competencia=? and hash=?",hospitalId,competencia,hash);
         if(!repetidos.isEmpty()) return new Resultado(((Number)repetidos.getFirst().get("id")).longValue(),null,0,0,true);
         long arquivoId=salvarArquivo(hospitalId,"HOSPITAL",null,competencia,arquivo,hash,usuario.id());
-        int divergencias=0;
+        jdbc.update("update arquivo_base_hospitalar set modo_hospital=? where id=?",modoHospital,arquivoId);
+        int divergencias=0,atualizadas=0;
+        Map<Integer,LeitorPlanilhaVisitas.Linha> origens=new HashMap<>();
+        linhas.forEach(linha->origens.put(linha.numero(),linha));
         var cadastros=medicos.listar();
         for(var registro:registros) {
             if(registro.data()==null) throw new IllegalArgumentException("Data da visita ausente na linha "+registro.linha());
+            var linha=origens.get(registro.linha());
+            if(modoHospital.equals("ATUALIZAR") && atualizacoes.aplicar(hospitalId,arquivoId,linha,registro,registros,cadastros,usuario.id())) {
+                atualizadas++;
+                continue;
+            }
             var anteriores=jdbc.queryForList("select id,medico_nome from visita_base_hospitalar where hospital_id=? and atendimento=? and data_visita=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId,registro.atendimento(),registro.data());
             var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),anterior.get("medico_nome").toString(),cadastros)).toList();
             Integer anteriorId=semelhantes.isEmpty()?null:((Number)semelhantes.getFirst().get("id")).intValue();
             if(anteriorId!=null) divergencias++;
-            var linha=linhas.stream().filter(origem->origem.numero()==registro.linha()).findFirst().orElseThrow();
             jdbc.update("""
-                    insert into visita_base_hospitalar(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_nome,campos,anterior_id,decisao)
-                    values(?,?,?,?,?,?,?::jsonb,?,?)
-                    """,arquivoId,hospitalId,registro.linha(),registro.atendimento(),registro.data(),registro.medico(),json.writeValueAsString(linha.campos()),anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE");
+                    insert into visita_base_hospitalar(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_nome,campos,anterior_id,decisao,arquivo_atual_id,linha_atual)
+                    values(?,?,?,?,?,?,?::jsonb,?,?,?,?)
+                    """,arquivoId,hospitalId,registro.linha(),registro.atendimento(),registro.data(),registro.medico(),json.writeValueAsString(linha.campos()),anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE",arquivoId,registro.linha());
         }
-        return new Resultado(arquivoId,null,registros.size(),divergencias,false);
+        return new Resultado(arquivoId,null,registros.size(),divergencias,false,atualizadas);
     }
 
     @Transactional(rollbackFor=Exception.class)
@@ -183,10 +202,13 @@ public class BaseHospitalarService {
         estado.historico().forEach(revisao->revisadas.add(revisao.linhaMedico()));
         Map<Integer,ConciliadorVisitas.Visita> anteriores=new HashMap<>();
         estado.atual().visitas().forEach(visita->anteriores.put(visita.linhaMedico(),visita));
-        var visitas=calculado.visitas().stream().map(visita->{
+        List<ConciliadorVisitas.Visita> visitas=new ArrayList<>();
+        for(var visita:calculado.visitas()) {
             var anterior=anteriores.get(visita.linhaMedico());
-            return anterior.hospital()!=null || revisadas.contains(visita.linhaMedico()) ? anterior : visita;
-        }).toList();
+            if(revisadas.contains(visita.linhaMedico())) visitas.add(anterior);
+            else if(anterior.hospital()!=null) visitas.add(atualizarVinculada(estado.original(),anterior));
+            else visitas.add(visita);
+        }
         var relatorio=new AplicadorRevisaoVisita().recalcular(calculado,visitas);
         long novoId=jdbc.queryForObject("insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,medico_producao_id,base_hospitalar) values(?::jsonb,?,?,?,?,true) returning id",Long.class,json.writeValueAsString(relatorio),relatorioId,((Number)linhas.getFirst().get("numero_versao")).intValue()+1,arquivo.get("hash"),medicoId);
         jdbc.update("insert into revisao_visita(conciliacao_id,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em) select ?,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em from revisao_visita where conciliacao_id=? order by id",novoId,relatorioId);
@@ -196,15 +218,24 @@ public class BaseHospitalarService {
         return novoId;
     }
 
+    private ConciliadorVisitas.Visita atualizarVinculada(ConciliadorVisitas.Relatorio relatorio,ConciliadorVisitas.Visita anterior) throws Exception {
+        int id=anterior.hospital().linha();
+        String campos=jdbc.queryForObject("select campos::text from visita_base_hospitalar where id=?",String.class,id);
+        var hospital=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<Map<String,String>>(){}));
+        Long medico=medicos.identificar(anterior,medicos.listar());
+        return identificacao.conciliar(relatorio.hospital(),relatorio.arquivoMedico(),"Base hospitalar",
+                List.of(new LeitorPlanilhaVisitas.Linha(anterior.linhaMedico(),anterior.original())),List.of(hospital),medico).visitas().getFirst();
+    }
+
     @Transactional(readOnly=true)
     public List<Map<String,Object>> arquivos(long hospitalId) {
-        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
+        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
     }
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> visitas(long hospitalId) {
         return jdbc.queryForList("""
-                select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,
+                select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,v.arquivo_atual_id,v.linha_atual,
                 b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,
                 case when v.decisao='EM_ANALISE' then 'DIVERGENTE'
                      when v.decisao='DUPLICADO_PAGO_OUTRO_MES' then 'DUPLICADO_PAGO_OUTRO_MES'
@@ -222,7 +253,17 @@ public class BaseHospitalarService {
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> historico(int visitaId) {
-        return jdbc.queryForList("select r.id,r.decisao,r.anterior_id,r.justificativa,r.evidencia,r.criado_em,u.nome as responsavel from revisao_base_hospitalar r join usuario_acesso u on u.id=r.usuario_id where visita_id=? order by r.id",visitaId);
+        return jdbc.queryForList("""
+                select r.id,r.decisao,r.anterior_id,r.justificativa,r.evidencia,r.criado_em,u.nome as responsavel
+                from revisao_base_hospitalar r join usuario_acesso u on u.id=r.usuario_id where visita_id=?
+                union all
+                select a.id,'ATUALIZACAO_HOSPITALAR',null,
+                'Setor: ' || coalesce(a.antes->>'setor','') || ' -> ' || coalesce(a.depois->>'setor','') ||
+                '; repasse: ' || coalesce(a.antes->>'vl. a repassar','Nao informado') || ' -> ' || coalesce(a.depois->>'vl. a repassar','Nao informado'),
+                'Arquivo ' || a.arquivo_id || ', linha ' || a.linha,a.criado_em,u.nome
+                from atualizacao_visita_hospitalar a join usuario_acesso u on u.id=a.usuario_id where visita_id=?
+                order by criado_em,id
+                """,visitaId,visitaId);
     }
 
     @Transactional(rollbackFor=Exception.class)

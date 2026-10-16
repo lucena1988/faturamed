@@ -207,13 +207,15 @@ Uma visita já associada mantém sua reserva para o histórico da produção ori
 
 ### 3.8 Atualizar um relatório com a base atual
 
-1. Importe os novos dados hospitalares e examine possíveis repetições.
+1. Na etapa **1 Importar hospital**, selecione **Atualizar faturamento de visitas existentes**, informe a competência e envie a planilha atualizada. Confira quantas visitas mantiveram o ID e quais precisam de análise.
 2. Em **Arquivos armazenados**, localize a produção original.
 3. Clique em **Atualizar conciliação** e confirme.
 4. Abra a nova versão e revise o resultado.
 5. Libere novamente para o médico quando estiver pronta.
 
-A atualização utiliza a produção armazenada e a base atual. Preserva vínculos, decisões manuais e recebimentos e reavalia as visitas ainda sem vínculo e sem revisão. Casos já revisados podem precisar de nova revisão manual.
+A atualização utiliza a produção armazenada e os dados atuais do mesmo ID hospitalar. Uma visita automática pendente pode passar a PAGA quando o hospital informar Faturado e os dados forem consistentes. Decisões manuais e recebimentos são preservados; casos já revisados podem precisar de nova revisão manual. Confira e libere novamente para o médico.
+
+Em **Acompanhamento por etapa**, consulte separadamente as visitas aguardando produção, aguardando faturamento, faturadas sem recebimento, parcialmente recebidas, sem saldo ou em conferência. O quadro usa apenas as versões atuais e mantém as ocorrências duplicadas fora dos totais confirmados.
 
 Não reimporte a produção em outra competência apenas para atualizar o relatório. Use a ação na produção original para manter a sequência de versões.
 

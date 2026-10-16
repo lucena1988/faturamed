@@ -15,6 +15,20 @@ Definicao de negocio registrada em 15/10/2026. A implementacao da base hospitala
 5. Buscar a visita hospitalar correspondente e vincular a linha da producao ao ID interno existente, preservando ambas as fontes.
 6. Conciliar automaticamente somente quando houver uma correspondencia unica e segura. Encaminhar ambiguidades, conflitos e possiveis duplicidades para revisao administrativa.
 
+### Atualizacao do faturamento hospitalar
+
+A importacao hospitalar possui finalidade NOVO ou ATUALIZAR, selecionada pelo administrador. NOVO preserva a deteccao de repeticoes. ATUALIZAR permite alterar os dados hospitalares de uma visita existente quando hospital, atendimento, data, medico cadastrado, codigo, procedimento e conta identificam exatamente uma visita, sem duplicidade em analise e sem repetir essa identidade no arquivo recebido.
+
+A atualizacao segura mantem o ID e o arquivo original, armazena o novo arquivo e registra linha, responsavel e estados antes e depois. Identidade ambigua, medico nao identificado ou repeticao nao e resolvida por escolha arbitraria; a ocorrencia continua para analise. Visitas realmente novas podem ser acrescentadas pelo mesmo arquivo.
+
+Depois da importacao hospitalar, Atualizar conciliacao cria uma nova versao: vinculos automaticos sao reavaliados com os dados atuais do mesmo ID, incluindo a passagem de PENDENTE para PAGA quando o setor passa a Faturado e os dados sao consistentes. Decisoes manuais e recebimentos sao preservados. A publicacao anterior permanece no portal ate nova liberacao.
+
+Mudancas financeiras nao criam nem apagam recebimentos. Se o novo repasse deixar o recebido maior que o faturado, o financeiro exige conferencia e os subtotais confirmados nao tratam esse caso como saldo validado.
+
+### Acompanhamento por etapa
+
+A base apresenta visitas hospitalares distintas por etapa: aguardando producao, aguardando faturamento, faturado sem recebimento, recebido parcialmente, sem saldo a receber e em conferencia. Cada ID aparece uma vez, consultando somente o relatorio atual de cada producao. Repeticoes em analise e duplicadas confirmadas sao contadas separadamente, sem duplicar os totais financeiros. Producao sem registro hospitalar tambem e contada separadamente e permanece na fila de cobranca de registros ausentes.
+
 ### Identidade da visita
 
 O numero do atendimento identifica o atendimento hospitalar, mas nao identifica sozinho uma visita. Um atendimento pode conter visitas em datas diferentes e de medicos diferentes, inclusive na mesma data.

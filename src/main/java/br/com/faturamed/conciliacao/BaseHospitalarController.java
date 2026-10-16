@@ -12,12 +12,15 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/base-hospitalar")
 public class BaseHospitalarController {
     private final BaseHospitalarService service;
-    public BaseHospitalarController(BaseHospitalarService service) { this.service=service; }
+    private final AcompanhamentoBaseHospitalarService acompanhamento;
+    public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento) { this.service=service; this.acompanhamento=acompanhamento; }
+    @GetMapping("/acompanhamento")
+    public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId) throws Exception { return acompanhamento.consultar(hospitalId); }
 
     @PostMapping(value="/hospital",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado hospital(@RequestParam long hospitalId,@RequestParam String competencia,
-            @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
-        return service.importarHospital(hospitalId,competencia,arquivo,usuario);
+            @RequestParam(defaultValue="NOVO") String modoHospital,@RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
+        return service.importarHospital(hospitalId,competencia,modoHospital,arquivo,usuario);
     }
     @PostMapping(value="/producao",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado producao(@RequestParam long hospitalId,@RequestParam(required=false) Long medicoId,
