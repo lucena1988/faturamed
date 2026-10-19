@@ -210,3 +210,9 @@ Exemplos:
 - produzido sem faturamento: valor esperado de faturamento
 - quantidade divergente: diferenca entre valor faturado e valor esperado
 - valor divergente: diferenca absoluta entre os valores
+
+## Duplicidade na mesma competência
+
+Na base hospitalar, use **Duplicidade confirmada na mesma competência** para uma ocorrência repetida que não representa outra visita. Informe o ID original e uma justificativa. O sistema exige o mesmo hospital, atendimento, data, médico e competência, preserva a ocorrência e registra usuário e horário no histórico.
+
+A ocorrência confirmada fica excluída dos totais e dos candidatos à conciliação, sem registrar recebimento ou estorno e sem exigir pagamento anterior. A visita original mantém seu ID. Outras repetições ainda em análise continuam bloqueando novos vínculos até serem analisadas individualmente. Depois, use **Atualizar conciliação** na produção para reavaliar linhas não revisadas; decisões manuais são preservadas.

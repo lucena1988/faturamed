@@ -91,6 +91,44 @@ class BaseHospitalarIntegracaoTest {
         assertThat(service.importarProducao(hospital,ana,"2026-09",producao,usuario).relatorioId()).isEqualTo(primeira.relatorioId());
     }
 
+    @Test void duplicidadeNaMesmaCompetenciaPreservaOriginalEHistoricoSemExigirPagamento() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospital(nome(ana),nome(ana)),usuario);
+        var repetida=service.visitas(hospital).stream().filter(visita->visita.get("decisao").equals("EM_ANALISE")).findFirst().orElseThrow();
+        int original=((Number)repetida.get("anterior_id")).intValue();
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
+        service.decidir(id(repetida),new BaseHospitalarService.Decisao("DUPLICADO_MESMA_COMPETENCIA",original,"Repeticao confirmada no mesmo arquivo",null),usuario);
+        assertThat(service.historico(id(repetida))).singleElement().satisfies(item->{
+            assertThat(item.get("decisao")).isEqualTo("DUPLICADO_MESMA_COMPETENCIA");
+            assertThat(item.get("anterior_id")).isEqualTo(original);
+            assertThat(item.get("responsavel")).isNotNull();
+        });
+        assertThat(service.visitas(hospital)).anySatisfy(item->assertThat(item.get("situacao")).isEqualTo("DUPLICADO_MESMA_COMPETENCIA"));
+        long nova=service.atualizar(producao.relatorioId(),0);
+        assertThat(revisoes.carregar(nova).atual().visitas().getFirst().hospital().linha()).isEqualTo(original);
+        var resumo=acompanhamento.consultar(hospital);
+        assertThat(resumo.visitasDistintas()).isEqualTo(1);
+        assertThat(resumo.duplicadas()).isEqualTo(1);
+        assertThat(resumo.ocorrenciasEmAnalise()).isZero();
+        assertThat(resumo.faturado()).isEqualByComparingTo("100");
+        assertThat(resumo.recebido()).isEqualByComparingTo("0");
+        assertThatThrownBy(()->service.decidir(id(repetida),new BaseHospitalarService.Decisao("VISITA_DISTINTA",null,"Nova tentativa indevida",null),usuario)).isInstanceOf(ConflitoRevisaoException.class);
+    }
+
+    @Test void duplicidadeNaMesmaCompetenciaRejeitaMesDiferenteEOriginalIncompativel() throws Exception {
+        var arquivo=hospital(nome(ana),nome(bruno));
+        service.importarHospital(hospital,"2026-09",arquivo,usuario);
+        service.importarHospital(hospital,"2026-10",arquivo,usuario);
+        var visitas=service.visitas(hospital);
+        var repetida=visitas.stream().filter(item->item.get("decisao").equals("EM_ANALISE") && item.get("medico_nome").equals(nome(ana))).findFirst().orElseThrow();
+        int original=((Number)repetida.get("anterior_id")).intValue();
+        int outro=id(visitas.stream().filter(item->item.get("decisao").equals("ORIGINAL") && item.get("medico_nome").equals(nome(bruno))).findFirst().orElseThrow());
+        assertThatThrownBy(()->service.decidir(id(repetida),new BaseHospitalarService.Decisao("DUPLICADO_MESMA_COMPETENCIA",original,"Repeticao confirmada",null),usuario)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("competencias iguais");
+        assertThatThrownBy(()->service.decidir(id(repetida),new BaseHospitalarService.Decisao("DUPLICADO_MESMA_COMPETENCIA",outro,"Repeticao confirmada",null),usuario)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("medico");
+        assertThatThrownBy(()->service.decidir(id(repetida),new BaseHospitalarService.Decisao("DUPLICADO_MESMA_COMPETENCIA",null,"Repeticao confirmada",null),usuario)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("ID original");
+        assertThat(service.historico(id(repetida))).isEmpty();
+    }
+
     @Test void repeticaoEmOutroMesExigeDecisaoENaoDuplicaRecebimentos() throws Exception {
         var arquivo=hospital(nome(ana));
         service.importarHospital(hospital,"2026-09",arquivo,usuario);

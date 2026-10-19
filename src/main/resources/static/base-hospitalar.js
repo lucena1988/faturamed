@@ -1,6 +1,6 @@
 (() => {
   const find = id => document.getElementById(id);
-  const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês'};
+  const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
   let visits = [], generation = 0, selectedVisit, busy = false, flow = null;
   const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',FATURADO_SEM_RECEBIMENTO:'Faturado sem recebimento',RECEBIDO_PARCIALMENTE:'Recebido parcialmente',SEM_SALDO:'Sem saldo a receber',EM_CONFERENCIA:'Em conferência'};
@@ -108,10 +108,12 @@
   }
   function updateDecision() {
     const duplicate = find('decision-action').value === 'DUPLICADO_PAGO_OUTRO_MES';
-    for (const name of ['anteriorId','evidencia']) {
-      const field = find('decision-form').elements.namedItem(name); field.required = duplicate; field.disabled = !duplicate;
-    }
-    find('original-label').hidden = !duplicate; find('evidence-label').hidden = !duplicate;
+    const original = duplicate || find('decision-action').value === 'DUPLICADO_MESMA_COMPETENCIA';
+    const originalField = find('decision-form').elements.namedItem('anteriorId');
+    originalField.required = original; originalField.disabled = !original;
+    const evidenceField = find('decision-form').elements.namedItem('evidencia');
+    evidenceField.required = duplicate; evidenceField.disabled = !duplicate;
+    find('original-label').hidden = !original; find('evidence-label').hidden = !duplicate;
   }
   function openDecision(visit) {
     selectedVisit = visit; find('decision-form').reset();

@@ -34,7 +34,7 @@ public class AcompanhamentoBaseHospitalarService {
         long emAnalise=0,duplicadas=0;
         for(var visita:base.visitas(hospitalId)) {
             if(visita.get("decisao").equals("EM_ANALISE")) { emAnalise++; continue; }
-            if(visita.get("decisao").equals("DUPLICADO_PAGO_OUTRO_MES")) { duplicadas++; continue; }
+            if(Set.of("DUPLICADO_PAGO_OUTRO_MES","DUPLICADO_MESMA_COMPETENCIA").contains(visita.get("decisao"))) { duplicadas++; continue; }
             int id=((Number)visita.get("id")).intValue();
             Long relatorio=visita.get("relatorio_id")==null?null:((Number)visita.get("relatorio_id")).longValue();
             Integer linha=visita.get("linha_producao")==null?null:((Number)visita.get("linha_producao")).intValue();

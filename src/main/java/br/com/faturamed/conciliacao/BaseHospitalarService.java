@@ -238,7 +238,7 @@ public class BaseHospitalarService {
                 select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,v.arquivo_atual_id,v.linha_atual,
                 b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,
                 case when v.decisao='EM_ANALISE' then 'DIVERGENTE'
-                     when v.decisao='DUPLICADO_PAGO_OUTRO_MES' then 'DUPLICADO_PAGO_OUTRO_MES'
+                     when v.decisao in ('DUPLICADO_PAGO_OUTRO_MES','DUPLICADO_MESMA_COMPETENCIA') then v.decisao
                      when b.visita_id is not null and coalesce(
                          (select depois->>'status' from revisao_visita where conciliacao_id=b.relatorio_id and linha_medico=b.linha_producao order by id desc limit 1),
                          (select item->>'status' from jsonb_array_elements(r.relatorio->'visitas') item where (item->>'linhaMedico')::integer=b.linha_producao))='DIVERGENTE' then 'DIVERGENTE'
@@ -268,7 +268,7 @@ public class BaseHospitalarService {
 
     @Transactional(rollbackFor=Exception.class)
     public void decidir(int visitaId, Decisao dados, UsuarioAutenticado usuario) {
-        if(dados==null || !List.of("VISITA_DISTINTA","DUPLICADO_PAGO_OUTRO_MES").contains(Objects.toString(dados.acao(),""))) throw new IllegalArgumentException("Decisao invalida");
+        if(dados==null || !List.of("VISITA_DISTINTA","DUPLICADO_PAGO_OUTRO_MES","DUPLICADO_MESMA_COMPETENCIA").contains(Objects.toString(dados.acao(),""))) throw new IllegalArgumentException("Decisao invalida");
         validarTexto(dados.justificativa(),"Justificativa");
         var registros=jdbc.queryForList("select * from visita_base_hospitalar where id=?",visitaId);
         if(registros.isEmpty()) throw new RecursoNaoEncontradoException("Visita nao encontrada");
@@ -278,8 +278,10 @@ public class BaseHospitalarService {
         if(!visita.get("decisao").equals("EM_ANALISE")) throw new ConflitoRevisaoException("Esta ocorrencia ja foi analisada. Atualize a base");
         String evidencia=Objects.toString(dados.evidencia(),"").trim();
         Integer anteriorId=dados.anteriorId();
-        if(dados.acao().equals("DUPLICADO_PAGO_OUTRO_MES")) {
-            validarTexto(evidencia,"Evidencia do pagamento anterior");
+        boolean mesmoMes=dados.acao().equals("DUPLICADO_MESMA_COMPETENCIA");
+        if(mesmoMes || dados.acao().equals("DUPLICADO_PAGO_OUTRO_MES")) {
+            if(!mesmoMes) validarTexto(evidencia,"Evidencia do pagamento anterior");
+            else evidencia="";
             if(anteriorId==null || anteriorId==visitaId) throw new IllegalArgumentException("Informe o ID original da visita");
             var anteriores=jdbc.queryForList("select v.*,a.competencia from visita_base_hospitalar v join arquivo_base_hospitalar a on a.id=v.arquivo_id where v.id=? and v.hospital_id=? and v.decisao in ('ORIGINAL','VISITA_DISTINTA')",anteriorId,hospitalId);
             if(anteriores.isEmpty()) throw new IllegalArgumentException("Visita original invalida ou de outro hospital");
@@ -288,7 +290,8 @@ public class BaseHospitalarService {
                     || !mesmoMedico(anterior.get("medico_nome").toString(),visita.get("medico_nome").toString(),medicos.listar()))
                 throw new IllegalArgumentException("Confira atendimento, data e medico da visita original");
             String competencia=jdbc.queryForObject("select competencia from arquivo_base_hospitalar where id=?",String.class,visita.get("arquivo_id"));
-            if(competencia.equals(anterior.get("competencia"))) throw new IllegalArgumentException("Pago em outro mes exige competencias diferentes");
+            if(mesmoMes && !competencia.equals(anterior.get("competencia"))) throw new IllegalArgumentException("Duplicidade na mesma competencia exige competencias iguais");
+            if(!mesmoMes && competencia.equals(anterior.get("competencia"))) throw new IllegalArgumentException("Pago em outro mes exige competencias diferentes");
         } else anteriorId=null;
         jdbc.update("insert into revisao_base_hospitalar(visita_id,anterior_id,decisao,justificativa,evidencia,usuario_id) values(?,?,?,?,?,?)",visitaId,anteriorId,dados.acao(),dados.justificativa().trim(),evidencia,usuario.id());
         jdbc.update("update visita_base_hospitalar set decisao=?,anterior_id=? where id=?",dados.acao(),anteriorId,visitaId);
