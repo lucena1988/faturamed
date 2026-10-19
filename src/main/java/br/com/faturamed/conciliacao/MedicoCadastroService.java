@@ -59,7 +59,10 @@ public class MedicoCadastroService {
 
     public Long identificar(ConciliadorVisitas.Visita v, List<Medico> medicos) {
         if(v.medicoCadastroId()!=null) return v.medicoCadastroId();
-        String nome=LeitorPlanilhaVisitas.normalizar(v.medicoEfetivo());
+        return identificarNome(v.medicoEfetivo(),medicos);
+    }
+    public Long identificarNome(String valor, List<Medico> medicos) {
+        String nome=LeitorPlanilhaVisitas.normalizar(valor);
         if(nome.isBlank()) return null;
         var candidatos=medicos.stream().filter(Medico::ativo).filter(m->LeitorPlanilhaVisitas.normalizar(m.nome()).equals(nome)
                 || m.aliases().stream().anyMatch(a->LeitorPlanilhaVisitas.normalizar(a).equals(nome))).toList();

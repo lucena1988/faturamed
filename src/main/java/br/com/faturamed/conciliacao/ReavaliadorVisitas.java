@@ -16,7 +16,9 @@ public class ReavaliadorVisitas {
         Map<Integer, List<ConciliadorVisitas.RegistroHospital>> disponiveis = new LinkedHashMap<>();
         Map<Integer, Integer> disputas = new HashMap<>();
         for (var v : visitas) if (v.hospital() == null && v.atendimento().equals(atendimento)) {
-            var candidatos = aplicador.candidatos(base, atendimento, v.data()).stream()
+            var dados=new HashMap<>(v.original());
+            if(v.medicoProducao()!=null && !v.medicoProducao().conflito()) dados.put("medico",v.medicoProducao().nome());
+            var candidatos = ConciliadorVisitas.refinar(aplicador.candidatos(base, atendimento, v.data()), dados).stream()
                     .filter(h -> !ocupados.contains(h.linha())).toList();
             disponiveis.put(v.linhaMedico(), candidatos);
             candidatos.forEach(h -> disputas.merge(h.linha(), 1, Integer::sum));
@@ -25,6 +27,7 @@ public class ReavaliadorVisitas {
         for (var v : visitas) {
             var candidatos = disponiveis.getOrDefault(v.linhaMedico(), List.of());
             if (revisadas.contains(v.linhaMedico()) || v.camposRevisados() != null
+                    || v.medicoProducao()!=null && v.medicoProducao().conflito()
                     || v.status() != ConciliadorVisitas.Status.DIVERGENTE || candidatos.size() != 1) continue;
             var h = candidatos.getFirst();
             if (disputas.get(h.linha()) == 1 && seguro(v, h)) propostas.put(v.linhaMedico(), h);
@@ -39,12 +42,15 @@ public class ReavaliadorVisitas {
                 .compareTo(new BigDecimal("0.01")) > 0) return false;
         var dados = visita.original();
         String medico = dados.getOrDefault("medico", "");
+        if(visita.medicoProducao()!=null && !visita.medicoProducao().conflito()) medico=visita.medicoProducao().nome();
         String procedimento = dados.getOrDefault("procedimento/mat-med", "");
         String valor = dados.getOrDefault("valor orig", "");
+        String codigo = LeitorPlanilhaVisitas.identificador(dados.getOrDefault("cod produto", ""));
+        if (!codigo.isBlank() && !codigo.equals(h.codigo())) return false;
         if (!medico.isBlank() && !LeitorPlanilhaVisitas.normalizar(medico).equals(LeitorPlanilhaVisitas.normalizar(h.medico()))) return false;
         if (!procedimento.isBlank() && !procedimento.equals(h.codigo())
                 && !LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(h.procedimento()))) return false;
-        try { return valor.isBlank() || new BigDecimal(valor).compareTo(h.valorTotal()) == 0; }
+        try { return valor.isBlank() || new BigDecimal(valor).signum() == 0 || new BigDecimal(valor).compareTo(h.valorTotal()) == 0; }
         catch (NumberFormatException e) { return false; }
     }
 }

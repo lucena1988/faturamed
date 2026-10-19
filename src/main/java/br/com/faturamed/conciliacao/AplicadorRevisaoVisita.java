@@ -73,7 +73,8 @@ public class AplicadorRevisaoVisita {
             throw new IllegalArgumentException("Dados ajustados exigem a acao AJUSTAR_DADOS");
         }
         var revisada = new ConciliadorVisitas.Visita(original.linhaMedico(), atendimento, data,
-                status, motivo, original.original(), hospital, candidatos, campos);
+                status, motivo, original.original(), hospital, candidatos, campos,
+                request.acao()==RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA?null:original.medicoProducao());
         if (status == ConciliadorVisitas.Status.PAGA && (hospital == null
                 || !LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
                 || revisada.medicoEfetivo().isBlank() || revisada.procedimentoEfetivo().isBlank()
