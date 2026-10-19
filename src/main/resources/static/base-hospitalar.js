@@ -7,7 +7,13 @@
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
   function link(text, href) { const item = element('a', text); item.href = href; return item; }
-  function button(text, action) { const item = element('button', text); item.type = 'button'; item.addEventListener('click', () => action().catch(error => { find('message').textContent = error.message; })); return item; }
+  function showMessage(type, ...nodes) {
+    const box = find('message');
+    box.dataset.type = type;
+    box.replaceChildren(...nodes.map(node => typeof node === 'string' ? element('span', node) : node));
+    box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+  function button(text, action) { const item = element('button', text); item.type = 'button'; item.addEventListener('click', () => action().catch(error => showMessage('error', error.message))); return item; }
   function renderVisits() {
     const filtered = visits.filter(visit => (!find('status').value || visit.situacao === find('status').value) && visit.atendimento.includes(find('search').value.trim()));
     find('visits').replaceChildren();
@@ -46,7 +52,7 @@
           await perform(async () => {
             const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
             const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});
-            find('message').replaceChildren(element('span', 'Nova versão criada. Confira e libere novamente para o médico. '), link('Abrir relatório', `/conciliacao.html?relatorio=${result.id}`));
+            showMessage('success', 'Nova versão criada. Confira e libere novamente para o médico. ', link('Abrir relatório', `/conciliacao.html?relatorio=${result.id}`));
             await load();
           });
         }));
@@ -61,22 +67,77 @@
     try { await action(); }
     finally { busy = false; document.querySelectorAll('button, input, select, textarea').forEach(control => { control.disabled = false; }); updateDecision(); updateProduction(); }
   }
+  function normalizarCompetencia(raw) {
+    if (!raw) return null;
+    const str = raw.trim();
+    if (!str) return null;
+    if (/^(19|20)\d{2}-\d{2}$/.test(str)) {
+      const mes = Number(str.slice(5, 7));
+      if (mes >= 1 && mes <= 12) return str;
+      return null;
+    }
+    if (/^(19|20)\d{2}\/\d{2}$/.test(str)) {
+      const mes = Number(str.slice(5, 7));
+      if (mes >= 1 && mes <= 12) return str.replace('/', '-');
+      return null;
+    }
+    const mmYyyy = str.match(/^(\d{1,2})[\/\-]((?:19|20)\d{2})$/);
+    if (mmYyyy) {
+      const mes = Number(mmYyyy[1]);
+      if (mes >= 1 && mes <= 12) {
+        return `${mmYyyy[2]}-${String(mes).padStart(2, '0')}`;
+      }
+      return null;
+    }
+    const meses = {
+      'jan': '01', 'janeiro': '01',
+      'fev': '02', 'fevereiro': '02',
+      'mar': '03', 'marco': '03', 'março': '03',
+      'abr': '04', 'abril': '04',
+      'mai': '05', 'maio': '05',
+      'jun': '06', 'junho': '06',
+      'jul': '07', 'julho': '07',
+      'ago': '08', 'agosto': '08',
+      'set': '09', 'setembro': '09',
+      'out': '10', 'outubro': '10',
+      'nov': '11', 'novembro': '11',
+      'dez': '12', 'dezembro': '12'
+    };
+    const lower = str.toLowerCase();
+    for (const [nome, num] of Object.entries(meses)) {
+      if (lower.startsWith(nome)) {
+        const anoMatch = lower.match(/\b((?:19|20)\d{2})\b/);
+        if (anoMatch) return `${anoMatch[1]}-${num}`;
+      }
+    }
+    return null;
+  }
   for (const [formId, endpoint] of [['hospital-form','hospital'], ['production-form','producao']]) find(formId).addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget, data = new FormData(form);
-    if (!find('hospital').value) { find('message').textContent = 'Cadastre e selecione um hospital ativo.'; return; }
+    if (!find('hospital').value) { showMessage('error', 'Cadastre e selecione um hospital ativo.'); return; }
+    const rawCompetencia = data.get('competencia');
+    const compNormalizada = normalizarCompetencia(rawCompetencia);
+    if (!compNormalizada) {
+      showMessage('error', 'Formato inválido. Informe a competência no formato AAAA / MM (ex: 2026/01).');
+      const input = form.querySelector('[name=competencia]');
+      if (input) input.focus();
+      return;
+    }
+    data.set('competencia', compNormalizada);
     data.set('hospitalId', find('hospital').value);
     try {
       await perform(async () => {
-        find('message').textContent = 'Processando arquivo. Aguarde a confirmação.';
+        showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
         const result = await request(`/api/base-hospitalar/${endpoint}`, {method:'POST', body:data});
         const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} visitas atualizadas mantendo o ID; ${result.divergencias} divergências para análise.`;
-        find('message').replaceChildren(element('span', `${text} `));
-        if (result.relatorioId) find('message').append(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
+        const nodes = [element('span', `${text} `)];
+        if (result.relatorioId) nodes.push(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
+        showMessage(result.repetido || result.divergencias > 0 ? 'warning' : 'success', ...nodes);
         form.querySelector('[type=file]').value = '';
         await load();
       });
-    } catch (error) { find('message').textContent = error.message; }
+    } catch (error) { showMessage('error', error.message); }
   });
   function updateProduction() {
     const individual = find('production-mode').value === 'UNICO';
@@ -126,7 +187,7 @@
     const data = Object.fromEntries(new FormData(event.currentTarget)); data.anteriorId = data.anteriorId ? Number(data.anteriorId) : null;
     try { await perform(async () => {
       await request(`/api/base-hospitalar/visitas/${selectedVisit.id}/decisao`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-      find('decision-dialog').close(); find('message').textContent = 'Decisão registrada. Atualize a conciliação das produções afetadas, se necessário.'; await load();
+      find('decision-dialog').close(); showMessage('success', 'Decisão registrada. Atualize a conciliação das produções afetadas, se necessário.'); await load();
     }); } catch (error) { find('decision-message').textContent = error.message; }
   });
   find('decision-action').addEventListener('change', updateDecision);
@@ -136,8 +197,8 @@
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
   find('history-close').addEventListener('click', () => find('history-dialog').close());
   for (const id of ['status','search']) find(id).addEventListener('input', renderVisits);
-  find('hospital').addEventListener('change', () => load().catch(error => { find('message').textContent = error.message; }));
-  find('reload').addEventListener('click', () => load().catch(error => { find('message').textContent = error.message; }));
+  find('hospital').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
+  find('reload').addEventListener('click', () => load().catch(error => showMessage('error', error.message)));
   async function initialize() {
     const [hospitals, doctors] = await Promise.all([request('/api/hospitais'), request('/api/medicos')]);
     find('hospital').replaceChildren(new Option('Selecione um hospital', ''), ...hospitals.filter(item => item.ativo).map(item => new Option(item.nome, item.id)));
@@ -146,5 +207,5 @@
     if (hospitals.some(item => item.ativo && String(item.id) === params.get('hospitalId'))) find('hospital').value = params.get('hospitalId');
     await load(); updateDecision(); updateProduction();
   }
-  initialize().catch(error => { find('message').textContent = error.message; });
+  initialize().catch(error => showMessage('error', error.message));
 })();

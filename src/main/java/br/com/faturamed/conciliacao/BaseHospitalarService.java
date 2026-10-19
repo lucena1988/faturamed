@@ -47,7 +47,7 @@ public class BaseHospitalarService {
     @Transactional(rollbackFor=Exception.class)
     public Resultado importarHospital(long hospitalId,String competencia,String modoHospital,MultipartFile arquivo,UsuarioAutenticado usuario) throws Exception {
         if(!List.of("NOVO","ATUALIZAR").contains(Objects.toString(modoHospital,""))) throw new IllegalArgumentException("Modo hospitalar invalido");
-        validarHospital(hospitalId); validarCompetencia(competencia); vinculos.bloquear(hospitalId);
+        validarHospital(hospitalId); competencia = normalizarCompetencia(competencia); vinculos.bloquear(hospitalId);
         var linhas=leitor.ler(arquivo,true);
         var registros=motor.conciliar("Base", "", arquivo.getOriginalFilename(), List.of(), linhas).hospitalSemProducao();
         String hash=hash(arquivo);
@@ -85,7 +85,7 @@ public class BaseHospitalarService {
 
     @Transactional(rollbackFor=Exception.class)
     public Resultado importarProducao(long hospitalId, Long medicoId, String modoProducao, String competencia, MultipartFile arquivo, UsuarioAutenticado usuario) throws Exception {
-        validarHospital(hospitalId); validarCompetencia(competencia);
+        validarHospital(hospitalId); competencia = normalizarCompetencia(competencia);
         if(!List.of("UNICO","VARIOS").contains(Objects.toString(modoProducao,""))) throw new IllegalArgumentException("Modo de producao invalido");
         if(modoProducao.equals("UNICO") && medicoId==null) throw new IllegalArgumentException("Selecione o medico da producao individual");
         if(modoProducao.equals("VARIOS") && medicoId!=null) throw new IllegalArgumentException("Producao coletiva identifica o medico por linha; nao selecione um medico unico");
@@ -198,24 +198,74 @@ public class BaseHospitalarService {
         if(estado.versao()!=versao) throw new ConflitoRevisaoException("Relatorio alterado. Atualize antes de tentar novamente");
         var producao=estado.original().visitas().stream().map(visita->new LeitorPlanilhaVisitas.Linha(visita.linhaMedico(),visita.original())).toList();
         var calculado=calcular(hospitalId,medicoId,arquivo.get("nome").toString(),producao,relatorioId);
-        Set<Integer> revisadas=new HashSet<>();
-        estado.historico().forEach(revisao->revisadas.add(revisao.linhaMedico()));
+        Map<Integer,RevisaoVisitasService.Revisao> ultimasRevisoes=new HashMap<>();
+        estado.historico().forEach(revisao->ultimasRevisoes.put(revisao.linhaMedico(),revisao));
         Map<Integer,ConciliadorVisitas.Visita> anteriores=new HashMap<>();
         estado.atual().visitas().forEach(visita->anteriores.put(visita.linhaMedico(),visita));
         List<ConciliadorVisitas.Visita> visitas=new ArrayList<>();
+        Map<Integer,ConciliadorVisitas.Visita> porLinha=new HashMap<>();
         for(var visita:calculado.visitas()) {
             var anterior=anteriores.get(visita.linhaMedico());
-            if(revisadas.contains(visita.linhaMedico())) visitas.add(anterior);
-            else if(anterior.hospital()!=null) visitas.add(atualizarVinculada(estado.original(),anterior));
-            else visitas.add(visita);
+            var ultima=ultimasRevisoes.get(visita.linhaMedico());
+            ConciliadorVisitas.Visita atualizada;
+            if(ultima!=null && ultima.acao()!=RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO) {
+                atualizada=atualizarRevisada(anterior,ultima,visita.candidatos());
+            } else if(anterior.hospital()!=null) {
+                atualizada=atualizarVinculada(estado.original(),anterior);
+            } else {
+                atualizada=visita;
+            }
+            visitas.add(atualizada);
+            porLinha.put(atualizada.linhaMedico(),atualizada);
         }
         var relatorio=new AplicadorRevisaoVisita().recalcular(calculado,visitas);
         long novoId=jdbc.queryForObject("insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,medico_producao_id,base_hospitalar) values(?::jsonb,?,?,?,?,true) returning id",Long.class,json.writeValueAsString(relatorio),relatorioId,((Number)linhas.getFirst().get("numero_versao")).intValue()+1,arquivo.get("hash"),medicoId);
-        jdbc.update("insert into revisao_visita(conciliacao_id,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em) select ?,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em from revisao_visita where conciliacao_id=? order by id",novoId,relatorioId);
+        var revisoesAnteriores=jdbc.queryForList("select id,linha_medico,acao,responsavel,justificativa,antes::text as antes,depois::text as depois,criado_em from revisao_visita where conciliacao_id=? order by id",relatorioId);
+        for(var rev:revisoesAnteriores) {
+            int linhaMedico=((Number)rev.get("linha_medico")).intValue();
+            long revId=((Number)rev.get("id")).longValue();
+            var ultima=ultimasRevisoes.get(linhaMedico);
+            String depois=ultima!=null && ultima.id()==revId
+                    ? json.writeValueAsString(porLinha.get(linhaMedico))
+                    : rev.get("depois").toString();
+            jdbc.update("insert into revisao_visita(conciliacao_id,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em) values(?,?,?,?,?,?::jsonb,?::jsonb,?)",
+                    novoId,linhaMedico,rev.get("acao"),rev.get("responsavel"),rev.get("justificativa"),rev.get("antes"),depois,rev.get("criado_em"));
+        }
         jdbc.update("delete from vinculo_base_hospitalar where relatorio_id=?",relatorioId);
         jdbc.update("update arquivo_base_hospitalar set relatorio_id=? where id=?",novoId,arquivo.get("id"));
         vinculos.sincronizar(novoId,relatorio);
         return novoId;
+    }
+
+    private ConciliadorVisitas.Visita atualizarRevisada(ConciliadorVisitas.Visita anterior,
+            RevisaoVisitasService.Revisao ultima, List<ConciliadorVisitas.RegistroHospital> candidatos) throws Exception {
+        if(anterior.hospital()==null) {
+            return new ConciliadorVisitas.Visita(anterior.linhaMedico(),anterior.atendimento(),anterior.data(),
+                    anterior.status(),anterior.motivo(),anterior.original(),null,candidatos,
+                    anterior.camposRevisados(),anterior.medicoProducao());
+        }
+        var hospital=registroHospital(anterior.hospital().linha());
+        var listaCandidatos=candidatos.stream().anyMatch(item->item.linha()==hospital.linha())
+                ? candidatos.stream().map(item->item.linha()==hospital.linha()?hospital:item).toList()
+                : java.util.stream.Stream.concat(candidatos.stream(),java.util.stream.Stream.of(hospital)).toList();
+        var status=anterior.status();
+        if(ultima.acao()==RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA
+                || ultima.acao()==RevisaoVisitaRequest.Acao.CORRESPONDENCIA_AUTOMATICA) {
+            if(!hospital.medico().isBlank() && !hospital.codigo().isBlank()
+                    && hospital.valorTotal()!=null && hospital.repasse()!=null) {
+                status=LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
+                        ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE;
+            }
+        }
+        return new ConciliadorVisitas.Visita(anterior.linhaMedico(),anterior.atendimento(),hospital.data(),
+                status,anterior.motivo(),anterior.original(),hospital,listaCandidatos,
+                anterior.camposRevisados(),anterior.medicoProducao());
+    }
+
+    private ConciliadorVisitas.RegistroHospital registroHospital(int id) throws Exception {
+        String campos=jdbc.queryForObject("select campos::text from visita_base_hospitalar where id=?",String.class,id);
+        var linha=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<Map<String,String>>(){}));
+        return motor.conciliar("Base","","",List.of(),List.of(linha)).hospitalSemProducao().getFirst();
     }
 
     private ConciliadorVisitas.Visita atualizarVinculada(ConciliadorVisitas.Relatorio relatorio,ConciliadorVisitas.Visita anterior) throws Exception {
@@ -314,9 +364,65 @@ public class BaseHospitalarService {
         if(nome.length()>255) throw new IllegalArgumentException("Nome de arquivo muito longo");
         return jdbc.queryForObject("insert into arquivo_base_hospitalar(hospital_id,tipo,medico_id,competencia,nome,hash,conteudo,usuario_id) values(?,?,?,?,?,?,?,?) returning id",Long.class,hospitalId,tipo,medicoId,competencia,nome,hash,arquivo.getBytes(),usuarioId);
     }
+    static String normalizarCompetencia(String competencia) {
+        if (competencia == null || competencia.isBlank()) {
+            throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
+        }
+        String limpo = competencia.trim().replace('/', '-');
+        if (limpo.matches("^[0-9]{4}-[0-9]{2}$")) {
+            try {
+                YearMonth.parse(limpo);
+                return limpo;
+            } catch (Exception erro) {
+                throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
+            }
+        }
+        if (limpo.matches("^[0-9]{1,2}-[0-9]{4}$")) {
+            String[] partes = limpo.split("-");
+            String mes = partes[0].length() == 1 ? "0" + partes[0] : partes[0];
+            String ano = partes[1];
+            String normalizado = ano + "-" + mes;
+            try {
+                YearMonth.parse(normalizado);
+                return normalizado;
+            } catch (Exception erro) {
+                throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
+            }
+        }
+        String lower = competencia.trim().toLowerCase(Locale.ROOT);
+        Map<String, String> meses = Map.ofEntries(
+            Map.entry("janeiro", "01"), Map.entry("jan", "01"),
+            Map.entry("fevereiro", "02"), Map.entry("fev", "02"),
+            Map.entry("marco", "03"), Map.entry("março", "03"), Map.entry("mar", "03"),
+            Map.entry("abril", "04"), Map.entry("abr", "04"),
+            Map.entry("maio", "05"), Map.entry("mai", "05"),
+            Map.entry("junho", "06"), Map.entry("jun", "06"),
+            Map.entry("julho", "07"), Map.entry("jul", "07"),
+            Map.entry("agosto", "08"), Map.entry("ago", "08"),
+            Map.entry("setembro", "09"), Map.entry("set", "09"),
+            Map.entry("outubro", "10"), Map.entry("out", "10"),
+            Map.entry("novembro", "11"), Map.entry("nov", "11"),
+            Map.entry("dezembro", "12"), Map.entry("dez", "12")
+        );
+        for (var entry : meses.entrySet()) {
+            if (lower.startsWith(entry.getKey())) {
+                var matcher = java.util.regex.Pattern.compile("(20[0-9]{2}|19[0-9]{2})").matcher(lower);
+                if (matcher.find()) {
+                    String normalizado = matcher.group() + "-" + entry.getValue();
+                    try {
+                        YearMonth.parse(normalizado);
+                        return normalizado;
+                    } catch (Exception erro) {
+                        throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
+                    }
+                }
+            }
+        }
+        throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
+    }
+
     static void validarCompetencia(String competencia) {
-        try { if(competencia==null || !competencia.matches("[0-9]{4}-[0-9]{2}")) throw new IllegalArgumentException(); YearMonth.parse(competencia); }
-        catch(Exception erro) { throw new IllegalArgumentException("Informe a competencia no formato ano-mes"); }
+        normalizarCompetencia(competencia);
     }
     static void validarTexto(String texto,String campo) {
         if(texto==null || texto.trim().length()<5 || texto.length()>2000) throw new IllegalArgumentException(campo+" deve ter entre 5 e 2000 caracteres");

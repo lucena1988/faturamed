@@ -383,7 +383,36 @@ class BaseHospitalarIntegracaoTest {
         service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
         long nova=service.atualizar(producao.relatorioId(),decisao.versao());
         assertThat(revisoes.carregar(nova).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(revisoes.carregar(nova).atual().visitas().getFirst().candidatos()).singleElement()
+                .satisfies(c->assertThat(c.setor()).isEqualTo("Faturado"));
         assertThat(revisoes.carregar(nova).historico()).hasSize(1);
+    }
+
+    @Test void atualizacaoTransformaCorrespondenciaConfirmadaPendenteEmPagaQuandoHospitalFatura() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        int visitaHospitalId=revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().hospital().linha();
+        var decisao=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA,visitaHospitalId,"Teste","Correspondencia confirmada aguardando faturamento",0L,null));
+        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
+        long nova=service.atualizar(producao.relatorioId(),decisao.versao());
+        var visitaAtualizada=revisoes.carregar(nova).atual().visitas().getFirst();
+        assertThat(visitaAtualizada.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visitaAtualizada.hospital().setor()).isEqualTo("Faturado");
+        assertThat(revisoes.carregar(nova).historico()).hasSize(1);
+    }
+
+    @Test void atualizacaoTransformaRestaurarAutomaticoECorrespondenciaAutomaticaEmPagaQuandoHospitalFatura() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        var primeira=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.MANTER_DIVERGENTE,null,"Teste","Divergencia temporaria",0L,null));
+        var restaurada=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO,null,"Teste","Restaurado para calculo automatico",primeira.versao(),null));
+        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
+        long nova=service.atualizar(producao.relatorioId(),restaurada.versao());
+        var visitaAtualizada=revisoes.carregar(nova).atual().visitas().getFirst();
+        assertThat(visitaAtualizada.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visitaAtualizada.hospital().setor()).isEqualTo("Faturado");
     }
 
     @Test void diminuicaoDoRepasseNaoApagaRecebimentosESinalizaConferencia() throws Exception {
