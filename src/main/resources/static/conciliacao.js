@@ -1,5 +1,5 @@
 const message = document.querySelector('#message');
-const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 5 });
+const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 });
 let report;
 let reportId;
 let reportsHistory=[];

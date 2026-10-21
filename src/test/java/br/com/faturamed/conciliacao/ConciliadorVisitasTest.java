@@ -17,7 +17,7 @@ class ConciliadorVisitasTest {
         assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
         assertThat(visita.hospital().medico()).isEqualTo("Medico A");
         assertThat(visita.original()).doesNotContainKey("medico");
-        assertThat(resultado.repasseCorrespondente()).isEqualByComparingTo("88.264");
+        assertThat(resultado.repasseCorrespondente()).isEqualByComparingTo("88.26");
     }
 
     @Test

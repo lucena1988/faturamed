@@ -21,7 +21,7 @@ class AplicadorRevisaoVisitaTest {
         assertThat(revista.candidatos()).isEqualTo(original.candidatos());
         var atualizado = aplicador.recalcular(relatorio(List.of(original)), List.of(revista));
         assertThat(atualizado.resumo().get(ConciliadorVisitas.Status.PAGA)).isEqualTo(1);
-        assertThat(atualizado.repasseCorrespondente()).isEqualByComparingTo("85.085");
+        assertThat(atualizado.repasseCorrespondente()).isEqualByComparingTo("85.09");
     }
 
     @Test
@@ -32,7 +32,7 @@ class AplicadorRevisaoVisitaTest {
         assertThatThrownBy(() -> aplicador.aplicar(visita(3), atual, request(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA, 10)))
                 .isInstanceOf(ConflitoRevisaoException.class);
         var segunda = aplicador.aplicar(visita(3), atual, request(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA, 11));
-        assertThat(aplicador.recalcular(atual, List.of(primeira, segunda)).repasseCorrespondente()).isEqualByComparingTo("170.170");
+        assertThat(aplicador.recalcular(atual, List.of(primeira, segunda)).repasseCorrespondente()).isEqualByComparingTo("170.18");
     }
 
     @Test

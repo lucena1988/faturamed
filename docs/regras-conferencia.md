@@ -211,6 +211,12 @@ Exemplos:
 - quantidade divergente: diferenca entre valor faturado e valor esperado
 - valor divergente: diferenca absoluta entre os valores
 
+## Arredondamento do repasse por visita
+
+O repasse efetivo de cada visita é arredondado para duas casas decimais pelo critério HALF_UP (metade para cima). Os totais somam esses repasses já arredondados, não os valores brutos. Exemplo: duas visitas com repasse original de 134,096 resultam em 134,10 cada e total de 268,20. Valores ausentes continuam desconhecidos, nunca zero presumido.
+
+O arquivo original, os campos hospitalares e os ajustes registrados mantêm sua precisão original para auditoria. A regra aplica-se ao repasse efetivo na conciliação, revisões, recebimentos e novas publicações/exportações. Relatórios administrativos existentes são recalculados ao serem carregados; cópias já publicadas permanecem snapshots e exigem nova liberação para atualizar os valores informados ao médico. Recebimentos e estornos existentes não são alterados.
+
 ## Duplicidade na mesma competência
 
 Na base hospitalar, use **Duplicidade confirmada na mesma competência** para uma ocorrência repetida que não representa outra visita. Informe o ID original e uma justificativa. O sistema exige o mesmo hospital, atendimento, data, médico e competência, preserva a ocorrência e registra usuário e horário no histórico.

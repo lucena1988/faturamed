@@ -35,7 +35,10 @@ public class ConciliadorVisitas {
         @com.fasterxml.jackson.annotation.JsonProperty(value = "valorHospital", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public BigDecimal valorEfetivo() { return camposRevisados != null ? camposRevisados.valorHospital() : hospital == null ? null : hospital.valorTotal(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "repasse", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
-        public BigDecimal repasseEfetivo() { return camposRevisados != null ? camposRevisados.repasse() : hospital == null ? null : hospital.repasse(); }
+        public BigDecimal repasseEfetivo() {
+            BigDecimal valor=camposRevisados != null ? camposRevisados.repasse() : hospital == null ? null : hospital.repasse();
+            return valor==null?null:valor.setScale(2,java.math.RoundingMode.HALF_UP);
+        }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "medicoCadastroId", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public Long medicoCadastroId() { return camposRevisados != null ? camposRevisados.medicoCadastroId()
                 : medicoProducao != null && !medicoProducao.conflito() ? medicoProducao.id() : null; }
@@ -50,6 +53,11 @@ public class ConciliadorVisitas {
     public record Relatorio(String hospital, String arquivoMedico, String arquivoHospital,
             String regraStatus, List<Visita> visitas, List<RegistroHospital> hospitalSemProducao,
             Map<Status, Long> resumo, BigDecimal repasseCorrespondente, Long hospitalCadastroId) {
+        public Relatorio {
+            repasseCorrespondente=visitas.stream().filter(visita->visita.status()==Status.PAGA)
+                    .map(Visita::repasseEfetivo).filter(Objects::nonNull)
+                    .reduce(new BigDecimal("0.00"),BigDecimal::add);
+        }
         public Relatorio(String hospital,String arquivoMedico,String arquivoHospital,String regraStatus,List<Visita> visitas,
                 List<RegistroHospital> hospitalSemProducao,Map<Status,Long> resumo,BigDecimal repasseCorrespondente) {
             this(hospital,arquivoMedico,arquivoHospital,regraStatus,visitas,hospitalSemProducao,resumo,repasseCorrespondente,null);
@@ -119,7 +127,7 @@ public class ConciliadorVisitas {
         Map<Status, Long> resumo = new EnumMap<>(Status.class);
         for (Status status : Status.values()) resumo.put(status, visitas.stream().filter(v -> v.status() == status).count());
         BigDecimal repasse = visitas.stream().filter(v -> v.status() == Status.PAGA)
-                .map(v -> v.hospital().repasse()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(Visita::repasseEfetivo).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Relatorio(hospital, arquivoMedico, arquivoHospital,
                 "PAGA significa correspondencia unica no setor Faturado do hospital; nao comprova recebimento financeiro.",
                 List.copyOf(visitas), semProducao, resumo, repasse);
