@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UsuarioService implements UserDetailsService {
     public record Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao) {}
     public record Novo(@NotBlank @Email @Size(max=180) String email, @NotBlank @Size(max=180) String nome,
-            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO") @NotNull String perfil, Long medicoId) {}
+            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV") @NotNull String perfil, Long medicoId) {}
     public record Situacao(boolean ativo, @NotNull @PositiveOrZero Long versao) {}
     public record NovaSenha(@NotBlank String senha, @NotNull @PositiveOrZero Long versao) {}
     private final JdbcTemplate jdbc;
@@ -46,10 +46,10 @@ public class UsuarioService implements UserDetailsService {
     }
     @Transactional public Usuario criar(Novo dados) {
         validarSenha(dados.senha());
-        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
+        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
         if (dados.perfil().equals("MEDICO")) {
             if (dados.medicoId()==null || !medicos.buscar(dados.medicoId()).ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
-        } else if (dados.medicoId()!=null) throw new IllegalArgumentException("Administrador nao deve ser vinculado a medico");
+        } else if (dados.medicoId()!=null) throw new IllegalArgumentException("Administrador ou desenvolvedor nao deve ser vinculado a medico");
         try {
             long id=jdbc.queryForObject("insert into usuario_acesso(email,nome,senha_hash,perfil,medico_id) values(?,?,?,?,?) returning id",
                     Long.class,email(dados.email()),dados.nome().trim(),encoder.encode(dados.senha()),dados.perfil(),dados.medicoId());

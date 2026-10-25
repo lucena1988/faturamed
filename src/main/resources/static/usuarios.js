@@ -11,7 +11,8 @@
     for (const user of users) {
       const tr = document.createElement('tr');
       const doctor = doctors.find(d=>d.id===user.medicoId);
-      const values = [user.nome,user.email,user.perfil==='ADMIN'?'Administrador':'Medico',doctor?`${doctor.nome} - CRM ${doctor.crm}/${doctor.uf}`:'-',user.ativo?'Ativo':'Inativo'];
+      const perfilLabel = user.perfil === 'ADMIN' ? 'Administrador' : (user.perfil === 'DEV' ? 'Desenvolvedor (Dev)' : 'Medico');
+      const values = [user.nome,user.email,perfilLabel,doctor?`${doctor.nome} - CRM ${doctor.crm}/${doctor.uf}`:'-',user.ativo?'Ativo':'Inativo'];
       values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;td.dataset.label=rows.closest('table').querySelectorAll('th')[index].textContent;tr.append(td);});
       const actions = document.createElement('td'); actions.dataset.label='Acoes';
       const toggle = document.createElement('button'); toggle.type='button'; toggle.className='text-button'; toggle.textContent=user.ativo?'Desativar':'Ativar';
