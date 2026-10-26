@@ -68,6 +68,24 @@ class BaseHospitalarIntegracaoTest {
     }
     int id(Map<String,Object> visita) { return ((Number)visita.get("id")).intValue(); }
 
+    @Test void arredondaPorVisitaAntesDeSomarEReceberPreservandoArquivo() throws Exception {
+        var arquivo=planilha(List.of(List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor"),
+                List.of("123","2026-09-01",nome(ana),"101","Visita","157.76","0.85","134.096","Faturado"),
+                List.of("124","2026-09-02",nome(ana),"101","Visita","157.76","0.85","134.096","Faturado")));
+        var importacao=service.importarHospital(hospital,"2026-09",arquivo,usuario);
+        var producao=planilha(List.of(List.of("Atendimento","Dt."),List.of("123","2026-09-01"),List.of("124","2026-09-02")));
+        var resultado=service.importarProducao(hospital,ana,"2026-09",producao,usuario);
+        assertThat(revisoes.carregar(resultado.relatorioId()).atual().repasseCorrespondente()).isEqualByComparingTo("268.20");
+        assertThat(recebimentos.listar(resultado.relatorioId()).visitas()).allSatisfy(visita->assertThat(visita.faturado()).isEqualByComparingTo("134.10"));
+        recebimentos.registrar(resultado.relatorioId(),2,new RecebimentoService.Dados(new BigDecimal("134.10"),LocalDate.of(2026,9,3),"Quitacao pelo valor arredondado",0L),usuario);
+        assertThat(recebimentos.listar(resultado.relatorioId()).visitas().getFirst().saldo()).isEqualByComparingTo("0.00");
+        assertThat(acompanhamento.consultar(hospital).faturado()).isEqualByComparingTo("268.20");
+        assertThat((byte[])service.arquivo(importacao.arquivoId()).get("conteudo")).isEqualTo(arquivo.getBytes());
+        long nova=service.atualizar(resultado.relatorioId(),0);
+        assertThat(revisoes.carregar(nova).atual().repasseCorrespondente()).isEqualByComparingTo("268.20");
+        assertThat(recebimentos.listar(nova).visitas().getFirst().recebido()).isEqualByComparingTo("134.10");
+    }
+
     @Test void guardaHospitalSemProducaoEPreservaOriginalNoReenvio() throws Exception {
         var arquivo=hospital(nome(ana));
         var resultado=service.importarHospital(hospital,"2026-09",arquivo,usuario);
@@ -141,6 +159,12 @@ class BaseHospitalarIntegracaoTest {
         assertThat(service.historico(id(repetida))).hasSize(1);
         var segunda=service.importarProducao(hospital,ana,"2026-10",producao(),usuario);
         assertThat(revisoes.carregar(segunda.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
+        assertThat(revisoes.carregar(segunda.relatorioId()).atual().visitas().getFirst().motivo())
+                .contains("classificada como duplicado pago em outro mes").doesNotContain("em analise");
+        assertThat(new AcompanhamentoRevisao().analisar(revisoes.carregar(segunda.relatorioId())).visitas().getFirst().categoria())
+                .isEqualTo(AcompanhamentoRevisao.Categoria.DUPLICIDADE);
+        long atualizada=service.atualizar(segunda.relatorioId(),0);
+        assertThat(revisoes.carregar(atualizada).atual().visitas().getFirst().motivo()).doesNotContain("em analise");
         assertThat(jdbc.queryForObject("select count(*) from vinculo_base_hospitalar where visita_id=?",Long.class,original)).isEqualTo(1);
         assertThat(recebimentos.listar(primeira.relatorioId()).visitas().getFirst().recebido()).isEqualByComparingTo("100");
     }
@@ -151,6 +175,8 @@ class BaseHospitalarIntegracaoTest {
         int original=revisoes.carregar(primeira.relatorioId()).atual().visitas().getFirst().hospital().linha();
         var segunda=service.importarProducao(hospital,ana,"2026-10",producao(),usuario);
         var pedido=new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA,original,"Teste","Confirmar mesmo atendimento",0L,null);
+        assertThat(revisoes.carregar(segunda.relatorioId()).atual().visitas().getFirst().motivo())
+                .contains("historico de outra producao").doesNotContain("em analise");
         assertThatThrownBy(()->revisoes.revisar(segunda.relatorioId(),2,pedido)).isInstanceOf(ConflitoRevisaoException.class).hasMessageContaining("ja vinculada");
     }
 
@@ -171,6 +197,7 @@ class BaseHospitalarIntegracaoTest {
         service.importarHospital(hospital,"2026-10",arquivo,usuario);
         var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
         assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().hospital()).isNull();
+        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().motivo()).contains("repeticao hospitalar ainda em analise");
         var repetida=service.visitas(hospital).stream().filter(visita->visita.get("decisao").equals("EM_ANALISE")).findFirst().orElseThrow();
         service.decidir(id(repetida),new BaseHospitalarService.Decisao("VISITA_DISTINTA",null,"Duas visitas distintas conferidas",null),usuario);
         long nova=service.atualizar(producao.relatorioId(),0);

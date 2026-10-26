@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BR Service Desk & Kanban de Chamados | FaturaMed</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="identidade.css?v=20261009-1">
+  <link rel="stylesheet" href="tema.css?v=20261009-1">
+  <link rel="stylesheet" href="chamados.css?v=20261023-2">
+  <script src="tema.js?v=20261009-1"></script>
+</head>
+<body class="sd-liquid-body">
+  <main class="sd-workspace">
+    <header class="sd-topbar">
+      <div class="sd-brand-title">
+        <span class="sd-br-emblem" aria-hidden="true">
+          <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="sd-br-b" x1="12" y1="14" x2="54" y2="86" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FFFFFF"/>
+                <stop offset="55%" stop-color="#E2E8F0"/>
+                <stop offset="82%" stop-color="#A78BFA"/>
+                <stop offset="100%" stop-color="#7C3AED"/>
+              </linearGradient>
+              <linearGradient id="sd-br-slash" x1="30" y1="46" x2="75" y2="86" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#E879F9"/>
+                <stop offset="45%" stop-color="#8B5CF6"/>
+                <stop offset="100%" stop-color="#4F46E5"/>
+              </linearGradient>
+              <linearGradient id="sd-br-r" x1="56" y1="14" x2="108" y2="86" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#F472B6"/>
+                <stop offset="28%" stop-color="#A855F7"/>
+                <stop offset="52%" stop-color="#6366F1"/>
+                <stop offset="72%" stop-color="#F8FAFC"/>
+                <stop offset="100%" stop-color="#FFFFFF"/>
+              </linearGradient>
+            </defs>
+            <path d="M12 15H44C55.5 15 62 22 62 32C62 38.8 58.2 44.2 52.5 46.8L46 43.5C48.5 41.2 49.8 38 49.8 34C49.8 28.8 46.2 26 40.5 26H25V74H41.5C46.8 74 50.5 71.5 52.8 67.5L60.5 76.5C56.2 82.2 49.8 85 41 85H12V15Z" fill="url(#sd-br-b)"/>
+            <path d="M31 46H49.5C54.5 46 58.8 48.2 62 52.2L86 85H70.5L51.5 58.5C49.5 55.8 46.8 54.5 43 54.5H37.5L31 46Z" fill="url(#sd-br-slash)"/>
+            <path d="M56 15H86C99.5 15 108 23.2 108 35.5C108 45.8 102.2 53.2 92.8 55.8L110 85H94.5L78.5 57.5H65.5L57.5 46.5H83.5C90.2 46.5 94.5 42.5 94.5 36C94.5 29.5 90.2 26 83.5 26H64L56 15Z" fill="url(#sd-br-r)"/>
+          </svg>
+        </span>
+        <div>
+          <span class="sd-eyebrow" id="sd-user-context">Help Desk / Service Desk</span>
+          <h1>Painel Kanban de Chamados & Controle de SLA</h1>
+        </div>
+      </div>
+      <div class="sd-nav-actions session-actions">
+        <button type="button" class="primary-button" id="btn-novo-chamado">+ Abrir Chamado</button>
+        <button type="button" class="secondary-button" id="btn-config-sla">Configurar SLAs</button>
+        <a href="/">Dashboard</a>
+        <a href="base-hospitalar.html">Base hospitalar</a>
+        <a href="conciliacao.html">Conciliacao</a>
+        <a href="usuarios.html">Acessos</a>
+        <a href="conta.html">Minha conta</a>
+        <button type="button" class="text-button" data-logout>Sair</button>
+      </div>
+    </header>
+
+    <p id="sd-banner" class="sd-banner" role="status" aria-live="polite" hidden></p>
+
+    <section class="sd-kpi-grid" aria-label="Indicadores de SLA e Atendimento">
+      <article class="sd-kpi-card">
+        <span>Em Aberto (Ativos)</span>
+        <strong id="kpi-abertos">0</strong>
+        <small id="kpi-filas-detalhe">Fila DEV: 0 | Fila ADMIN: 0</small>
+      </article>
+      <article class="sd-kpi-card ok">
+        <span>SLA no Prazo</span>
+        <strong id="kpi-no-prazo">0</strong>
+        <small>Dentro da janela contratada</small>
+      </article>
+      <article class="sd-kpi-card warn">
+        <span>SLA em Alerta (&lt;25%)</span>
+        <strong id="kpi-alerta">0</strong>
+        <small>Exigem priorizacao imediata</small>
+      </article>
+      <article class="sd-kpi-card danger">
+        <span>SLA Vencido</span>
+        <strong id="kpi-vencidos">0</strong>
+        <small>Acima do tempo limite</small>
+      </article>
+      <article class="sd-kpi-card">
+        <span>Resolvidos / Fechados</span>
+        <strong id="kpi-resolvidos">0</strong>
+        <small>Ciclo encerrado</small>
+      </article>
+      <article class="sd-kpi-card star">
+        <span>Avaliacao Media</span>
+        <strong id="kpi-avaliacao">-</strong>
+        <small id="kpi-avaliacao-detalhe">Sem avaliacoes</small>
+      </article>
+    </section>
+
+    <section class="sd-filters" aria-label="Filtros do Kanban">
+      <label>
+        <span>Fila de Atendimento</span>
+        <select id="filtro-fila">
+          <option value="TODAS">Todas as filas (DEV + ADMIN)</option>
+          <option value="DEV">Fila DEV (Bugs / Bloqueios / Melhorias)</option>
+          <option value="ADMIN">Fila ADMIN (Faturamento / Cadastro)</option>
+        </select>
+      </label>
+      <label>
+        <span>Tipo / Categoria</span>
+        <select id="filtro-tipo">
+          <option value="TODOS">Todas as categorias</option>
+        </select>
+      </label>
+      <label class="sd-search-field">
+        <span>Buscar protocolo, titulo ou solicitante</span>
+        <input type="search" id="filtro-busca" placeholder="Ex.: CH-2026-0001, importacao, nome...">
+      </label>
+      <label class="sd-check-field">
+        <input type="checkbox" id="filtro-meus">
+        <span>Apenas minhas demandas</span>
+      </label>
+      <button type="button" class="secondary-button" id="btn-atualizar">Atualizar Kanban</button>
+    </section>
+
+    <section class="sd-kanban-board" id="kanban-board" aria-label="Quadro Kanban de Chamados">
+      <div class="sd-kanban-col" data-status="ABERTO">
+        <header class="sd-col-header st-aberto">
+          <div>
+            <h2>1. Triagem / Abertos</h2>
+            <small>Novos protocolos aguardando inicio</small>
+          </div>
+          <span class="sd-col-count" id="count-ABERTO">0</span>
+        </header>
+        <div class="sd-col-cards" id="col-ABERTO"></div>
+      </div>
+
+      <div class="sd-kanban-col" data-status="EM_ATENDIMENTO">
+        <header class="sd-col-header st-em_atendimento">
+          <div>
+            <h2>2. Em Atendimento</h2>
+            <small>Em atuacao pela equipe DEV / ADMIN</small>
+          </div>
+          <span class="sd-col-count" id="count-EM_ATENDIMENTO">0</span>
+        </header>
+        <div class="sd-col-cards" id="col-EM_ATENDIMENTO"></div>
+      </div>
+
+      <div class="sd-kanban-col" data-status="AGUARDANDO_USUARIO">
+        <header class="sd-col-header st-aguardando_usuario">
+          <div>
+            <h2>3. Aguardando Retorno</h2>
+            <small>Pendente de confirmacao do solicitante</small>
+          </div>
+          <span class="sd-col-count" id="count-AGUARDANDO_USUARIO">0</span>
+        </header>
+        <div class="sd-col-cards" id="col-AGUARDANDO_USUARIO"></div>
+      </div>
+
+      <div class="sd-kanban-col" data-status="RESOLVIDO">
+        <header class="sd-col-header st-resolvido">
+          <div>
+            <h2>4. Resolvido</h2>
+            <small>Solucionado (aguardando avaliacao)</small>
+          </div>
+          <span class="sd-col-count" id="count-RESOLVIDO">0</span>
+        </header>
+        <div class="sd-col-cards" id="col-RESOLVIDO"></div>
+      </div>
+
+      <div class="sd-kanban-col" data-status="FECHADO">
+        <header class="sd-col-header st-fechado">
+          <div>
+            <h2>5. Concluido / Avaliado</h2>
+            <small>Historico encerrado</small>
+          </div>
+          <span class="sd-col-count" id="count-FECHADO">0</span>
+        </header>
+        <div class="sd-col-cards" id="col-FECHADO"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="chamado-modal" class="sd-modal">
+    <div class="sd-modal-shell">
+      <header class="sd-modal-header">
+        <div>
+          <span class="sd-protocol-tag" id="modal-protocolo">CH-2026-0000</span>
+          <h2 id="modal-titulo">Detalhes do Chamado</h2>
+        </div>
+        <button type="button" class="sd-close" id="modal-close" title="Fechar">×</button>
+      </header>
+      <div class="sd-modal-body" id="modal-body"></div>
+    </div>
+  </dialog>
+
+  <dialog id="sla-modal" class="sd-modal">
+    <div class="sd-modal-shell">
+      <header class="sd-modal-header">
+        <div>
+          <span class="sd-protocol-tag">Governanca de Atendimento</span>
+          <h2>Matriz de SLA e Roteamento Automatico por Tipo</h2>
+        </div>
+        <button type="button" class="sd-close" id="sla-close" title="Fechar">×</button>
+      </header>
+      <div class="sd-modal-body">
+        <p class="sd-muted">Defina o prazo alvo de resolucao (em horas), a fila automatica de destino (DEV ou ADMIN) e a prioridade inicial para cada categoria.</p>
+        <div id="sla-table-container"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="auth.js?v=20261023-2"></script>
+  <script src="chamados.js?v=20261023-2"></script>
+</body>
+</html>
