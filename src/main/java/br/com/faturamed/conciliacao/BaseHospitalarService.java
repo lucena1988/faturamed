@@ -122,10 +122,17 @@ public class BaseHospitalarService {
                 :identificacao.conciliar(hospital.nome(),nome,"Base hospitalar",producao,hospitalLinhas,medicoId);
         Set<Integer> indisponiveis=vinculos.indisponiveis(hospitalId);
         if(proprioRelatorio!=null) indisponiveis.removeAll(vinculos.reservadas(proprioRelatorio));
+        Set<Integer> repeticoesEmAnalise=new HashSet<>(jdbc.queryForList("select anterior_id from visita_base_hospitalar where hospital_id=? and anterior_id is not null and decisao='EM_ANALISE'",Integer.class,hospitalId));
+        Set<Integer> duplicadasPagas=new HashSet<>(jdbc.queryForList("select anterior_id from visita_base_hospitalar where hospital_id=? and anterior_id is not null and decisao='DUPLICADO_PAGO_OUTRO_MES'",Integer.class,hospitalId));
         var visitas=base.visitas().stream().map(visita->{
             if(visita.candidatos().stream().noneMatch(candidato->indisponiveis.contains(candidato.linha()))) return visita;
+            String motivo=visita.candidatos().stream().anyMatch(candidato->repeticoesEmAnalise.contains(candidato.linha()))
+                    ?"Possivel duplicidade: repeticao hospitalar ainda em analise. Resolva a ocorrencia na base hospitalar antes de vincular esta producao."
+                    :visita.candidatos().stream().anyMatch(candidato->duplicadasPagas.contains(candidato.linha()))
+                    ?"Possivel duplicidade: reapresentacao classificada como duplicado pago em outro mes. A visita original ja esta vinculada a outra producao; nao gera novo valor a receber."
+                    :"Possivel duplicidade: visita hospitalar ja vinculada ao historico de outra producao. Confira o vinculo original na base hospitalar antes de revisar.";
             return new ConciliadorVisitas.Visita(visita.linhaMedico(),visita.atendimento(),visita.data(),ConciliadorVisitas.Status.DIVERGENTE,
-                    "Possivel duplicidade: visita ja vinculada a outra producao ou com repeticao hospitalar em analise. Consulte a base hospitalar.",
+                    motivo,
                     visita.original(),null,visita.candidatos(),null,visita.medicoProducao());
         }).toList();
         if(medicoId==null) {

@@ -10,5 +10,5 @@
     }catch(error){if(token===generation&&error.name!=='AbortError')message.textContent=error.message;}
     finally{if(token===generation){busy=false;controls();}}
   };
-  window.FaturamedDemonstrativo={selecionar(id,medico,hospital,nome){const nextDoctor=/^[1-9]\d*$/.test(medico||'')?medico:null;if(id!==report||nextDoctor!==doctor){generation++;controller?.abort();busy=false;form.reset();message.textContent='';}report=id;doctor=nextDoctor;controls();document.getElementById('demonstrativo-scope').textContent=report&&doctor?`${nome} | ${hospital} | Relatorio #${report} | Copia liberada para o medico`:'Selecione um relatorio e um medico cadastrado.';}};
+  window.FaturamedDemonstrativo={selecionar(id,medico,hospital,nome){const nextDoctor=/^[1-9]\d*$/.test(medico||'')?medico:null;if(id!==report||nextDoctor!==doctor){generation++;controller?.abort();busy=false;form.reset();message.textContent='';}report=id;doctor=nextDoctor;controls();document.getElementById('demonstrativo-scope').textContent=report&&doctor?`${nome} | ${hospital} | Relatorio #${report} | O PDF exige uma publicacao liberada para este medico. A disponibilidade sera verificada ao baixar.`:'Selecione um relatorio e um medico cadastrado.';}};
 })();
