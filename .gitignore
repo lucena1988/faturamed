@@ -5,3 +5,6 @@ outputs/
 .env
 .env.*
 !.env.example
+.DS_Store
+*.log
+*.pid
