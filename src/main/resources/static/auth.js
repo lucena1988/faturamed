@@ -30,10 +30,19 @@
   window.FaturamedAuth = {request, resetCsrf: () => { tokenPromise = null; }};
   document.addEventListener('DOMContentLoaded', () => {
     if(location.pathname!=='/login.html'){
+      request('/api/auth/me').then(user => {
+        if (user.perfil === 'MEDICO') {
+          document.querySelectorAll('a[href="usuarios.html"],a[href="/usuarios.html"]').forEach(link=>link.remove());
+        }
+        if (user.perfil !== 'MEDICO') {
+          const hdCss=document.createElement('link');hdCss.rel='stylesheet';hdCss.href='/chamados-widget.css?v=20261027-1';document.head.append(hdCss);
+          const hdScript=document.createElement('script');hdScript.src='/chamados-widget.js?v=20261027-acessos2';document.body.append(hdScript);
+        } else {
+          document.querySelectorAll('a[href="chamados.html"],a[href="/chamados.html"]').forEach(link=>link.remove());
+        }
+      }).catch(()=>{});
       const css=document.createElement('link');css.rel='stylesheet';css.href='/notificacoes.css?v=20261015-1';document.head.append(css);
       const script=document.createElement('script');script.src='/notificacoes.js?v=20261015-1';document.body.append(script);
-      const hdCss=document.createElement('link');hdCss.rel='stylesheet';hdCss.href='/chamados-widget.css?v=20261023-2';document.head.append(hdCss);
-      const hdScript=document.createElement('script');hdScript.src='/chamados-widget.js?v=20261023-2';document.body.append(hdScript);
     }
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;

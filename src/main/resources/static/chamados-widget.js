@@ -373,9 +373,9 @@
         inpCom.style.padding = '9px 12px';
         inpCom.style.marginBottom = '10px';
         inpCom.style.borderRadius = '10px';
-        inpCom.style.border = '1px solid rgba(255,255,255,0.22)';
-        inpCom.style.background = 'rgba(0,0,0,0.25)';
-        inpCom.style.color = '#fff';
+        inpCom.style.border = '1px solid var(--line)';
+        inpCom.style.background = 'var(--surface)';
+        inpCom.style.color = 'var(--text)';
 
         const btnAvaliar = el('button', 'primary-button', 'Enviar Avaliacao e Encerrar Chamado');
         btnAvaliar.type = 'button';
@@ -477,7 +477,8 @@
       if (!currentUser) {
         currentUser = await FaturamedAuth.request('/api/auth/me');
         const isSuporte = currentUser.perfil === 'ADMIN' || currentUser.perfil === 'DEV';
-        kanbanLink.hidden = !isSuporte;
+        kanbanLink.hidden = !isSuporte && currentUser.perfil !== 'OPERADOR';
+        if (currentUser.perfil === 'OPERADOR') kanbanLink.textContent = 'Acompanhar chamados';
       }
       if (!tiposSla.length) {
         tiposSla = await FaturamedAuth.request('/api/chamados/tipos');

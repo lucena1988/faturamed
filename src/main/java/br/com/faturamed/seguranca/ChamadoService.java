@@ -174,6 +174,10 @@ public class ChamadoService {
         StringBuilder sql = new StringBuilder(SELECT_CHAMADO_BASE).append(" where 1=1 ");
         List<Object> params = new ArrayList<>();
 
+        if ("OPERADOR".equals(user.perfil())) {
+            sql.append(" and (c.solicitante_perfil in ('OPERADOR','MEDICO') or c.solicitante_id = ?) ");
+            params.add(user.id());
+        }
         if (isMedico) {
             sql.append(" and c.solicitante_id = ? ");
             params.add(user.id());
@@ -218,7 +222,8 @@ public class ChamadoService {
 
     private ResumoKanban calcularResumo(UsuarioAutenticado user, boolean isMedico) {
         String filtroEscopo = isMedico ? " where c.solicitante_id = ? " : "";
-        Object[] args = isMedico ? new Object[]{user.id()} : new Object[]{};
+        if ("OPERADOR".equals(user.perfil())) filtroEscopo = " where (c.solicitante_perfil in ('OPERADOR','MEDICO') or c.solicitante_id = ?) ";
+        Object[] args = isMedico || "OPERADOR".equals(user.perfil()) ? new Object[]{user.id()} : new Object[]{};
         List<ChamadoItem> todos = jdbc.query(SELECT_CHAMADO_BASE + filtroEscopo, this::mapearChamado, args);
         long abertos = 0, noPrazo = 0, emAlerta = 0, vencidos = 0, resolvidos = 0, filaDev = 0, filaAdmin = 0;
         long somaNotas = 0, totalAvaliacoes = 0;
@@ -350,9 +355,12 @@ public class ChamadoService {
         ChamadoItem atual = buscarChamado(id, user);
         boolean isAtendente = "ADMIN".equals(user.perfil()) || "DEV".equals(user.perfil());
         if (!isAtendente) {
-            // Solicitante medico pode apenas reabrir se RESOLVIDO ou concluir para FECHADO
+            // O solicitante pode confirmar ou reabrir apenas o proprio chamado resolvido.
             String novoSt = Objects.toString(dados.status(), "").trim().toUpperCase(Locale.ROOT);
-            if (!Set.of("EM_ATENDIMENTO", "FECHADO").contains(novoSt)) {
+            if (atual.solicitanteId() != user.id() || !"RESOLVIDO".equals(atual.status())
+                    || !Set.of("EM_ATENDIMENTO", "FECHADO").contains(novoSt)
+                    || dados.filaDestino() != null || dados.prioridade() != null
+                    || dados.responsavelId() != null || Boolean.TRUE.equals(dados.assumir())) {
                 throw new AccessDeniedException("Apenas a equipe de suporte pode alterar a fila ou etapa do Kanban");
             }
         }
@@ -495,6 +503,10 @@ public class ChamadoService {
         if ("MEDICO".equals(user.perfil()) && item.solicitanteId() != user.id()) {
             throw new AccessDeniedException("Acesso nao permitido a este chamado");
         }
+        if ("OPERADOR".equals(user.perfil()) && item.solicitanteId() != user.id()
+                && !Set.of("OPERADOR", "MEDICO").contains(item.solicitantePerfil())) {
+            throw new AccessDeniedException("Acesso nao permitido a este chamado");
+        }
         return item;
     }
 
@@ -565,8 +577,9 @@ public class ChamadoService {
 
     private static String rotuloPerfil(String perfil) {
         return switch (Objects.toString(perfil, "")) {
-            case "ADMIN" -> "Admin";
-            case "DEV" -> "Dev";
+            case "ADMIN" -> "Administrador tecnico";
+            case "DEV" -> "Administrador tecnico";
+            case "OPERADOR" -> "Funcionario FaturaMed";
             default -> "Medico";
         };
     }

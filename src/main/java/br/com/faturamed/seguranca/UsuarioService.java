@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UsuarioService implements UserDetailsService {
     public record Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao) {}
     public record Novo(@NotBlank @Email @Size(max=180) String email, @NotBlank @Size(max=180) String nome,
-            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV") @NotNull String perfil, Long medicoId) {}
+            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV|OPERADOR") @NotNull String perfil, Long medicoId) {}
     public record Situacao(boolean ativo, @NotNull @PositiveOrZero Long versao) {}
     public record NovaSenha(@NotBlank String senha, @NotNull @PositiveOrZero Long versao) {}
     private final JdbcTemplate jdbc;
@@ -44,15 +44,17 @@ public class UsuarioService implements UserDetailsService {
         return jdbc.query("select * from usuario_acesso order by nome,id", (r,n) -> new Usuario(r.getLong("id"),r.getString("email"),r.getString("nome"),
                 r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("ativo"),r.getLong("versao")));
     }
-    @Transactional public Usuario criar(Novo dados) {
+    @Transactional public Usuario criar(Novo dados) { return criar(dados, null); }
+    @Transactional public Usuario criar(Novo dados, Long operador) {
         validarSenha(dados.senha());
-        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
+        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV", "OPERADOR").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
         if (dados.perfil().equals("MEDICO")) {
             if (dados.medicoId()==null || !medicos.buscar(dados.medicoId()).ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
-        } else if (dados.medicoId()!=null) throw new IllegalArgumentException("Administrador ou desenvolvedor nao deve ser vinculado a medico");
+        } else if (dados.medicoId()!=null) throw new IllegalArgumentException("Somente o perfil Medico pode ser vinculado a um medico");
         try {
             long id=jdbc.queryForObject("insert into usuario_acesso(email,nome,senha_hash,perfil,medico_id) values(?,?,?,?,?) returning id",
                     Long.class,email(dados.email()),dados.nome().trim(),encoder.encode(dados.senha()),dados.perfil(),dados.medicoId());
+            auditar(id, operador, "CRIACAO");
             return buscar(id);
         } catch(DuplicateKeyException e) { throw new ConflitoRevisaoException("Email ou medico ja possui acesso cadastrado"); }
     }
@@ -67,12 +69,18 @@ public class UsuarioService implements UserDetailsService {
         if (dados.ativo() && user.medicoId()!=null && !medicos.buscar(user.medicoId()).ativo()) throw new IllegalArgumentException("Medico inativo");
         if(jdbc.update("update usuario_acesso set ativo=?,versao=versao+1 where id=? and versao=?",dados.ativo(),id,dados.versao())!=1)
             throw new ConflitoRevisaoException("Acesso alterado. Recarregue a lista");
+        auditar(id, operador, dados.ativo() ? "ATIVACAO" : "DESATIVACAO");
         return buscar(id);
     }
-    @Transactional public void redefinir(long id, NovaSenha dados) {
+    @Transactional public void redefinir(long id, NovaSenha dados) { redefinir(id, dados, null); }
+    @Transactional public void redefinir(long id, NovaSenha dados, Long operador) {
         buscar(id); validarSenha(dados.senha());
         if(jdbc.update("update usuario_acesso set senha_hash=?,versao=versao+1,falhas=0,bloqueado_ate=null where id=? and versao=?",encoder.encode(dados.senha()),id,dados.versao())!=1)
             throw new ConflitoRevisaoException("Acesso alterado. Recarregue a lista");
+        auditar(id, operador, "REDEFINICAO_SENHA");
+    }
+    private void auditar(long id, Long operador, String acao) {
+        jdbc.update("insert into usuario_acesso_auditoria(usuario_id,operador_id,acao) values(?,?,?)", id, operador, acao);
     }
     public void falha(String email) {
         jdbc.update("""

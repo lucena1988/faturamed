@@ -24,10 +24,12 @@ public class SegurancaConfig {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error").permitAll()
-                .requestMatchers("/api/auth/**", "/api/chamados/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()
+                .requestMatchers("/api/usuarios/**", "/api/usuarios", "/usuarios.html", "/usuarios.js").hasAnyRole("ADMIN", "DEV", "OPERADOR")
+                .requestMatchers("/api/chamados", "/api/chamados/**", "/chamados-widget.js", "/chamados-widget.css").hasAnyRole("ADMIN", "DEV", "OPERADOR")
+                .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()
                 .requestMatchers("/api/medico/**", "/portal.html", "/portal.js", "/conferencia-portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
-                .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV")
-                .anyRequest().hasAnyRole("ADMIN", "DEV"))
+                .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
+                .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
             .requestCache(cache -> cache.disable())
             .headers(headers -> headers.contentSecurityPolicy(policy -> policy.policyDirectives(
                     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")))
@@ -49,7 +51,7 @@ public class SegurancaConfig {
                 .successHandler((request,response,authentication) -> {
                     var user=(UsuarioAutenticado)authentication.getPrincipal(); users.sucesso(user.id());
                     String destino = switch (user.perfil()) {
-                        case "ADMIN" -> "/";
+                        case "ADMIN", "OPERADOR" -> "/";
                         case "DEV" -> "/chamados.html";
                         default -> "/portal.html";
                     };

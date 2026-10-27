@@ -11,7 +11,7 @@
     for (const user of users) {
       const tr = document.createElement('tr');
       const doctor = doctors.find(d=>d.id===user.medicoId);
-      const perfilLabel = user.perfil === 'ADMIN' ? 'Administrador' : (user.perfil === 'DEV' ? 'Desenvolvedor (Dev)' : 'Medico');
+      const perfilLabel = ({ADMIN:'Administrador técnico',DEV:'Administrador técnico (legado)',OPERADOR:'Funcionário FaturaMed',MEDICO:'Médico'})[user.perfil] || user.perfil;
       const values = [user.nome,user.email,perfilLabel,doctor?`${doctor.nome} - CRM ${doctor.crm}/${doctor.uf}`:'-',user.ativo?'Ativo':'Inativo'];
       values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;td.dataset.label=rows.closest('table').querySelectorAll('th')[index].textContent;tr.append(td);});
       const actions = document.createElement('td'); actions.dataset.label='Acoes';
@@ -42,5 +42,5 @@
     catch(error){document.querySelector('#reset-message').textContent=error.message;}
     finally{button.disabled=false;}
   });
-  (async()=>{try{doctors=await api('/api/medicos');form.medicoId.replaceChildren(new Option('Selecione um medico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm}/${d.uf}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
+  (async()=>{try{const user=await api('/api/auth/me');if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'));document.querySelector('h1').textContent='Acessos de médicos';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}doctors=await api('/api/medicos');form.medicoId.replaceChildren(new Option('Selecione um medico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm}/${d.uf}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
 })();

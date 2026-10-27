@@ -17,6 +17,7 @@
   };
 
   let currentUser = null;
+  const tecnico = () => ['ADMIN','DEV'].includes(currentUser?.perfil);
   let tiposSla = [];
   let atendentes = [];
   let chamados = [];
@@ -88,7 +89,7 @@
 
       for (const c of items) {
         const card = el('article', `sd-card sla-${c.slaStatus.toLowerCase()}`);
-        card.draggable = true;
+        card.draggable = tecnico();
         card.dataset.id = c.id;
         card.addEventListener('dragstart', e => {
           e.dataTransfer.setData('text/plain', String(c.id));
@@ -166,7 +167,8 @@
           actions.append(bFechar);
         }
 
-        card.append(top, title, badges, footer, actions);
+        card.append(top, title, badges, footer);
+        if (tecnico()) card.append(actions);
         card.addEventListener('click', () => abrirModalChamado(c.id));
         col.append(card);
       }
@@ -174,6 +176,7 @@
   }
 
   async function moverRapido(id, novoStatus, assumir = false) {
+    if (!tecnico()) return;
     try {
       await api(`/api/chamados/${id}/status`, {
         method: 'POST',
@@ -289,6 +292,15 @@
     });
     leftCol.append(replyForm);
 
+    if (!tecnico()) {
+      const acompanhamento = el('div', 'sd-control-panel');
+      acompanhamento.append(el('strong', '', `Etapa: ${STATUS_LABELS[c.status]}`),
+        el('p', '', `Responsável: ${c.responsavelNome || 'Não atribuído'} • ${formatSlaText(c)}`),
+        el('small', '', 'A equipe técnica gerencia as etapas e o encerramento. Você pode acompanhar e enviar informações.'));
+      grid.append(leftCol, acompanhamento);
+      modalBody.append(grid);
+      return;
+    }
     const rightCol = el('form', 'sd-control-panel');
     rightCol.append(el('strong', '', 'Gerenciamento e Distribuicao do Chamado'));
 
@@ -479,6 +491,7 @@
 
   document.querySelectorAll('.sd-kanban-col').forEach(col => {
     col.addEventListener('dragover', e => {
+      if (!tecnico()) return;
       e.preventDefault();
       col.classList.add('drag-over');
     });
@@ -507,6 +520,7 @@
   });
 
   document.querySelector('#btn-config-sla').addEventListener('click', () => {
+    if (!tecnico()) return;
     renderSlaTable();
     slaModal.showModal();
   });
@@ -526,7 +540,8 @@
       for (const t of tiposSla) {
         filtroTipo.append(new Option(`${t.nome} (${t.slaHoras}h)`, t.codigo));
       }
-      atendentes = await api('/api/chamados/atendentes');
+      document.querySelector('#btn-config-sla').hidden = !tecnico();
+      atendentes = tecnico() ? await api('/api/chamados/atendentes') : [];
       await carregarChamados();
     } catch (err) {
       showBanner(err.message, true);

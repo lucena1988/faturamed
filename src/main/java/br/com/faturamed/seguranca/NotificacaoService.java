@@ -25,7 +25,7 @@ public class NotificacaoService {
             from atuais l where :perfil='MEDICO' and l.dados -> cast(:medico as text) is not null
             union all
             select 'PEDIDO',s.id,'Novo pedido de revisao',l.hospital,l.relatorio_id,s.id,s.criado_em
-            from solicitacao_medico s join liberacao_relatorio l on l.id=s.liberacao_id where :perfil='ADMIN'
+            from solicitacao_medico s join liberacao_relatorio l on l.id=s.liberacao_id where :perfil in ('ADMIN','DEV','OPERADOR')
             union all
             select 'RESPOSTA',s.id,'Solicitacao respondida',l.hospital,a.relatorio_id,s.id,s.respondido_em
             from solicitacao_medico s join liberacao_relatorio l on l.id=s.liberacao_id
