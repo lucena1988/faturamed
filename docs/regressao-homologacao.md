@@ -8,6 +8,8 @@ Executar na raiz do projeto, com Docker disponível:
 
 O comando constrói imagens exclusivas de QA, executa os cenários HTTP com dados fictícios, roda a suíte Java em outro banco isolado e os testes JavaScript. O resultado fica em `outputs/evidencias-auto-AAAAMMDD-HHMMSS`. Código de saída 1 indica reprovação ou impedimento; não deve ser interpretado como execução aprovada. Requer as dependências Python já disponíveis neste ambiente e o modelo XLSX em `outputs/homologacao/03-hospital-duas-visitas-legitimas.xlsx`.
 
+Ao terminar, abra `outputs/dashboard-regressao.html` com dois cliques. O painel mostra os resultados da rodada mais recente, com filtros por camada/status, busca, detalhes das falhas e links para evidências. Cada pasta de execução também guarda seu próprio `dashboard.html`, incluído no ZIP; extraia o ZIP inteiro antes de abrir os links. O painel funciona sem servidor e não executa testes ao ser aberto. Para atualizar o painel com resultados já existentes, sem repetir a regressão, execute `python scripts/gerar_dashboard_regressao.py` usando o mesmo Python do comando acima.
+
 As instâncias manuais na porta 8080 e seu banco não são reiniciadas nem recebem dados. As instâncias HTTP usam a porta local 18081; não execute duas regressões simultaneamente. Containers exclusivos são parados ao finalizar. Os bancos temporários usam tmpfs; o dump fictício fica em `privado` e é excluído do pacote compartilhável.
 
 ## Matriz dos cenários executados anteriormente

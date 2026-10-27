@@ -30,7 +30,7 @@ for args in [['docker', 'build', '--target', 'build', '-t', builder, '.'], ['doc
         raise SystemExit('Build de QA falhou; ambiente manual preservado')
 environment = {**os.environ, 'QA_APP_IMAGE': image}
 http = command([sys.executable, 'scripts/homologacao_automatica.py'], env=environment)
-folder = sorted((root / 'outputs').glob('evidencias-auto-*'))[-1]
+folder = sorted(p for p in (root / 'outputs').glob('evidencias-auto-*') if p.is_dir())[-1]
 (folder / 'http-execucao.log').write_bytes(http.stdout + http.stderr)
 java_status = 1
 try:
@@ -50,6 +50,9 @@ finally:
         command(['docker', 'stop', container])
 js = command([str(node), '--test', 'src/test/js/demonstrativo.test.cjs', 'src/test/js/selecao.test.cjs', 'scripts/painel-medico.test.cjs'])
 (folder / 'javascript-execucao.log').write_bytes(js.stdout + js.stderr)
-command([sys.executable, 'scripts/consolidar_regressao.py'])
+consolidated = command([sys.executable, 'scripts/consolidar_regressao.py'])
+if consolidated.returncode:
+    print('Falha ao consolidar evidencias:', consolidated.stderr.decode(errors='replace')[-2000:])
 print('Evidencias:', folder)
-raise SystemExit(0 if http.returncode == java_status == js.returncode == 0 else 1)
+print('Dashboard:', root / 'outputs/dashboard-regressao.html')
+raise SystemExit(0 if http.returncode == java_status == js.returncode == consolidated.returncode == 0 else 1)

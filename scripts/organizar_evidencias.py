@@ -5,7 +5,7 @@ import shutil
 import zipfile
 
 root = Path(__file__).resolve().parents[1]
-folder = sorted((root / 'outputs').glob('evidencias-auto-*'))[-1]
+folder = sorted(p for p in (root / 'outputs').glob('evidencias-auto-*') if p.is_dir())[-1]
 temp = Path('C:/Users/Bruno/AppData/Local/Temp')
 sources = [
     ('81a4ccf2-3344-48e8-8c76-f4798d91c530', '01-recebimento-separado-por-medico'),

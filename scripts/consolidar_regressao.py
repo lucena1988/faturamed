@@ -6,7 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[1]
-folder = sorted((root / 'outputs').glob('evidencias-auto-*'))[-1]
+folder = sorted(p for p in (root / 'outputs').glob('evidencias-auto-*') if p.is_dir())[-1]
 sources = []
 for source_root in [root / 'src', root / 'scripts']:
     for file in sorted(source_root.rglob('*')):
@@ -37,5 +37,10 @@ for result in results:
 (folder / 'PENDENCIAS.md').write_text('\n'.join(issues), encoding='utf-8')
 with (folder / 'RESUMO.md').open('a', encoding='utf-8') as output:
     output.write(f"\n\n## Regressao ampliada\n\n- HTTP: {sum(r['resultado']=='APROVADO' for r in results)} aprovados em {len(results)} cenarios.\n- Java: {totals['tests']} testes; falhas {totals['failures']}; erros {totals['errors']}; ignorados {totals['skipped']}.\n- JavaScript: codigo de saida {js.returncode}; detalhes em javascript-execucao.log. Usa DOM simulado, sem navegador real.\n- Pendencias em PENDENCIAS.md; correspondencia com testes manuais em MATRIZ-DE-COBERTURA.md.\n")
+subprocess.run([sys.executable, 'scripts/gerar_dashboard_regressao.py', str(folder)], cwd=root, check=True)
+dashboard_test = subprocess.run([str(node), '--test', 'scripts/test_dashboard_regressao.cjs'], cwd=root, capture_output=True)
+(folder / 'dashboard-verificacao.log').write_bytes(dashboard_test.stdout + dashboard_test.stderr)
 subprocess.run([sys.executable, 'scripts/organizar_evidencias.py'], cwd=root, check=True)
 print(json.dumps({'http': len(results), 'http_aprovados': sum(r['resultado'] == 'APROVADO' for r in results), 'java': totals, 'javascript_exit': js.returncode}, ensure_ascii=False))
+if dashboard_test.returncode:
+    raise SystemExit('Falha na verificacao do dashboard; consulte dashboard-verificacao.log')
