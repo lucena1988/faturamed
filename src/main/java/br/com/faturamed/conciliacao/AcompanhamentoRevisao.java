@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AcompanhamentoRevisao {
     public enum Origem { NAO_REVISADA, AUTOMATICA_IMPORTACAO, AUTOMATICA_REVISAO, MANUAL }
-    public enum Categoria { SEM_PENDENCIA, AMBIGUIDADE, DADOS_FALTANTES, VALOR_DIVERGENTE,
+    public enum Categoria { SEM_PENDENCIA, DUPLICIDADE, AMBIGUIDADE, DADOS_FALTANTES, VALOR_DIVERGENTE,
         SEM_CORRESPONDENCIA, AGUARDANDO_FATURAMENTO, DADOS_DIVERGENTES, CONFERENCIA_MANUAL }
     public record Item(int linhaMedico, Origem origem, Categoria categoria, boolean precisaConferencia, boolean medicoIdentificado) {}
     public record Resultado(long versao, List<Item> visitas, ConciliadorVisitas.Relatorio relatorio) {}
@@ -39,6 +39,9 @@ public class AcompanhamentoRevisao {
 
     private Categoria categoria(ConciliadorVisitas.Visita v, Set<Integer> ocupados, Map<Integer, Integer> disputas) {
         if (v.status() == ConciliadorVisitas.Status.PAGA) return Categoria.SEM_PENDENCIA;
+        if (v.status() == ConciliadorVisitas.Status.DIVERGENTE && v.motivo()!=null
+                && v.motivo().startsWith("Possivel duplicidade:")) return Categoria.DUPLICIDADE;
+        if (v.medicoProducao()!=null && v.medicoProducao().conflito()) return Categoria.DADOS_DIVERGENTES;
         if (v.hospital() == null && v.camposRevisados() == null) {
             var livres = v.candidatos().stream().filter(h -> !ocupados.contains(h.linha())).toList();
             if (livres.size() > 1 || livres.stream().anyMatch(h -> disputas.getOrDefault(h.linha(), 0) > 1)) return Categoria.AMBIGUIDADE;

@@ -10,6 +10,29 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ExportadorRelatorioVisitas {
+    public byte[] exportarCobranca(long id,FilaCobranca.Resultado fila) throws Exception {
+        try(var workbook=new XSSFWorkbook();var output=new ByteArrayOutputStream()) {
+            CellStyle moeda=workbook.createCellStyle();moeda.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00########"));
+            CellStyle data=workbook.createCellStyle();data.setDataFormat(workbook.createDataFormat().getFormat("dd/mm/yyyy"));
+            CellStyle titulo=workbook.createCellStyle();Font font=workbook.createFont();font.setBold(true);titulo.setFont(font);
+            titulo.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());titulo.setFillPattern(FillPatternType.SOLID_FOREGROUND);titulo.setWrapText(true);
+            Sheet resumo=workbook.createSheet("Resumo");
+            Object[][] valores={{"Hospital",fila.hospital()},{"Relatorio",id},{"Data de referencia",fila.referencia()},
+                    {"Visitas nos filtros",fila.visitas().size()},{"Repasse informado (R$)",fila.repasseInformado()},
+                    {"Visitas sem repasse informado",fila.semValor()},{"Visitas sem medico identificado",fila.semMedico()},
+                    {"Visitas sem data",fila.semData()},
+                    {"Criterio","Visitas pendentes sem vinculo ou candidato no arquivo hospitalar. A ausencia no arquivo nao comprova falta de pagamento."}};
+            for(int i=0;i<valores.length;i++)preencher(resumo.createRow(i),valores[i],moeda,data);
+            resumo.setColumnWidth(0,42*256);resumo.setColumnWidth(1,85*256);
+            CellStyle wrap=workbook.createCellStyle();wrap.setWrapText(true);resumo.getRow(8).getCell(1).setCellStyle(wrap);resumo.getRow(8).setHeightInPoints(48);
+            Sheet visitas=workbook.createSheet("Cobranca");
+            String[] headers={"Linha producao","ID origem","Atendimento","Data da visita","Dias desde a visita","Medico","CRM/UF","Codigo procedimento","Procedimento","Repasse informado (R$)","Situacao"};
+            cabecalho(visitas,headers,titulo);
+            for(var v:fila.visitas())preencher(visitas.createRow(visitas.getLastRowNum()+1),new Object[]{v.linha(),v.idOrigem(),v.atendimento(),v.data(),v.dias(),v.medico(),v.crm(),v.codigo(),v.procedimento(),v.repasse(),"Sem correspondencia no arquivo hospitalar"},moeda,data);
+            configurar(visitas,headers.length);visitas.setColumnWidth(8,55*256);visitas.setColumnWidth(10,55*256);visitas.createFreezePane(0,1);
+            workbook.write(output);return output.toByteArray();
+        }
+    }
     public byte[] exportar(ConciliadorVisitas.Relatorio relatorio) throws Exception {
         return exportar(relatorio, java.util.List.of());
     }
@@ -77,6 +100,7 @@ public class ExportadorRelatorioVisitas {
                         originalOuHospital(visita, "nome", h == null ? null : h.paciente()),
                         visita.procedimentoEfetivo(), visita.medicoEfetivo(),
                         visita.camposRevisados() != null ? visita.valorEfetivo() : visita.original().getOrDefault("valor orig", "").isBlank()
+                                || new BigDecimal(visita.original().get("valor orig")).signum() == 0
                                 ? (h == null ? null : h.valorTotal()) : visita.original().get("valor orig"), visita.status().name(),
                         visita.codigoEfetivo(), h == null ? null : h.conta(), visita.valorEfetivo(),
                         h == null ? null : h.regra(), visita.repasseEfetivo(), h == null ? null : h.linha(),

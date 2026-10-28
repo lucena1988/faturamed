@@ -14,13 +14,18 @@ public class ConciliadorVisitas {
             String setor, BigDecimal valorTotal, BigDecimal regra, BigDecimal repasse) {}
     public record Visita(int linhaMedico, String atendimento, LocalDate data, Status status, String motivo,
             Map<String, String> original, RegistroHospital hospital, List<RegistroHospital> candidatos,
-            CamposRevisados camposRevisados) {
+            CamposRevisados camposRevisados, MedicoProducao medicoProducao) {
+        public Visita(int linhaMedico, String atendimento, LocalDate data, Status status, String motivo,
+                Map<String,String> original, RegistroHospital hospital, List<RegistroHospital> candidatos, CamposRevisados camposRevisados) {
+            this(linhaMedico,atendimento,data,status,motivo,original,hospital,candidatos,camposRevisados,null);
+        }
         public Visita(int linhaMedico, String atendimento, LocalDate data, Status status, String motivo,
                 Map<String, String> original, RegistroHospital hospital, List<RegistroHospital> candidatos) {
             this(linhaMedico, atendimento, data, status, motivo, original, hospital, candidatos, null);
         }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "medico", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public String medicoEfetivo() { return camposRevisados != null ? camposRevisados.medico()
+                : medicoProducao != null && !medicoProducao.conflito() ? medicoProducao.nome()
                 : hospital != null ? hospital.medico() : original.getOrDefault("medico", ""); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "procedimento", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public String procedimentoEfetivo() { return camposRevisados != null ? camposRevisados.procedimento()
@@ -30,10 +35,15 @@ public class ConciliadorVisitas {
         @com.fasterxml.jackson.annotation.JsonProperty(value = "valorHospital", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public BigDecimal valorEfetivo() { return camposRevisados != null ? camposRevisados.valorHospital() : hospital == null ? null : hospital.valorTotal(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "repasse", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
-        public BigDecimal repasseEfetivo() { return camposRevisados != null ? camposRevisados.repasse() : hospital == null ? null : hospital.repasse(); }
+        public BigDecimal repasseEfetivo() {
+            BigDecimal valor=camposRevisados != null ? camposRevisados.repasse() : hospital == null ? null : hospital.repasse();
+            return valor==null?null:valor.setScale(2,java.math.RoundingMode.HALF_UP);
+        }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "medicoCadastroId", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
-        public Long medicoCadastroId() { return camposRevisados == null ? null : camposRevisados.medicoCadastroId(); }
+        public Long medicoCadastroId() { return camposRevisados != null ? camposRevisados.medicoCadastroId()
+                : medicoProducao != null && !medicoProducao.conflito() ? medicoProducao.id() : null; }
     }
+    public record MedicoProducao(long id, String nome, boolean preenchido, boolean conflito) {}
     public record CamposRevisados(String medico, String procedimento, String codigoProcedimento,
             BigDecimal valorHospital, BigDecimal repasse, Long medicoCadastroId) {
         public CamposRevisados(String medico, String procedimento, String codigoProcedimento, BigDecimal valorHospital, BigDecimal repasse) {
@@ -43,6 +53,11 @@ public class ConciliadorVisitas {
     public record Relatorio(String hospital, String arquivoMedico, String arquivoHospital,
             String regraStatus, List<Visita> visitas, List<RegistroHospital> hospitalSemProducao,
             Map<Status, Long> resumo, BigDecimal repasseCorrespondente, Long hospitalCadastroId) {
+        public Relatorio {
+            repasseCorrespondente=visitas.stream().filter(visita->visita.status()==Status.PAGA)
+                    .map(Visita::repasseEfetivo).filter(Objects::nonNull)
+                    .reduce(new BigDecimal("0.00"),BigDecimal::add);
+        }
         public Relatorio(String hospital,String arquivoMedico,String arquivoHospital,String regraStatus,List<Visita> visitas,
                 List<RegistroHospital> hospitalSemProducao,Map<Status,Long> resumo,BigDecimal repasseCorrespondente) {
             this(hospital,arquivoMedico,arquivoHospital,regraStatus,visitas,hospitalSemProducao,resumo,repasseCorrespondente,null);
@@ -63,17 +78,18 @@ public class ConciliadorVisitas {
                     numero(linha.campo("Vl. A Repassar"), linha.numero()));
             porChave.computeIfAbsent(new Chave(registro.atendimento(), registro.data()), k -> new ArrayList<>()).add(registro);
         }
-        Map<Chave, Long> contagens = new HashMap<>();
-        for (var linha : medico) contagens.merge(chaveMedico(linha), 1L, Long::sum);
         var registros = porChave.values().stream().flatMap(List::stream).toList();
+        Map<Integer, List<RegistroHospital>> porLinha = new HashMap<>();
         Map<Integer, Long> disputas = new HashMap<>();
-        for (var chave : contagens.keySet()) for (var h : candidatos(registros, chave)) {
-            disputas.merge(h.linha(), contagens.get(chave), Long::sum);
+        for (var linha : medico) {
+            var candidatos = refinar(candidatos(registros, chaveMedico(linha)), linha.campos());
+            porLinha.put(linha.numero(), candidatos);
+            for (var h : candidatos) disputas.merge(h.linha(), 1L, Long::sum);
         }
         List<Visita> visitas = new ArrayList<>();
         for (var linha : medico) {
             Chave chave = chaveMedico(linha);
-            var candidatos = candidatos(registros, chave);
+            var candidatos = porLinha.get(linha.numero());
             boolean disputado = candidatos.stream().anyMatch(h -> disputas.get(h.linha()) > 1);
             RegistroHospital unico = candidatos.size() == 1 && !disputado ? candidatos.getFirst() : null;
             Status status;
@@ -111,7 +127,7 @@ public class ConciliadorVisitas {
         Map<Status, Long> resumo = new EnumMap<>(Status.class);
         for (Status status : Status.values()) resumo.put(status, visitas.stream().filter(v -> v.status() == status).count());
         BigDecimal repasse = visitas.stream().filter(v -> v.status() == Status.PAGA)
-                .map(v -> v.hospital().repasse()).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(Visita::repasseEfetivo).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new Relatorio(hospital, arquivoMedico, arquivoHospital,
                 "PAGA significa correspondencia unica no setor Faturado do hospital; nao comprova recebimento financeiro.",
                 List.copyOf(visitas), semProducao, resumo, repasse);
@@ -131,10 +147,25 @@ public class ConciliadorVisitas {
         String medico = linha.campo("Medico");
         String procedimento = linha.campo("Procedimento/Mat-Med");
         BigDecimal valor = numero(linha.campo("Valor Orig"), linha.numero());
-        return (!medico.isBlank() && !LeitorPlanilhaVisitas.normalizar(medico).equals(LeitorPlanilhaVisitas.normalizar(hospital.medico())))
+        String codigo = LeitorPlanilhaVisitas.identificador(linha.campo("Cod Produto"));
+        return (!codigo.isBlank() && !codigo.equals(hospital.codigo()))
+                || (!medico.isBlank() && !LeitorPlanilhaVisitas.normalizar(medico).equals(LeitorPlanilhaVisitas.normalizar(hospital.medico())))
                 || (!procedimento.isBlank() && !procedimento.equals(hospital.codigo())
                     && !LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(hospital.procedimento())))
-                || (valor != null && valor.compareTo(hospital.valorTotal()) != 0);
+                || (valor != null && valor.signum() != 0 && valor.compareTo(hospital.valorTotal()) != 0);
+    }
+
+    static List<RegistroHospital> refinar(List<RegistroHospital> candidatos, Map<String,String> dados) {
+        if (candidatos.size() < 2) return candidatos;
+        String medico = LeitorPlanilhaVisitas.normalizar(dados.getOrDefault("medico", ""));
+        String codigo = LeitorPlanilhaVisitas.identificador(dados.getOrDefault("cod produto", ""));
+        String procedimento = dados.getOrDefault("procedimento/mat-med", "");
+        var filtrados = candidatos.stream().filter(h -> (medico.isBlank() || medico.equals(LeitorPlanilhaVisitas.normalizar(h.medico())))
+                && (codigo.isBlank() || codigo.equals(h.codigo()))
+                && (procedimento.isBlank() || procedimento.equals(h.codigo())
+                    || LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(h.procedimento())))).toList();
+        // Keep mismatching candidates visible for review instead of reporting an absent visit.
+        return filtrados.isEmpty() ? candidatos : filtrados;
     }
 
     private static BigDecimal numero(String valor, int linha) {

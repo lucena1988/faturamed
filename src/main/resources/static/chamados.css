@@ -1,0 +1,48 @@
+/* Central de chamados: identidade FaturaMed e temas compartilhados. */
+body.sd-liquid-body { min-height:100dvh; background:var(--bg); color:var(--text); }
+.sd-workspace { max-width:1680px; margin:auto; padding:28px 28px 64px; display:flex; flex-direction:column; gap:22px; }
+.sd-topbar,.sd-brand-title,.sd-nav-actions,.sd-card-top,.sd-col-header,.sd-modal-header { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.sd-topbar { flex-wrap:wrap; padding-bottom:22px; border-bottom:1px solid var(--line); }
+.sd-brand-title { align-items:flex-start; flex-direction:column; gap:12px; }
+.sd-back-link { font-size:14px; font-weight:600; color:var(--primary); text-decoration:none; }
+.sd-back-link:hover { text-decoration:none; filter:brightness(.96); }
+.sd-eyebrow { color:var(--muted); font-size:12px; }
+.sd-topbar h1 { margin:5px 0 0; font-size:28px; color:var(--text); }
+.sd-nav-actions { flex-wrap:wrap; justify-content:flex-end; }
+.sd-nav-actions a,.sd-nav-actions .text-button,.secondary-button,.sd-mini-btn,.sd-close { border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--primary); padding:10px 14px; text-decoration:none; font:inherit; font-size:13px; cursor:pointer; }
+.sd-workspace .primary-button { border:1px solid #216a7e; border-radius:8px; background:#216a7e; color:white; padding:11px 18px; font:inherit; font-weight:600; cursor:pointer; }
+.sd-workspace button:hover,.sd-nav-actions a:hover { filter:brightness(.96); }
+.sd-workspace [hidden] { display:none!important; }
+.sd-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.sd-kpi-card { background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--primary); border-radius:10px; padding:19px 20px; display:flex; flex-direction:column; gap:8px; }
+.sd-kpi-card span { font-size:13px; font-weight:600; color:var(--muted); }
+.sd-kpi-card strong { font-size:30px; line-height:1.15; color:var(--text); }
+.sd-kpi-card small { font-size:12px; color:var(--muted); }
+.sd-kpi-card.ok { border-top-color:var(--green); }.sd-kpi-card.warn { border-top-color:var(--amber); }.sd-kpi-card.danger { border-top-color:var(--rose); }
+.sd-filters { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; padding:18px; background:var(--surface); border:1px solid var(--line); border-radius:10px; }
+.sd-filters label,.sd-control-panel label { display:flex; flex-direction:column; gap:7px; font-size:12px; color:var(--muted); }
+.sd-search-field { flex:2 1 300px; order:-1; }.sd-filters label:not(.sd-search-field):not(.sd-check-field) { flex:1 1 180px; }
+.sd-filters select,.sd-filters input[type=search],.sd-control-panel :is(select,input,textarea),.sd-sla-table :is(select,input) { min-width:0; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--text); font:inherit; }
+.sd-check-field { flex-direction:row!important; align-items:center; padding:10px 0; }.sd-check-field input { width:auto; }
+.sd-kanban-board { display:grid; grid-template-columns:repeat(5,minmax(250px,1fr)); gap:14px; overflow-x:auto; padding-bottom:12px; align-items:start; }
+.sd-kanban-col { background:var(--surface-soft); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-height:420px; max-height:72dvh; }
+.sd-col-header { align-items:flex-start; padding:16px 14px; border-bottom:1px solid var(--line); border-top:3px solid var(--blue); border-radius:10px 10px 0 0; min-height:88px; }
+.sd-col-header h2 { font-size:14px; margin:0 0 6px; }.sd-col-header small { font-size:11px; line-height:1.5; color:var(--muted); }
+.st-em_atendimento { border-top-color:var(--amber); }.st-aguardando_usuario { border-top-color:#c2853c; }.st-resolvido { border-top-color:var(--green); }.st-fechado { border-top-color:var(--muted); }
+.sd-col-count { background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:3px 8px; font-size:12px; font-weight:600; }
+.sd-col-cards { padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; flex:1; }
+.sd-card { padding:14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); display:flex; flex-direction:column; gap:10px; cursor:pointer; box-shadow:0 2px 5px #002d3b08; }
+.sd-card:hover { border-color:var(--primary); }.sd-card.sla-vencido { border-left:3px solid var(--rose); }.sd-card.sla-em_alerta { border-left:3px solid var(--amber); }.sd-card.sla-no_prazo,.sd-card.sla-cumprido { border-left:3px solid var(--green); }
+.sd-card-top { flex-wrap:wrap; gap:8px; }.sd-protocol-tag { font:600 11px ui-monospace,monospace; color:var(--primary); }.sd-card-title { font-size:15px; line-height:1.4; margin:0; }
+.sd-card-badges,.sd-card-actions { display:flex; flex-wrap:wrap; gap:6px; }.sd-pill { padding:4px 7px; border-radius:5px; font-size:10px; font-weight:600; background:var(--surface-soft); color:var(--text); border:1px solid var(--line); }
+.sd-pill:is(.sla-no_prazo,.sla-cumprido) { color:var(--green); }.sd-pill:is(.prio-critica,.sla-vencido,.sla-fora_do_prazo) { color:var(--rose); }.sd-pill:is(.prio-alta,.sla-em_alerta) { color:var(--amber); }
+.sd-card-footer { border-top:1px solid var(--line); padding-top:10px; display:flex; flex-direction:column; gap:5px; font-size:11px; line-height:1.5; color:var(--muted); }.sd-mini-btn { padding:6px 8px; font-size:11px; }
+.sd-kanban-col.drag-over { outline:2px dashed var(--primary); }
+.sd-banner { margin:0; padding:14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); }.sd-banner.ok { color:var(--green); }.sd-banner.err { color:var(--rose); }
+.sd-modal { width:min(920px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); margin:auto; padding:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); box-shadow:0 24px 70px #00233133; }
+.sd-modal::backdrop { background:#102a3b80; }.sd-modal-shell { display:flex; flex-direction:column; max-height:calc(100dvh - 32px); }.sd-modal-header { padding:18px 22px; border-bottom:1px solid var(--line); }.sd-modal-header h2 { font-size:19px; margin:4px 0; }.sd-close { padding:5px 10px; font-size:20px; }.sd-modal-body { padding:22px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; }
+.sd-detail-grid { display:grid; grid-template-columns:1.3fr 1fr; gap:16px; }.sd-control-panel { padding:16px; border-radius:8px; border:1px solid var(--line); background:var(--surface-soft); display:flex; flex-direction:column; gap:12px; }
+.sd-img-preview { max-width:220px; max-height:140px; object-fit:cover; border-radius:6px; }.sd-sla-table { width:100%; border-collapse:collapse; font-size:13px; }.sd-sla-table th,.sd-sla-table td { padding:11px; border-bottom:1px solid var(--line); text-align:left; }
+.sd-workspace :is(a,button,input,select,textarea):focus-visible,.sd-modal :is(button,input,select,textarea):focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+@media(max-width:900px) { .sd-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.sd-detail-grid { grid-template-columns:1fr; }.sd-workspace { padding:20px 16px 40px; }.sd-nav-actions { justify-content:flex-start; } }
+@media(max-width:480px) { .sd-kpi-grid { gap:10px; }.sd-kpi-card { padding:14px; }.sd-topbar h1 { font-size:23px; }.sd-search-field { flex-basis:100%; } }

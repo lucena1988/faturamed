@@ -53,4 +53,15 @@ class AcompanhamentoRevisaoTest {
         var v=new ConciliadorVisitas.Visita(2,"123",null,ConciliadorVisitas.Status.DIVERGENTE,"Conferir",Map.of(),null,List.of(a,b));
         assertThat(analisar(v,null).categoria()).isEqualTo(AcompanhamentoRevisao.Categoria.AMBIGUIDADE);
     }
+    @Test void duplicidadeTemCategoriaPropriaMesmoSemDadosEfetivos() {
+        for(String motivo:List.of(
+                "Possivel duplicidade: visita ja vinculada a outra producao ou com repeticao hospitalar em analise. Consulte a base hospitalar.",
+                "Possivel duplicidade: reapresentacao classificada como duplicado pago em outro mes.")) {
+            var registro=hospital("Medico","Faturado","85");
+            var visita=new ConciliadorVisitas.Visita(2,"123",registro.data(),ConciliadorVisitas.Status.DIVERGENTE,motivo,Map.of(),null,List.of(registro));
+            var item=analisar(visita,null);
+            assertThat(item.categoria()).isEqualTo(AcompanhamentoRevisao.Categoria.DUPLICIDADE);
+            assertThat(item.precisaConferencia()).isTrue();
+        }
+    }
 }
