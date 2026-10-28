@@ -70,6 +70,8 @@
   }
 
   function renderKanban() {
+    document.querySelector('#kpi-atendimento').textContent = chamados.filter(c => c.status === 'EM_ATENDIMENTO').length;
+    document.querySelector('#kpi-retorno').textContent = chamados.filter(c => c.status === 'AGUARDANDO_USUARIO').length;
     for (const st of STATUS_LIST) {
       const col = document.querySelector(`#col-${st}`);
       const cnt = document.querySelector(`#count-${st}`);
@@ -532,7 +534,9 @@
     try {
       currentUser = await api('/api/auth/me');
       document.querySelector('#sd-user-context').textContent =
-        `Service Desk • Operador: ${currentUser.nome} (Perfil ${currentUser.perfil})`;
+        `${currentUser.nome} • ${tecnico() ? "Equipe técnica" : "Funcionário FaturaMed"}`;
+      document.querySelector("h1").textContent = tecnico() ? "Gestão de chamados e SLA" : "Acompanhar chamados";
+      document.title = document.querySelector("h1").textContent + " | FaturaMed";
       if (currentUser.perfil === 'DEV') {
         filtroFila.value = 'DEV';
       }

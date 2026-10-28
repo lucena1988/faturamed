@@ -629,3 +629,7 @@
 #hd-widget-dialog .hd-form-grid :is(input, select, textarea):focus { outline: 2px solid var(--primary); outline-offset: 2px; }
 :root[data-theme="dark"] #hd-widget-dialog :is(.primary-button,.hd-kanban-link) { background: #286d81; color: #fff; }
 :root[data-theme="dark"] #hd-widget-dialog :is(.primary-button,.hd-kanban-link):hover { background: #34869b; }
+
+#hd-widget-dialog .hd-avisos { display:flex; flex-direction:column; gap:8px; margin-bottom:18px; padding:14px; border:1px solid var(--primary); border-radius:8px; background:var(--surface-soft); color:var(--text); }
+#hd-widget-dialog .hd-avisos[hidden] { display:none; }
+#hd-widget-dialog .hd-aviso { text-align:left; padding:10px; border:1px solid var(--line); border-left:3px solid var(--amber); border-radius:6px; background:var(--surface); color:var(--primary); cursor:pointer; font:inherit; line-height:1.5; }

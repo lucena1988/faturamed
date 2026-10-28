@@ -14,6 +14,35 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ChamadoService {
+    public record Aviso(long id, long chamadoId, String protocolo, String titulo, String tipo, Instant criadoEm) {}
+    public record CaixaAvisos(long naoLidas, List<Aviso> itens) {}
+
+    @Transactional(readOnly = true)
+    public CaixaAvisos avisos(UsuarioAutenticado user) {
+        long total = jdbc.queryForObject("select count(*) from chamado_aviso where usuario_id=? and lido_em is null", Long.class, user.id());
+        var itens = jdbc.query("""
+            select a.*,c.protocolo,c.titulo from chamado_aviso a join chamado_suporte c on c.id=a.chamado_id
+            where a.usuario_id=? and a.lido_em is null order by a.id desc limit 50
+            """, (r,n) -> new Aviso(r.getLong("id"),r.getLong("chamado_id"),r.getString("protocolo"),
+                r.getString("titulo"),r.getString("tipo"),r.getTimestamp("criado_em").toInstant()),user.id());
+        return new CaixaAvisos(total,itens);
+    }
+
+    @Transactional
+    public void lerAviso(long id, UsuarioAutenticado user) {
+        if (jdbc.update("update chamado_aviso set lido_em=coalesce(lido_em,now()) where id=? and usuario_id=?",id,user.id()) == 0)
+            throw new RecursoNaoEncontradoException("Aviso nao encontrado");
+    }
+
+    private void avisar(ChamadoItem chamado, UsuarioAutenticado autor, String tipo, boolean suporte) {
+        jdbc.update("""
+            insert into chamado_aviso(chamado_id,usuario_id,tipo)
+            select ?,u.id,? from usuario_acesso u where u.ativo=true and u.id<>?
+            and ((?=false and u.id=? and u.perfil<>'MEDICO')
+              or (?=true and u.perfil in ('ADMIN','DEV') and (?::bigint is null or u.id=?)))
+            """,chamado.id(),tipo,autor.id(),suporte,chamado.solicitanteId(),suporte,chamado.responsavelId(),chamado.responsavelId());
+    }
+
     static final int LIMITE_ARQUIVO = 5 * 1024 * 1024;
     private static final Set<String> FILAS = Set.of("DEV", "ADMIN");
     private static final Set<String> PRIORIDADES = Set.of("CRITICA", "ALTA", "MEDIA", "BAIXA");
@@ -321,6 +350,8 @@ public class ChamadoService {
         }
 
         long msgId = inserirMensagem(id, user, "MENSAGEM", texto);
+        if (user.id() == chamado.solicitanteId()) avisar(chamado,user,"RESPOSTA_SOLICITANTE",true);
+        else if ("ADMIN".equals(user.perfil()) || "DEV".equals(user.perfil())) avisar(chamado,user,"MENSAGEM_SUPORTE",false);
         salvarAnexos(id, msgId, validados, user);
 
         boolean isAtendente = ("ADMIN".equals(user.perfil()) || "DEV".equals(user.perfil())) && user.id() != chamado.solicitanteId();
@@ -424,6 +455,9 @@ public class ChamadoService {
                 """,
                 novoStatus, novaFila, novaPrioridade, novoRespId, novoRespNome,
                 novoStatus, novoStatus, novoStatus, novoStatus, id);
+
+        if ("AGUARDANDO_USUARIO".equals(novoStatus) && !novoStatus.equals(atual.status()))
+            avisar(atual,user,"RETORNO_SOLICITADO",false);
 
         List<String> mudancas = new ArrayList<>();
         if (!novoStatus.equals(atual.status())) {

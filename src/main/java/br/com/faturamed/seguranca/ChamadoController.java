@@ -17,6 +17,17 @@ public class ChamadoController {
         this.service = service;
     }
 
+    @GetMapping("/notificacoes")
+    public ChamadoService.CaixaAvisos avisos(@AuthenticationPrincipal UsuarioAutenticado user) {
+        return service.avisos(user);
+    }
+
+    @PostMapping("/notificacoes/{id}/leitura")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void lerAviso(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado user) {
+        service.lerAviso(id,user);
+    }
+
     @GetMapping("/tipos")
     public List<ChamadoService.TipoSla> listarTipos() {
         return service.listarTipos();

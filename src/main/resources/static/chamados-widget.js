@@ -60,6 +60,7 @@
   let tiposSla = [];
   let meusChamados = [];
   let activeTicketId = null;
+  let avisosPendentes = [];
 
   const fab = el('button', 'hd-fab');
   fab.id = 'hd-fab-button';
@@ -127,7 +128,10 @@
   const viewDetalhe = el('div');
   viewDetalhe.hidden = true;
 
-  body.append(feedback, viewNovo, viewMeus, viewDetalhe);
+  const avisosBox = el('section', 'hd-avisos');
+  avisosBox.setAttribute('aria-label','Avisos de chamados');
+  avisosBox.hidden = true;
+  body.append(feedback, avisosBox, viewNovo, viewMeus, viewDetalhe);
   shell.append(header, tabs, body);
   dialog.append(shell);
   document.body.append(dialog);
@@ -311,6 +315,9 @@
     try {
       const det = await FaturamedAuth.request(`/api/chamados/${id}`);
       renderDetalhe(det);
+      const lidos = avisosPendentes.filter(a => a.chamadoId === id);
+      for (const aviso of lidos) await FaturamedAuth.request(`/api/chamados/notificacoes/${aviso.id}/leitura`, {method:'POST'});
+      await carregarAvisos();
     } catch (err) {
       showFeedback(err.message, true);
     }
@@ -472,6 +479,30 @@
     }
   }
 
+  const rotulosAviso = {
+    RETORNO_SOLICITADO: 'Suporte aguarda sua resposta',
+    RESPOSTA_SOLICITANTE: 'Nova resposta do solicitante',
+    MENSAGEM_SUPORTE: 'Nova mensagem do suporte'
+  };
+  async function carregarAvisos() {
+    const caixa = await FaturamedAuth.request('/api/chamados/notificacoes');
+    avisosPendentes = caixa.itens || [];
+    const total = caixa.naoLidas || 0;
+    fabBadge.hidden = total === 0;
+    fabBadge.textContent = total > 99 ? '99+' : String(total);
+    fab.title = total ? `Service Desk: ${total} aviso(s) não lido(s)` : 'Service Desk: nenhum aviso novo';
+    fab.setAttribute('aria-label',fab.title);
+    avisosBox.replaceChildren();
+    avisosBox.hidden = total === 0;
+    if (total) avisosBox.append(el('strong','','Avisos não lidos ('+total+')'));
+    for (const aviso of avisosPendentes) {
+      const abrir = el('button','hd-aviso',`${rotulosAviso[aviso.tipo] || 'Atualização no chamado'} • ${aviso.protocolo} — ${aviso.titulo}`);
+      abrir.type = 'button';
+      abrir.addEventListener('click',()=>abrirDetalheChamado(aviso.chamadoId));
+      avisosBox.append(abrir);
+    }
+  }
+
   async function carregarResumoELista() {
     try {
       if (!currentUser) {
@@ -488,12 +519,7 @@
       meusChamados = painel.chamados || [];
       tabMeus.textContent = `Meus Protocolos (${meusChamados.length})`;
 
-      const isSuporte = currentUser.perfil === 'ADMIN' || currentUser.perfil === 'DEV';
-      const badgeCount = isSuporte
-        ? (painel.resumo?.totalAbertos || 0)
-        : meusChamados.filter(c => c.status !== 'FECHADO').length;
-      fabBadge.hidden = badgeCount === 0;
-      fabBadge.textContent = badgeCount > 99 ? '99+' : String(badgeCount);
+      await carregarAvisos();
 
       renderListaMeus();
     } catch (_) {
@@ -517,8 +543,8 @@
 
   closeBtn.addEventListener('click', () => dialog.close());
   setInterval(() => {
-    if (!document.hidden && !dialog.open) carregarResumoELista();
-  }, 60000);
+    if (!document.hidden) carregarAvisos().catch(() => {});
+  }, 30000);
 
   carregarResumoELista();
 })();
