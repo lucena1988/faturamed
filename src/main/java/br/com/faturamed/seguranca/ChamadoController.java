@@ -28,6 +28,13 @@ public class ChamadoController {
         service.lerAviso(id,user);
     }
 
+    @PostMapping("/{id}/notificacoes/leitura")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void lerAvisosChamado(@PathVariable long id, @RequestParam long ateId,
+                                @AuthenticationPrincipal UsuarioAutenticado user) {
+        service.lerAvisosChamado(id, ateId, user);
+    }
+
     @GetMapping("/tipos")
     public List<ChamadoService.TipoSla> listarTipos() {
         return service.listarTipos();

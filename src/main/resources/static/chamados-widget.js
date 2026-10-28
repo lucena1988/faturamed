@@ -92,26 +92,27 @@
   const brandLogo = el('span', 'hd-brand-logo');
   brandLogo.innerHTML = BR_GLASS_SVG;
   const headerLeft = el('div');
-  const title = el('h2', '', 'Ambiente de Suporte & Service Desk');
+  const title = el('h2', '', 'Central de suporte');
   title.id = 'hd-dialog-title';
-  const subtitle = el('p', '', 'Abra um protocolo eletronico, envie evidencias ou acompanhe o SLA em tempo real.');
+  const subtitle = el('p', '', 'Conte o que aconteceu. Estamos aqui para ajudar.');
   headerLeft.append(title, subtitle);
   brandHead.append(brandLogo, headerLeft);
 
   const headerActions = el('div', 'hd-header-actions');
-  const kanbanLink = el('a', 'hd-kanban-link', 'Abrir Painel Kanban');
+  const kanbanLink = el('a', 'hd-kanban-link', 'Painel de atendimento ↗');
   kanbanLink.href = '/chamados.html';
   kanbanLink.hidden = true;
   const closeBtn = el('button', 'hd-close-btn', '×');
   closeBtn.type = 'button';
   closeBtn.title = 'Fechar';
-  headerActions.append(kanbanLink, closeBtn);
+  closeBtn.setAttribute('aria-label', 'Fechar central de suporte');
+  headerActions.append(closeBtn);
   header.append(brandHead, headerActions);
 
   const tabs = el('div', 'hd-tabs');
-  const tabNovo = el('button', 'hd-tab active', 'Novo Chamado');
+  const tabNovo = el('button', 'hd-tab active', 'Novo chamado');
   tabNovo.type = 'button';
-  const tabMeus = el('button', 'hd-tab', 'Meus Protocolos');
+  const tabMeus = el('button', 'hd-tab', 'Meus chamados');
   tabMeus.type = 'button';
   const tabDetalhe = el('button', 'hd-tab', 'Protocolo Selecionado');
   tabDetalhe.type = 'button';
@@ -132,7 +133,9 @@
   avisosBox.setAttribute('aria-label','Avisos de chamados');
   avisosBox.hidden = true;
   body.append(feedback, avisosBox, viewNovo, viewMeus, viewDetalhe);
-  shell.append(header, tabs, body);
+  const footer = el('footer', 'hd-dialog-footer');
+  footer.append(kanbanLink);
+  shell.append(header, tabs, body, footer);
   dialog.append(shell);
   document.body.append(dialog);
 
@@ -176,68 +179,71 @@
     const form = el('form', 'hd-form-grid');
 
     const origemAtual = location.pathname + (location.hash || '');
-    const lblTipo = el('label', '', 'Categoria do Problema / Solicitacao');
+    const lblTipo = el('label', '', 'Qual é o problema?');
     const selTipo = el('select');
     selTipo.name = 'tipoCodigo';
     selTipo.required = true;
+    selTipo.append(new Option('Selecione uma categoria', ''));
+    selTipo.setAttribute('aria-describedby', 'hd-category-help');
     for (const t of tiposSla) {
-      selTipo.append(new Option(`${t.nome} (SLA ${t.slaHoras}h)`, t.codigo));
+      selTipo.append(new Option(t.nome, t.codigo));
     }
     lblTipo.append(selTipo);
 
-    const preview = el('div', 'hd-sla-preview');
+    const preview = el('div', 'hd-category-help');
+    preview.id = 'hd-category-help';
+    preview.setAttribute('aria-live', 'polite');
     const updatePreview = () => {
-      const t = tiposSla.find(x => x.codigo === selTipo.value) || tiposSla[0];
+      const t = tiposSla.find(x => x.codigo === selTipo.value);
       preview.replaceChildren();
+      preview.hidden = !t;
       if (!t) return;
-      const desc = el('div', '', t.descricao);
-      const meta = el('div');
-      const bFila = el('span', `hd-badge fila-${t.filaPadrao.toLowerCase()}`,
-        t.filaPadrao === 'DEV' ? 'Fila: Equipe DEV' : 'Fila: Equipe ADMIN');
-      const bSla = el('span', 'hd-badge sla-no_prazo', `Prazo SLA: ${t.slaHoras}h (${t.prioridadePadrao})`);
-      meta.style.display = 'flex';
-      meta.style.gap = '6px';
-      meta.append(bFila, bSla);
-      preview.append(desc, meta);
+      preview.append(el('span', '', t.descricao),
+        el('span', 'hd-deadline', `Prazo previsto: ${t.slaHoras} horas`));
     };
     selTipo.addEventListener('change', updatePreview);
     updatePreview();
+    lblTipo.append(preview);
 
-    const lblTitulo = el('label', '', 'Resumo / Titulo do chamado');
+    const lblTitulo = el('label', '', 'Assunto');
     const inpTitulo = el('input');
     inpTitulo.name = 'titulo';
     inpTitulo.required = true;
     inpTitulo.maxLength = 180;
-    inpTitulo.placeholder = 'Ex.: Divergencia ao importar planilha ou erro na tela';
+    inpTitulo.placeholder = 'Ex.: Não consigo importar uma planilha';
     lblTitulo.append(inpTitulo);
 
-    const lblDesc = el('label', '', 'Descricao detalhada');
+    const lblDesc = el('label', '', 'Descrição');
     const txtDesc = el('textarea');
     txtDesc.name = 'descricao';
     txtDesc.required = true;
     txtDesc.rows = 4;
     txtDesc.maxLength = 4000;
-    txtDesc.placeholder = 'Explique o que aconteceu, passos realizados e como podemos ajudar...';
+    txtDesc.placeholder = 'O que você tentou fazer e o que aconteceu? Se apareceu uma mensagem de erro, inclua aqui.';
     lblDesc.append(txtDesc);
 
-    const lblOrigem = el('label', '', 'Tela / Modulo de origem');
-    const inpOrigem = el('input');
-    inpOrigem.name = 'paginaOrigem';
-    inpOrigem.value = origemAtual;
-    inpOrigem.maxLength = 250;
-    lblOrigem.append(inpOrigem);
-
-    const lblAnexos = el('label', '', 'Capturas de tela / Evidencias (PNG, JPG, WEBP ou PDF - ate 5 MB)');
+    const anexos = el('div', 'hd-upload');
     const inpAnexos = el('input');
     inpAnexos.type = 'file';
+    inpAnexos.hidden = true;
     inpAnexos.multiple = true;
     inpAnexos.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
-    lblAnexos.append(inpAnexos);
+    const anexarBtn = el('button', 'hd-upload-button', '+ Adicionar arquivos');
+    anexarBtn.type = 'button';
+    anexarBtn.addEventListener('click', () => inpAnexos.click());
+    const ajudaAnexos = el('span', 'hd-upload-help', 'Opcional · PNG, JPG, WEBP ou PDF. Até 5 arquivos de 5 MB cada.');
+    const arquivosSelecionados = el('div', 'hd-upload-files');
+    arquivosSelecionados.setAttribute('aria-live', 'polite');
+    const atualizarAnexos = () => {
+      arquivosSelecionados.textContent = Array.from(inpAnexos.files, f => f.name).join(', ');
+    };
+    inpAnexos.addEventListener('change', atualizarAnexos);
+    anexos.append(anexarBtn, ajudaAnexos, arquivosSelecionados, inpAnexos);
 
-    const submitBtn = el('button', 'primary-button', 'Registrar Chamado e Gerar Protocolo');
+    const submitBtn = el('button', 'primary-button', 'Enviar chamado');
     submitBtn.type = 'submit';
 
-    form.append(lblTipo, preview, lblTitulo, lblDesc, lblOrigem, lblAnexos, submitBtn);
+    form.append(lblTipo, lblTitulo, lblDesc, anexos, submitBtn);
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
@@ -247,13 +253,13 @@
         fd.append('tipoCodigo', selTipo.value);
         fd.append('titulo', inpTitulo.value.trim());
         fd.append('descricao', txtDesc.value.trim());
-        fd.append('paginaOrigem', inpOrigem.value.trim());
+        fd.append('paginaOrigem', location.pathname + (location.hash || ''));
         for (const file of inpAnexos.files) {
           fd.append('arquivos', file);
         }
         const detalhe = await FaturamedAuth.request('/api/chamados', { method: 'POST', body: fd });
         form.reset();
-        inpOrigem.value = location.pathname + (location.hash || '');
+        atualizarAnexos();
         updatePreview();
         await carregarResumoELista();
         abrirDetalheChamado(detalhe.chamado.id, `Chamado registrado com sucesso! Protocolo: ${detalhe.chamado.protocolo}`);
@@ -312,11 +318,11 @@
     switchTab('detalhe');
     if (bannerMsg) showFeedback(bannerMsg, false);
     viewDetalhe.replaceChildren(el('p', '', 'Carregando protocolo...'));
+    const ateAvisoId = Math.max(0, ...avisosPendentes.map(a => a.id));
     try {
       const det = await FaturamedAuth.request(`/api/chamados/${id}`);
       renderDetalhe(det);
-      const lidos = avisosPendentes.filter(a => a.chamadoId === id);
-      for (const aviso of lidos) await FaturamedAuth.request(`/api/chamados/notificacoes/${aviso.id}/leitura`, {method:'POST'});
+      if (ateAvisoId) await FaturamedAuth.request(`/api/chamados/${id}/notificacoes/leitura?ateId=${ateAvisoId}`, {method:'POST'});
       await carregarAvisos();
     } catch (err) {
       showFeedback(err.message, true);
@@ -517,7 +523,7 @@
       }
       const painel = await FaturamedAuth.request('/api/chamados?meus=true');
       meusChamados = painel.chamados || [];
-      tabMeus.textContent = `Meus Protocolos (${meusChamados.length})`;
+      tabMeus.textContent = `Meus chamados (${meusChamados.length})`;
 
       await carregarAvisos();
 
