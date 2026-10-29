@@ -146,10 +146,21 @@ uma das visitas. O teste permanece no codigo e aparece como **IGNORADO**, sem
 bloquear a pipeline. Para reativar apos a correcao, remova `skip_reason` da chamada
 AUTO27 em `scripts/homologacao_cenarios.py`. Isso nao corrige o comportamento da aplicacao.
 
-O workflow [.github/workflows/testes.yml](.github/workflows/testes.yml) executa
-`python test.py` ao abrir, reabrir ou atualizar um PR, para qualquer branch de destino.
-Tambem pode ser iniciado manualmente em **Actions > Testes automatizados > Run workflow**
-apos o arquivo estar na branch padrao.
+O workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) roda em todo PR,
+em push para `main` e `develop`, e manualmente em **Actions > CI > Run workflow**.
+Ele tem quatro jobs:
+
+| Job | O que faz |
+|---|---|
+| **Java (build e testes)** | `mvn -B verify` com PostgreSQL de servico; falhas viram anotacoes no PR |
+| **Frontend e scripts** | testes `node --test` e `scripts.test_qa_fixtures` |
+| **Seguranca** | gitleaks (segredos), dependency-review (so PR) e CodeQL (Java, JS, Python) |
+| **Regressao completa** | `python test.py`; so roda se Java e Frontend passarem |
+
+Depois de uma CI verde em push para `main` ou `develop`, o workflow
+[.github/workflows/imagem.yml](.github/workflows/imagem.yml) constroi a imagem Docker,
+bloqueia vulnerabilidades criticas com Trivy e publica em
+`ghcr.io/lucena1988/faturamed` com as tags do commit, da branch e `latest` (so `main`).
 
 O runner Ubuntu prepara Python 3.12 e usa Docker para os ambientes exclusivos de QA.
 Nao precisa de `.env`, banco externo ou secrets de producao. Uma nova atualizacao do
@@ -166,8 +177,8 @@ no commit e envie a branch ao GitHub. Actions precisa estar habilitado no reposi
 PRs de forks podem exigir aprovacao de um mantenedor para iniciar a execucao.
 
 Para impedir merge com testes reprovados, configure em **Settings > Rules > Rulesets**
-uma regra para a branch de destino e exija o check **Regressao completa** depois da
-primeira execucao. Criar o workflow sozinho nao torna esse check obrigatorio para merge.
+uma regra para a branch de destino e exija os checks **Java (build e testes)**,
+**Frontend e scripts**, **Seguranca** e **Regressao completa** depois da primeira execucao. Criar o workflow sozinho nao torna esse check obrigatorio para merge.
 Falhas de cenarios sao mantidas como falhas na pipeline; nao ha `continue-on-error`.
 
 Se `python test.py` terminar com codigo 1, consulte o **Resumo da execucao** no
