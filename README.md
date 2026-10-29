@@ -114,6 +114,9 @@ A execucao inclui, uma vez por rodada:
 3. Testes JavaScript com DOM simulado e verificacao do dashboard gerado.
 
 Os bancos sao temporarios e isolados do PostgreSQL usado em `localhost:8080`.
+As planilhas ficticias sao geradas em memoria a partir dos cenarios e salvas como
+evidencia da rodada. Nao e necessario copiar arquivos locais para `outputs/`:
+a execucao funciona em um checkout novo, como o runner do GitHub Actions.
 A homologacao usa a porta local **18081**, que precisa estar livre. Os containers
 e redes criados pela rodada sao removidos ao final; as evidencias ficam salvas.
 Uma falha de teste retorna codigo diferente de zero, mas as outras camadas

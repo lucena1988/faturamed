@@ -64,6 +64,8 @@ def main():
         print(f'Etapa {name}: codigo {result.returncode}', flush=True)
         return result
     try:
+        if execute('fixtures', [sys.executable, '-m', 'unittest', 'scripts.test_qa_fixtures']).returncode:
+            raise RuntimeError('Falha na geracao das planilhas de teste')
         for tag, extra in [(builder, ['--target', 'build']), (image, [])]:
             if execute('build-java' if extra else 'build-app', ['docker', 'build', *extra, '-t', tag, '.']).returncode:
                 raise RuntimeError('Build falhou; consulte o resumo e os logs')
