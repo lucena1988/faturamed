@@ -86,6 +86,43 @@ mvn test
 mvn spring-boot:run
 ```
 
+### Executando os Testes Automatizados via Linha de Comando (Híbrido: Windows & macOS/Linux)
+
+O projeto conta com solução híbrida multiplataforma para execução da suíte de testes via Docker (dispensa instalação local de Maven ou Node.js):
+
+#### 1. Universal (Python — Windows, macOS e Linux)
+```bash
+python test.py             # Toda a suíte (Unitários + Integração PostgreSQL + Frontend JS)
+python test.py unit        # Apenas testes unitários Java
+python test.py integration # Testes de integração Java com PostgreSQL
+python test.py js          # Testes de frontend JavaScript (DOM simulado, Service Desk)
+```
+
+#### 2. Scripts Nativos do Sistema
+
+* **No macOS / Linux (Terminal / Bash / Zsh):**
+  ```bash
+  ./test.sh [all | unit | integration | js]
+  ```
+
+* **No Windows (PowerShell):**
+  ```powershell
+  .	est.ps1 [all | unit | integration | js]
+  ```
+
+#### 3. Dashboard Visual de Indicadores e Cenários
+
+Após a execução dos testes, é gerado automaticamente o **Dashboard Interativo de Testes** com os indicadores consolidados, distribuição por camada tecnológica e tabela pesquisável com todos os cenários:
+
+* **Arquivo gerado:** [dashboard-testes.html](dashboard-testes.html) (também disponível em `outputs/dashboard-testes.html`).
+* **Visualização:** Funciona offline sem necessidade de servidor web. Abra com dois cliques ou:
+  * No Mac: `open dashboard-testes.html`
+  * No Windows: `start dashboard-testes.html`
+* Para atualizar apenas o dashboard com base nos relatórios existentes:
+  ```bash
+  python scripts/gerar_dashboard_testes.py
+  ```
+
 ## Frontend
 
 Arquivos em `src/main/resources/static`:
