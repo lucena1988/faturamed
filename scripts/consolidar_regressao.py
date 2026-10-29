@@ -14,7 +14,7 @@ for source_root in [root / 'src', root / 'scripts']:
             sources.append({'arquivo': str(file.relative_to(root)), 'sha256': hashlib.sha256(file.read_bytes()).hexdigest()})
 (folder / 'codigo-validado.json').write_text(json.dumps(sources, ensure_ascii=False, indent=2), encoding='utf-8')
 node = Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
-js = subprocess.run([str(node), '--test', 'src/test/js/demonstrativo.test.cjs', 'src/test/js/selecao.test.cjs', 'scripts/painel-medico.test.cjs'], cwd=root, capture_output=True)
+js = subprocess.run([str(node), '--test', 'src/test/js/demonstrativo.test.cjs', 'src/test/js/selecao.test.cjs', 'src/test/js/servicedesk.test.cjs', 'scripts/painel-medico.test.cjs'], cwd=root, capture_output=True)
 (folder / 'javascript-execucao.log').write_bytes(js.stdout + js.stderr)
 totals = {name: 0 for name in ['tests', 'failures', 'errors', 'skipped']}
 java_cases = []

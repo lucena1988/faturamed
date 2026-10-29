@@ -69,6 +69,14 @@ As linhas agrupam variações do mesmo fluxo. HTTP significa requisições reais
 | Remover item de distribuição e Usar saldo | JS selecao.test.cjs; PagamentoDistribuidoTest | Último item removido bloqueia confirmação; nenhum recebimento é gravado |
 | Reinício preserva dados | AUTO09 | Somente instância QA |
 | Backup/restauração do banco | AUTO10 | Compara todas as tabelas; não abre interface restaurada |
+| Service Desk: abertura, protocolo, categoria, SLA e busca | AUTO30 | Dados fictícios; fila e prazo conferidos com a categoria |
+| Atendimento, aguardando retorno, respostas e encerramento | AUTO31; ChamadoAvisosIntegracaoTest | Inclui reabertura, avaliação e bloqueio de mensagem após fechamento |
+| Resposta sem responsável e notificações para equipe | AUTO32; ChamadoAvisosIntegracaoTest | Sem autoaviso; com responsável, somente ele é notificado |
+| Leitura de avisos por chamado e por usuário | AUTO33; ChamadoAvisosIntegracaoTest; JS servicedesk.test.cjs | Mais de 50 avisos, idempotência e preservação de avisos posteriores ao limite |
+| Anexos do chamado e download | AUTO34 | Compara bytes; rejeita formato falso, arquivo maior que 5 MB e mais de 5 anexos sem gravação parcial |
+| Permissões do funcionário, chamado técnico privado e CSRF | AUTO35; ChamadoPermissoesTest | API real; link de acompanhamento não concede ações técnicas |
+| Categoria, campos, mensagem e avaliação inválidos | AUTO36 | Verifica ausência de criação, nota de 1 a 5 e avaliação somente pelo solicitante |
+| Formulário simplificado, origem automática, anexos e erro de envio | JS servicedesk.test.cjs | Executa widget real em DOM simulado; layout e validação nativa do navegador continuam visuais |
 
 ## Pontos que continuam visuais ou fora desta regressão
 

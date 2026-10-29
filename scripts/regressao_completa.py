@@ -48,7 +48,7 @@ try:
 finally:
     for container in [tests, database]:
         command(['docker', 'stop', container])
-js = command([str(node), '--test', 'src/test/js/demonstrativo.test.cjs', 'src/test/js/selecao.test.cjs', 'scripts/painel-medico.test.cjs'])
+js = command([str(node), '--test', 'src/test/js/demonstrativo.test.cjs', 'src/test/js/selecao.test.cjs', 'src/test/js/servicedesk.test.cjs', 'scripts/painel-medico.test.cjs'])
 (folder / 'javascript-execucao.log').write_bytes(js.stdout + js.stderr)
 consolidated = command([sys.executable, 'scripts/consolidar_regressao.py'])
 if consolidated.returncode:

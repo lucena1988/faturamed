@@ -53,7 +53,7 @@ class Client:
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         self.token = None
 
-    def call(self, method, path, payload=None, expected=200, files=None, csrf=True, log=True):
+    def call(self, method, path, payload=None, expected=200, files=None, csrf=True, log=True, multipart=False, attachments=None):
         headers = {}
         if method not in ['GET', 'HEAD'] and csrf:
             if self.token is None:
@@ -61,16 +61,20 @@ class Client:
             headers[self.token['header']] = self.token['token']
         body = None
         recorded_payload = payload
-        if files:
+        if files or multipart:
             boundary = 'qa-' + secrets.token_hex(10)
             parts = []
-            for key, value in payload.items():
+            for key, value in (payload or {}).items():
                 parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
-            filename, content = files
-            parts.extend([f'--{boundary}\r\nContent-Disposition: form-data; name="arquivo"; filename="{filename}"\r\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n'.encode(), content, f'\r\n--{boundary}--\r\n'.encode()])
+            uploads = [('arquivo', files[0], files[1], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')] if files else (attachments or [])
+            for field, filename, content, mime in uploads:
+                parts.extend([f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; filename="{filename}"\r\nContent-Type: {mime}\r\n\r\n'.encode(), content, b'\r\n'])
+            parts.append(f'--{boundary}--\r\n'.encode())
             body = b''.join(parts)
             headers['Content-Type'] = 'multipart/form-data; boundary=' + boundary
-            recorded_payload = {**payload, 'arquivo': filename, 'sha256_arquivo': hashlib.sha256(content).hexdigest()}
+            recorded_payload = {**(payload or {}), 'anexos': [{'campo': field, 'arquivo': name, 'sha256': hashlib.sha256(raw).hexdigest()} for field, name, raw, mime in uploads]}
+            if files:
+                recorded_payload = {**payload, 'arquivo': files[0], 'sha256_arquivo': hashlib.sha256(files[1]).hexdigest()}
         elif payload is not None:
             body = json.dumps(payload).encode()
             headers['Content-Type'] = 'application/json'
@@ -330,6 +334,8 @@ def run():
     case('AUTO08', 'Exportacoes reais preservam totais e isolamento por medico', exports)
     from homologacao_cenarios import executar
     executar(globals(), admin, alfa, beta)
+    from homologacao_servicedesk import executar as executar_servicedesk
+    executar_servicedesk(globals(), admin)
     persistence_before = admin.call('GET', f'/api/base-hospitalar/acompanhamento?hospitalId={hospital}')
 
     def persistence():
