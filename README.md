@@ -179,6 +179,10 @@ PRs de forks podem exigir aprovacao de um mantenedor para iniciar a execucao.
 Para impedir merge com testes reprovados, configure em **Settings > Rules > Rulesets**
 uma regra para a branch de destino e exija os checks **Java (build e testes)**,
 **Frontend e scripts**, **Seguranca** e **Regressao completa** depois da primeira execucao. Criar o workflow sozinho nao torna esse check obrigatorio para merge.
+
+A `main` ja esta protegida pelo ruleset **Proteger main**: alteracoes entram somente por
+PR, com os quatro checks verdes e a branch atualizada; exclusao e force push sao bloqueados.
+A `develop` continua aceitando push direto.
 Falhas de cenarios sao mantidas como falhas na pipeline; nao ha `continue-on-error`.
 
 Se `python test.py` terminar com codigo 1, consulte o **Resumo da execucao** no
