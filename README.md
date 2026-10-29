@@ -161,6 +161,13 @@ uma regra para a branch de destino e exija o check **Regressao completa** depois
 primeira execucao. Criar o workflow sozinho nao torna esse check obrigatorio para merge.
 Falhas de cenarios sao mantidas como falhas na pipeline; nao ha `continue-on-error`.
 
+Se `python test.py` terminar com codigo 1, consulte o **Resumo da execucao** no
+log: ele informa a etapa reprovada, as ultimas linhas do log e os cenarios HTTP
+com erro. O mesmo texto fica em `resumo-execucao.txt` no artefato. `execucao.json`
+registra o codigo de cada etapa; `PENDENCIAS.md` descreve as falhas HTTP.
+O codigo 1 sozinho nao identifica a causa e nao significa necessariamente uma
+falha de configuracao do GitHub Actions.
+
 ## Frontend
 
 Arquivos em `src/main/resources/static`:
