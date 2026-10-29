@@ -8,37 +8,40 @@
     return node;
   };
 
-  // Vector reproduction of the interlocked "BR" glass monogram from the reference icon
-  const BR_GLASS_SVG = `
-    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  // Vector icon: Customer Support & Service Desk (Headset + Speech Bubble in Faturamed Liquid Glass)
+  const SUPPORT_GLASS_SVG = `
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
-        <linearGradient id="br-silver-b" x1="12" y1="14" x2="54" y2="86" gradientUnits="userSpaceOnUse">
+        <linearGradient id="fm-headset-grad" x1="18" y1="16" x2="82" y2="86" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stop-color="#FFFFFF"/>
-          <stop offset="55%" stop-color="#E2E8F0"/>
-          <stop offset="82%" stop-color="#A78BFA"/>
-          <stop offset="100%" stop-color="#7C3AED"/>
+          <stop offset="35%" stop-color="#E5F3F6"/>
+          <stop offset="70%" stop-color="#95D3D5"/>
+          <stop offset="100%" stop-color="#66AFC7"/>
         </linearGradient>
-        <linearGradient id="br-slash" x1="30" y1="46" x2="75" y2="86" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#E879F9"/>
-          <stop offset="45%" stop-color="#8B5CF6"/>
-          <stop offset="100%" stop-color="#4F46E5"/>
-        </linearGradient>
-        <linearGradient id="br-r-loop" x1="56" y1="14" x2="108" y2="86" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#F472B6"/>
-          <stop offset="28%" stop-color="#A855F7"/>
-          <stop offset="52%" stop-color="#6366F1"/>
-          <stop offset="72%" stop-color="#F8FAFC"/>
-          <stop offset="100%" stop-color="#FFFFFF"/>
+        <linearGradient id="fm-bubble-fill" x1="34" y1="34" x2="66" y2="64" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#95D3D5" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#24677D" stop-opacity="0.95"/>
         </linearGradient>
       </defs>
-      <!-- Left 'B' outer stem, upper loop, and lower curve -->
-      <path d="M12 15H44C55.5 15 62 22 62 32C62 38.8 58.2 44.2 52.5 46.8L46 43.5C48.5 41.2 49.8 38 49.8 34C49.8 28.8 46.2 26 40.5 26H25V74H41.5C46.8 74 50.5 71.5 52.8 67.5L60.5 76.5C56.2 82.2 49.8 85 41 85H12V15Z" fill="url(#br-silver-b)"/>
-      <!-- Middle-to-bottom diagonal glowing violet leg of the 'B' -->
-      <path d="M31 46H49.5C54.5 46 58.8 48.2 62 52.2L86 85H70.5L51.5 58.5C49.5 55.8 46.8 54.5 43 54.5H37.5L31 46Z" fill="url(#br-slash)"/>
-      <!-- Right interlocked 'R' top loop and diagonal leg -->
-      <path d="M56 15H86C99.5 15 108 23.2 108 35.5C108 45.8 102.2 53.2 92.8 55.8L110 85H94.5L78.5 57.5H65.5L57.5 46.5H83.5C90.2 46.5 94.5 42.5 94.5 36C94.5 29.5 90.2 26 83.5 26H64L56 15Z" fill="url(#br-r-loop)"/>
+      <!-- Headset arch -->
+      <path d="M 22 52 C 22 30 34 16 50 16 C 66 16 78 30 78 52" stroke="url(#fm-headset-grad)" stroke-width="6.5" stroke-linecap="round"/>
+      <!-- Left earpad -->
+      <rect x="15" y="44" width="12" height="22" rx="6" fill="url(#fm-headset-grad)"/>
+      <rect x="18" y="47" width="6" height="16" rx="3" fill="#194D60" opacity="0.6"/>
+      <!-- Right earpad -->
+      <rect x="73" y="44" width="12" height="22" rx="6" fill="url(#fm-headset-grad)"/>
+      <rect x="76" y="47" width="6" height="16" rx="3" fill="#194D60" opacity="0.6"/>
+      <!-- Mic boom -->
+      <path d="M 78 60 C 78 78 68 84 56 84 H 52" stroke="url(#fm-headset-grad)" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="44" y="81" width="9" height="6" rx="3" fill="#FFFFFF"/>
+      <!-- Center speech bubble -->
+      <path d="M 33 36 C 33 32.7 35.7 30 39 30 H 61 C 64.3 30 67 32.7 67 36 V 54 C 67 57.3 64.3 60 61 60 H 45 L 37 66 V 60 H 39 C 35.7 60 33 57.3 33 54 Z" fill="url(#fm-bubble-fill)" stroke="#FFFFFF" stroke-width="1.8"/>
+      <!-- Chat lines -->
+      <rect x="40" y="38" width="18" height="3" rx="1.5" fill="#FFFFFF"/>
+      <rect x="40" y="45" width="12" height="3" rx="1.5" fill="#E5F3F6"/>
     </svg>
   `;
+  const BR_GLASS_SVG = SUPPORT_GLASS_SVG;
 
   const STATUS_LABELS = {
     ABERTO: 'Aberto (Triagem)',
@@ -92,26 +95,27 @@
   const brandLogo = el('span', 'hd-brand-logo');
   brandLogo.innerHTML = BR_GLASS_SVG;
   const headerLeft = el('div');
-  const title = el('h2', '', 'Ambiente de Suporte & Service Desk');
+  const title = el('h2', '', 'Central de suporte');
   title.id = 'hd-dialog-title';
-  const subtitle = el('p', '', 'Abra um protocolo eletronico, envie evidencias ou acompanhe o SLA em tempo real.');
+  const subtitle = el('p', '', 'Conte o que aconteceu. Estamos aqui para ajudar.');
   headerLeft.append(title, subtitle);
   brandHead.append(brandLogo, headerLeft);
 
   const headerActions = el('div', 'hd-header-actions');
-  const kanbanLink = el('a', 'hd-kanban-link', 'Abrir Painel Kanban');
+  const kanbanLink = el('a', 'hd-kanban-link', 'Painel de atendimento ↗');
   kanbanLink.href = '/chamados.html';
   kanbanLink.hidden = true;
   const closeBtn = el('button', 'hd-close-btn', '×');
   closeBtn.type = 'button';
   closeBtn.title = 'Fechar';
-  headerActions.append(kanbanLink, closeBtn);
+  closeBtn.setAttribute('aria-label', 'Fechar central de suporte');
+  headerActions.append(closeBtn);
   header.append(brandHead, headerActions);
 
   const tabs = el('div', 'hd-tabs');
-  const tabNovo = el('button', 'hd-tab active', 'Novo Chamado');
+  const tabNovo = el('button', 'hd-tab active', 'Novo chamado');
   tabNovo.type = 'button';
-  const tabMeus = el('button', 'hd-tab', 'Meus Protocolos');
+  const tabMeus = el('button', 'hd-tab', 'Meus chamados');
   tabMeus.type = 'button';
   const tabDetalhe = el('button', 'hd-tab', 'Protocolo Selecionado');
   tabDetalhe.type = 'button';
@@ -132,7 +136,9 @@
   avisosBox.setAttribute('aria-label','Avisos de chamados');
   avisosBox.hidden = true;
   body.append(feedback, avisosBox, viewNovo, viewMeus, viewDetalhe);
-  shell.append(header, tabs, body);
+  const footer = el('footer', 'hd-dialog-footer');
+  footer.append(kanbanLink);
+  shell.append(header, tabs, body, footer);
   dialog.append(shell);
   document.body.append(dialog);
 
@@ -176,68 +182,71 @@
     const form = el('form', 'hd-form-grid');
 
     const origemAtual = location.pathname + (location.hash || '');
-    const lblTipo = el('label', '', 'Categoria do Problema / Solicitacao');
+    const lblTipo = el('label', '', 'Qual é o problema?');
     const selTipo = el('select');
     selTipo.name = 'tipoCodigo';
     selTipo.required = true;
+    selTipo.append(new Option('Selecione uma categoria', ''));
+    selTipo.setAttribute('aria-describedby', 'hd-category-help');
     for (const t of tiposSla) {
-      selTipo.append(new Option(`${t.nome} (SLA ${t.slaHoras}h)`, t.codigo));
+      selTipo.append(new Option(t.nome, t.codigo));
     }
     lblTipo.append(selTipo);
 
-    const preview = el('div', 'hd-sla-preview');
+    const preview = el('div', 'hd-category-help');
+    preview.id = 'hd-category-help';
+    preview.setAttribute('aria-live', 'polite');
     const updatePreview = () => {
-      const t = tiposSla.find(x => x.codigo === selTipo.value) || tiposSla[0];
+      const t = tiposSla.find(x => x.codigo === selTipo.value);
       preview.replaceChildren();
+      preview.hidden = !t;
       if (!t) return;
-      const desc = el('div', '', t.descricao);
-      const meta = el('div');
-      const bFila = el('span', `hd-badge fila-${t.filaPadrao.toLowerCase()}`,
-        t.filaPadrao === 'DEV' ? 'Fila: Equipe DEV' : 'Fila: Equipe ADMIN');
-      const bSla = el('span', 'hd-badge sla-no_prazo', `Prazo SLA: ${t.slaHoras}h (${t.prioridadePadrao})`);
-      meta.style.display = 'flex';
-      meta.style.gap = '6px';
-      meta.append(bFila, bSla);
-      preview.append(desc, meta);
+      preview.append(el('span', '', t.descricao),
+        el('span', 'hd-deadline', `Prazo previsto: ${t.slaHoras} horas`));
     };
     selTipo.addEventListener('change', updatePreview);
     updatePreview();
+    lblTipo.append(preview);
 
-    const lblTitulo = el('label', '', 'Resumo / Titulo do chamado');
+    const lblTitulo = el('label', '', 'Assunto');
     const inpTitulo = el('input');
     inpTitulo.name = 'titulo';
     inpTitulo.required = true;
     inpTitulo.maxLength = 180;
-    inpTitulo.placeholder = 'Ex.: Divergencia ao importar planilha ou erro na tela';
+    inpTitulo.placeholder = 'Ex.: Não consigo importar uma planilha';
     lblTitulo.append(inpTitulo);
 
-    const lblDesc = el('label', '', 'Descricao detalhada');
+    const lblDesc = el('label', '', 'Descrição');
     const txtDesc = el('textarea');
     txtDesc.name = 'descricao';
     txtDesc.required = true;
     txtDesc.rows = 4;
     txtDesc.maxLength = 4000;
-    txtDesc.placeholder = 'Explique o que aconteceu, passos realizados e como podemos ajudar...';
+    txtDesc.placeholder = 'O que você tentou fazer e o que aconteceu? Se apareceu uma mensagem de erro, inclua aqui.';
     lblDesc.append(txtDesc);
 
-    const lblOrigem = el('label', '', 'Tela / Modulo de origem');
-    const inpOrigem = el('input');
-    inpOrigem.name = 'paginaOrigem';
-    inpOrigem.value = origemAtual;
-    inpOrigem.maxLength = 250;
-    lblOrigem.append(inpOrigem);
-
-    const lblAnexos = el('label', '', 'Capturas de tela / Evidencias (PNG, JPG, WEBP ou PDF - ate 5 MB)');
+    const anexos = el('div', 'hd-upload');
     const inpAnexos = el('input');
     inpAnexos.type = 'file';
+    inpAnexos.hidden = true;
     inpAnexos.multiple = true;
     inpAnexos.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
-    lblAnexos.append(inpAnexos);
+    const anexarBtn = el('button', 'hd-upload-button', '+ Adicionar arquivos');
+    anexarBtn.type = 'button';
+    anexarBtn.addEventListener('click', () => inpAnexos.click());
+    const ajudaAnexos = el('span', 'hd-upload-help', 'Opcional · PNG, JPG, WEBP ou PDF. Até 5 arquivos de 5 MB cada.');
+    const arquivosSelecionados = el('div', 'hd-upload-files');
+    arquivosSelecionados.setAttribute('aria-live', 'polite');
+    const atualizarAnexos = () => {
+      arquivosSelecionados.textContent = Array.from(inpAnexos.files, f => f.name).join(', ');
+    };
+    inpAnexos.addEventListener('change', atualizarAnexos);
+    anexos.append(anexarBtn, ajudaAnexos, arquivosSelecionados, inpAnexos);
 
-    const submitBtn = el('button', 'primary-button', 'Registrar Chamado e Gerar Protocolo');
+    const submitBtn = el('button', 'primary-button', 'Enviar chamado');
     submitBtn.type = 'submit';
 
-    form.append(lblTipo, preview, lblTitulo, lblDesc, lblOrigem, lblAnexos, submitBtn);
+    form.append(lblTipo, lblTitulo, lblDesc, anexos, submitBtn);
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
@@ -247,13 +256,13 @@
         fd.append('tipoCodigo', selTipo.value);
         fd.append('titulo', inpTitulo.value.trim());
         fd.append('descricao', txtDesc.value.trim());
-        fd.append('paginaOrigem', inpOrigem.value.trim());
+        fd.append('paginaOrigem', location.pathname + (location.hash || ''));
         for (const file of inpAnexos.files) {
           fd.append('arquivos', file);
         }
         const detalhe = await FaturamedAuth.request('/api/chamados', { method: 'POST', body: fd });
         form.reset();
-        inpOrigem.value = location.pathname + (location.hash || '');
+        atualizarAnexos();
         updatePreview();
         await carregarResumoELista();
         abrirDetalheChamado(detalhe.chamado.id, `Chamado registrado com sucesso! Protocolo: ${detalhe.chamado.protocolo}`);
@@ -312,11 +321,11 @@
     switchTab('detalhe');
     if (bannerMsg) showFeedback(bannerMsg, false);
     viewDetalhe.replaceChildren(el('p', '', 'Carregando protocolo...'));
+    const ateAvisoId = Math.max(0, ...avisosPendentes.map(a => a.id));
     try {
       const det = await FaturamedAuth.request(`/api/chamados/${id}`);
       renderDetalhe(det);
-      const lidos = avisosPendentes.filter(a => a.chamadoId === id);
-      for (const aviso of lidos) await FaturamedAuth.request(`/api/chamados/notificacoes/${aviso.id}/leitura`, {method:'POST'});
+      if (ateAvisoId) await FaturamedAuth.request(`/api/chamados/${id}/notificacoes/leitura?ateId=${ateAvisoId}`, {method:'POST'});
       await carregarAvisos();
     } catch (err) {
       showFeedback(err.message, true);
@@ -517,7 +526,7 @@
       }
       const painel = await FaturamedAuth.request('/api/chamados?meus=true');
       meusChamados = painel.chamados || [];
-      tabMeus.textContent = `Meus Protocolos (${meusChamados.length})`;
+      tabMeus.textContent = `Meus chamados (${meusChamados.length})`;
 
       await carregarAvisos();
 

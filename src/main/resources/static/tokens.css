@@ -1,0 +1,80 @@
+/* Tokens visuais do FaturaMed: unica fonte de cores, raios e tipografia.
+   O modo escuro troca apenas os valores; componentes consomem var(--...). */
+:root {
+  color-scheme: light;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+
+  --bg: #f3f7f8;
+  --surface: #ffffff;
+  --surface-soft: #f5fafb;
+  --text: #1f3640;
+  --muted: #5d7480;
+  --line: #d7e5e8;
+  --line-strong: #b5d0d8;
+
+  --primary: #24677d;
+  --primary-strong: #194d60;
+  --primary-soft: #e5f3f6;
+  --primary-soft-line: #c6e2e9;
+  --primary-fill: #24677d;
+  --primary-fill-hover: #194d60;
+  --on-primary: #ffffff;
+  --focus: #76b8cd;
+
+  --blue: #66afc7;
+  --mint: #95d3d5;
+  --green: #248461;
+  --amber: #bd801f;
+  --rose: #bc5065;
+
+  /* Status do ciclo da conta: neutro (produzido), info (em andamento),
+     warning (pendente), danger (glosa/divergencia), success (recebido). */
+  --neutral-bg: #edf2f4; --neutral-fg: #4f6670; --neutral-line: #c9d6db;
+  --info-bg: #e5f3f6;    --info-fg: #194d60;   --info-line: #86bdca;
+  --warning-bg: #fff2d8; --warning-fg: #8a5a12; --warning-line: #e2b960;
+  --danger-bg: #ffe8ec;  --danger-fg: #963342;  --danger-line: #e7b8b3;
+  --success-bg: #e6f6ee; --success-fg: #14633f; --success-line: #7cc4a2;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 1px 2px rgba(31, 76, 91, .04), 0 4px 14px rgba(31, 76, 91, .04);
+  --backdrop: rgba(10, 25, 32, .45);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #171b1d;
+  --surface: #22282b;
+  --surface-soft: #293135;
+  --text: #edf3f5;
+  --muted: #b1c2c9;
+  --line: #465158;
+  --line-strong: #5a6870;
+
+  --primary: #8bcbdc;
+  --primary-strong: #b6e5ef;
+  --primary-soft: #30444c;
+  --primary-soft-line: #465158;
+  --primary-fill: #286d81;
+  --primary-fill-hover: #34869b;
+  --on-primary: #ffffff;
+  --focus: #67b4c9;
+
+  --blue: #80bdd4;
+  --mint: #9ed6d5;
+  --green: #58ba90;
+  --amber: #e0b55f;
+  --rose: #e58c9c;
+
+  --neutral-bg: #364247; --neutral-fg: #c9d6db; --neutral-line: #5a6870;
+  --info-bg: #30444c;    --info-fg: #b6e5ef;   --info-line: #4f7380;
+  --warning-bg: #4b3e24; --warning-fg: #f1d292; --warning-line: #8a6f35;
+  --danger-bg: #4b2d36;  --danger-fg: #f5b1be;  --danger-line: #7a4552;
+  --success-bg: #264739; --success-fg: #a0e2bd; --success-line: #3f7a5f;
+
+  --shadow: none;
+  --backdrop: rgba(0, 0, 0, .6);
+}

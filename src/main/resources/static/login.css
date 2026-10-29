@@ -1,6 +1,6 @@
-.access-page { background: #fff; }
+.access-page { background: var(--surface); }
 .access-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); min-height: 100vh; }
-.access-identity { display: grid; place-items: center; background: #fff; padding: 32px; border-right: 1px solid var(--line); }
+.access-identity { display: grid; place-items: center; background: var(--surface); padding: 32px; border-right: 1px solid var(--line); }
 .access-identity img { display: block; width: min(500px, 100%); height: auto; aspect-ratio: 1; object-fit: contain; }
 .access-form { align-self: center; justify-self: center; width: min(380px, calc(100% - 48px)); padding: 32px 0; }
 .access-form h1 { margin: 24px 0; font-size: 25px; }
@@ -16,7 +16,7 @@ dialog::backdrop { background: rgba(23, 50, 61, .3); }
 .account-workspace { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0; }
 .account-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 22px; }
 .account-form { max-width: 560px; margin-bottom: 24px; }
-.access-error { color: #963342; }
+.access-error { color: var(--danger-fg); }
 .account-form input, .account-form select { width: 100%; }
 .account-table table { min-width: 0; }
 .account-table td { overflow-wrap: anywhere; }
@@ -30,4 +30,55 @@ dialog::backdrop { background: rgba(23, 50, 61, .3); }
   .account-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
   .account-table td { border: 0; }
   .account-table td::before { content: attr(data-label); display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+}
+
+/* Tela de login "Conciliacao ao vivo" */
+.login-page .access-layout { grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr); }
+.login-showcase { position: relative; display: grid; place-items: center; padding: 48px clamp(28px, 5vw, 64px); overflow: hidden; color: #d8eef3; background: #0c2a33; }
+.login-showcase::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 30%, rgba(139, 203, 220, .14), transparent 55%), linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px) 0 0 / 100% 32px; pointer-events: none; }
+.login-stage { position: relative; display: grid; justify-items: center; gap: 26px; width: min(500px, 100%); text-align: center; }
+
+/* A logo e um JPEG de fundo branco: recorta a faixa central e adapta a cor ao fundo */
+.login-logo { display: block; width: min(340px, 100%); height: auto; aspect-ratio: 500 / 130; object-fit: cover; object-position: 50% 49%; }
+.login-logo-dark { filter: invert(1) hue-rotate(180deg) brightness(1.15); mix-blend-mode: screen; }
+
+.login-pitch h2 { margin: 0 0 8px; color: #fff; font-size: clamp(26px, 3vw, 36px); line-height: 1.15; letter-spacing: -.01em; }
+.login-pitch p { margin: 0 auto; max-width: 420px; color: #9fc3cc; font-size: 15px; }
+
+/* Lista de procedimentos rolando continuamente */
+.login-feed { --row: 50px; width: 100%; height: calc(var(--row) * 5); overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); text-align: left; }
+.login-feed-track { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; animation: login-ticker 36s linear infinite; }
+.login-feed-track li { display: flex; align-items: center; gap: 10px; height: calc(var(--row) - 8px); margin-bottom: 8px; padding: 0 14px; color: #d8eef3; font-size: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); }
+.feed-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-icon { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #8bcbdc; box-shadow: 0 0 0 4px rgba(139, 203, 220, .15); }
+.login-feed .pill { margin-left: auto; flex: 0 0 auto; font-size: 12px; }
+.login-feed .pill.success { color: #a0e2bd; background: #264739; }
+.login-feed .pill.warning { color: #f1d292; background: #4b3e24; }
+.login-feed .pill.danger { color: #f5b1be; background: #4b2d36; }
+@keyframes login-ticker { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+
+.login-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; margin: 0; }
+.login-stats div { display: grid; gap: 2px; }
+.login-stats dt { color: #fff; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.login-stats dd { margin: 0; color: #9fc3cc; font-size: 13px; }
+.login-note { margin: -14px 0 0; color: #6f97a1; font-size: 11px; }
+
+.login-page .access-form h1 { margin: 0 0 4px; }
+.login-subtitle { margin: 0 0 24px; color: var(--muted); }
+.login-page .primary-button { width: 100%; min-height: 44px; border-radius: var(--radius); }
+.login-page .stack-form input { min-height: 44px; padding: 10px 12px; }
+.login-health { display: flex; align-items: center; gap: 8px; margin-top: 28px; color: var(--muted); font-size: 13px; }
+.login-health .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.login-health[data-state="ok"] .status-dot { background: var(--green); box-shadow: 0 0 0 4px var(--success-bg); }
+.login-health[data-state="down"] .status-dot { background: var(--rose); box-shadow: 0 0 0 4px var(--danger-bg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-feed-track { animation: none; }
+}
+@media (max-width: 720px) {
+  .login-showcase { padding: 24px 20px; }
+  .login-stage { gap: 12px; }
+  .login-feed, .login-stats, .login-note { display: none; }
+  .login-pitch h2 { font-size: 22px; }
+  .login-logo-dark { width: 200px; }
 }

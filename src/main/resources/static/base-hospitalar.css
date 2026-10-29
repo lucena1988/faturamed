@@ -1,5 +1,5 @@
 .base-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
-.base-steps > section { border: 1px solid var(--line, #ddd); border-radius: 12px; padding: 24px; }
+.base-steps > section { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: 24px; }
 .base-steps input, .base-steps select { max-width: 100%; }
 .conciliation-workspace > section { margin-top: 32px; }
 #decision-dialog { max-width: 620px; width: calc(100% - 32px); }
@@ -9,39 +9,39 @@ td a, td button { margin: 4px; }
 #message:not(:empty), #decision-message:not(:empty) {
   margin: 16px 0;
   padding: 14px 18px;
-  border-radius: 10px;
-  border: 1px solid #b45309;
-  border-left: 6px solid #d97706;
-  background: #fffbeb;
-  color: #78350f;
+  border-radius: var(--radius);
+  border: 1px solid var(--warning-line);
+  border-left: 6px solid var(--amber);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
   font-weight: 600;
   font-size: 1rem;
   line-height: 1.5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow);
 }
 #message[data-type="success"] {
-  border-color: #0f766e;
-  border-left-color: #0d9488;
-  background: #f0fdfa;
-  color: #115e59;
+  border-color: var(--success-line);
+  border-left-color: var(--green);
+  background: var(--success-bg);
+  color: var(--success-fg);
 }
 #message[data-type="warning"] {
-  border-color: #b45309;
-  border-left-color: #d97706;
-  background: #fffbeb;
-  color: #78350f;
+  border-color: var(--warning-line);
+  border-left-color: var(--amber);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
 }
 #message[data-type="error"], #decision-message:not(:empty) {
-  border-color: #b91c1c;
-  border-left-color: #dc2626;
-  background: #fef2f2;
-  color: #7f1d1d;
+  border-color: var(--danger-line);
+  border-left-color: var(--rose);
+  background: var(--danger-bg);
+  color: var(--danger-fg);
 }
 #message[data-type="info"] {
-  border-color: #1d4ed8;
-  border-left-color: #2563eb;
-  background: #eff6ff;
-  color: #1e3a8a;
+  border-color: var(--info-line);
+  border-left-color: var(--primary);
+  background: var(--info-bg);
+  color: var(--info-fg);
 }
 #message a {
   display: inline-block;

@@ -82,9 +82,84 @@ Para executar o backend fora do Docker, com Java 21 e Maven instalados:
 
 ```bash
 docker compose up -d postgres
-mvn test
 mvn spring-boot:run
 ```
+
+### Testes automatizados: execucao padrao
+
+Use **um unico fluxo completo**, com Docker em execucao e Python 3.10+ no PATH.
+Java, Maven, Node.js e PostgreSQL sao executados em containers.
+Na primeira utilizacao, instale as dependencias Python:
+
+```bash
+python -m pip install -r requirements-test.txt
+```
+
+Na raiz do projeto, execute:
+
+```bash
+python test.py
+```
+
+No macOS/Linux, use `python3 test.py`. Os atalhos `./test.sh` e
+`powershell -NoProfile -ExecutionPolicy Bypass -File ./test.ps1` chamam esse mesmo
+executor. O argumento opcional `all` e equivalente; os antigos modos parciais
+foram retirados para manter uma execucao padrao.
+
+A execucao inclui, uma vez por rodada:
+
+1. Cenarios HTTP de homologacao (importacao, conciliacao, financeiro, permissoes,
+   Service Desk, exportacoes, reinicio e restauracao de backup).
+2. Testes Java, incluindo integracao com PostgreSQL exclusivo de testes.
+3. Testes JavaScript com DOM simulado e verificacao do dashboard gerado.
+
+Os bancos sao temporarios e isolados do PostgreSQL usado em `localhost:8080`.
+A homologacao usa a porta local **18081**, que precisa estar livre. Os containers
+e redes criados pela rodada sao removidos ao final; as evidencias ficam salvas.
+Uma falha de teste retorna codigo diferente de zero, mas as outras camadas
+continuam e o relatorio registra os resultados disponiveis.
+
+**Dashboard principal:** [outputs/dashboard-regressao.html](outputs/dashboard-regressao.html).
+Cada rodada preserva seu proprio `outputs/evidencias-auto-*/dashboard.html`, logs,
+resultados HTTP, relatorios Java e exportacoes. Falhas anteriores permanecem no
+historico e so sao reavaliadas com uma nova execucao completa.
+
+Para reconstruir somente o dashboard de uma rodada existente, sem executar testes:
+
+```bash
+python scripts/gerar_dashboard_regressao.py outputs/evidencias-auto-NOME-DA-RODADA
+```
+
+`dashboard-testes.html` e `outputs/dashboard-testes.html` sao atalhos de
+compatibilidade para o dashboard principal. O antigo gerador
+`gerar_dashboard_testes.py` apenas delega ao gerador unico; nao presume aprovacao
+de testes. Testes com DOM simulado e HTTP nao substituem validacao visual em navegador.
+
+### Pipeline em cada Pull Request (GitHub Actions)
+
+O workflow [.github/workflows/testes.yml](.github/workflows/testes.yml) executa
+`python test.py` ao abrir, reabrir ou atualizar um PR, para qualquer branch de destino.
+Tambem pode ser iniciado manualmente em **Actions > Testes automatizados > Run workflow**
+apos o arquivo estar na branch padrao.
+
+O runner Ubuntu prepara Python 3.12 e usa Docker para os ambientes exclusivos de QA.
+Nao precisa de `.env`, banco externo ou secrets de producao. Uma nova atualizacao do
+mesmo PR cancela a execucao anterior. O limite de cada job e 40 minutos.
+
+Os resultados aparecem nos checks do PR. Mesmo com testes reprovados, a pipeline
+publica os relatorios disponiveis em **Actions > execucao > Artifacts > regressao-...**,
+com retencao de 14 dias. Extraia o ZIP completo e abra `dashboard-regressao.html`;
+as subpastas contem os logs e evidencias vinculados. Backups em `privado/` e arquivos
+`.dump` ficam fora do artefato. Os resultados nao sao commitados no repositorio.
+
+Para ativar, inclua o workflow, `requirements-test.txt` e as alteracoes do projeto
+no commit e envie a branch ao GitHub. Actions precisa estar habilitado no repositorio;
+PRs de forks podem exigir aprovacao de um mantenedor para iniciar a execucao.
+
+Para impedir merge com testes reprovados, configure em **Settings > Rules > Rulesets**
+uma regra para a branch de destino e exija o check **Regressao completa** depois da
+primeira execucao. Criar o workflow sozinho nao torna esse check obrigatorio para merge.
+Falhas de cenarios sao mantidas como falhas na pipeline; nao ha `continue-on-error`.
 
 ## Frontend
 
@@ -102,7 +177,7 @@ Arquivos em `src/main/resources/static`:
 ## Próximos Passos
 
 1. **Testes Automatizados do Service Desk:**
-   - Criar suíte de testes de integração (`ChamadoControllerTest` e `ChamadoServiceTest`) para cobrir regras de SLA, transições no Kanban e permissões de perfil (`DEV`, `ADMIN`, `MEDICO`).
+   - Ampliar a cobertura existente de SLA e transicoes no Kanban; permissoes, avisos e fluxos HTTP ja integram a execucao padrao.
 2. **Piloto Operacional com Dados Reais:**
    - Realizar homologação de ponta a ponta com os arquivos reais da clínica/hospital utilizando os cenários de teste em `examples/cenarios/`.
    - Convidar grupo piloto de médicos para validar usabilidade do portal médico e do widget de suporte.

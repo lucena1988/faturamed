@@ -34,6 +34,15 @@ public class ChamadoService {
             throw new RecursoNaoEncontradoException("Aviso nao encontrado");
     }
 
+    @Transactional
+    public void lerAvisosChamado(long chamadoId, long ateId, UsuarioAutenticado user) {
+        buscarChamado(chamadoId, user);
+        jdbc.update("""
+            update chamado_aviso set lido_em=now()
+            where chamado_id=? and usuario_id=? and id<=? and lido_em is null
+            """, chamadoId, user.id(), ateId);
+    }
+
     private void avisar(ChamadoItem chamado, UsuarioAutenticado autor, String tipo, boolean suporte) {
         jdbc.update("""
             insert into chamado_aviso(chamado_id,usuario_id,tipo)

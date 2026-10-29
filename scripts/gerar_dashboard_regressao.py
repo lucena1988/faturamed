@@ -35,6 +35,10 @@ def load(folder):
     js_total = re.search(r'(?m)^.*?\btests\s+(\d+)\s*$', js_text)
     js_parsed = sum(t['layer'] == 'JavaScript' for t in tests)
     warnings = []
+    execution = read_json(folder / 'execucao.json', {})
+    for stage, code in execution.items():
+        if code != 0:
+            warnings.append(f'Etapa {stage} terminou com codigo {code}; consulte os logs desta rodada.')
     if not java:
         warnings.append('Relatórios Java ausentes nesta execução. Não equivale a zero testes aprovados.')
     if not js_text:
@@ -63,6 +67,8 @@ def generate(folder):
         return template.replace('__DASHBOARD_DATA__', payload)
     (folder / 'dashboard.html').write_text(html(''), encoding='utf-8')
     (ROOT / 'outputs/dashboard-regressao.html').write_text(html(folder.name + '/'), encoding='utf-8')
+    for alias, destination in [(ROOT / 'dashboard-testes.html', 'outputs/dashboard-regressao.html'), (ROOT / 'outputs/dashboard-testes.html', 'dashboard-regressao.html')]:
+        alias.write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' + destination + '"><a href="' + destination + '">Abrir dashboard de regressao</a>', encoding='utf-8')
     print(json.dumps({'dashboard': str(folder / 'dashboard.html'), 'atalho': str(ROOT / 'outputs/dashboard-regressao.html'), 'testes': len(data['tests']), 'avisos': data['warnings']}, ensure_ascii=False))
     return data
 

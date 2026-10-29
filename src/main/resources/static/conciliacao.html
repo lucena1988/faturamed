@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conciliacao de visitas | Faturamed</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="conciliacao.css?v=20261013-faturamento">
-  <link rel="stylesheet" href="identidade.css?v=20261009-1">
-  <link rel="stylesheet" href="login.css?v=20261009-1">
-<link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
+  <title>Conciliação de visitas | Faturamed</title>
+  <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
+  <link rel="stylesheet" href="conciliacao.css?v=20261029-ui">
+  <link rel="stylesheet" href="identidade.css?v=20261029-barra">
+  <link rel="stylesheet" href="login.css?v=20261029-ui">
+<link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
-    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliacao de visitas</h1></div>
-      <a href="/#medicos">Cadastro de medicos</a><a href="solicitacoes-medicos.html">Solicitacoes dos medicos</a><a id="download" hidden>Baixar relatorio geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação de visitas</h1></div>
+      <a href="/#medicos">Cadastro de médicos</a><a href="solicitacoes-medicos.html">Solicitações dos médicos</a><a id="download" hidden>Baixar relatório geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
     <p><a href="base-hospitalar.html">Importar hospital e produção médica</a> · Importe primeiro a base hospitalar e depois a produção individual ou coletiva. Os relatórios e históricos continuam disponíveis abaixo.</p>
     <p id="message" role="status" aria-live="polite"></p>
-    <a id="charge-link" href="cobrancas.html">Fila de cobranca ao hospital</a>
+    <a id="charge-link" href="cobrancas.html">Fila de cobrança ao hospital</a>
     <section id="results" hidden>
       <div class="conciliation-stats" id="stats"></div>
       <section class="review-progress" aria-labelledby="progress-title">
@@ -23,46 +23,46 @@
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
-      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberacao para o medico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observacao da liberacao<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendencias, divergencias e visitas sem medico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o medico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberacao</button><h3>Historico de liberacoes</h3><ol id="release-history"></ol></section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
         <p id="queue-message" role="status" aria-live="polite"></p>
       </section>
       <div class="conciliation-filters">
-        <label>Medico<select id="doctor-filter"><option value="">Todos os medicos</option></select></label>
+        <label>Médico<select id="doctor-filter"><option value="">Todos os médicos</option></select></label>
         <label>Status<select id="status"><option value="">Todos</option><option>PAGA</option><option>PENDENTE</option><option>DIVERGENTE</option></select></label>
         <label>Origem<select id="origin-filter" disabled><option value="">Todas</option><option value="NAO_REVISADA">Nao revisadas</option><option value="MANUAL">Revisadas manualmente</option><option value="AUTOMATICA">Resolvidas automaticamente</option></select></label>
-        <label>Categoria<select id="category-filter" disabled><option value="">Todas</option><option value="DUPLICIDADE">Possivel duplicidade</option><option value="AMBIGUIDADE">Ambiguidade</option><option value="DADOS_FALTANTES">Dados faltantes</option><option value="VALOR_DIVERGENTE">Valor divergente</option><option value="SEM_CORRESPONDENCIA">Sem correspondencia</option><option value="AGUARDANDO_FATURAMENTO">Aguardando faturamento</option><option value="DADOS_DIVERGENTES">Dados divergentes</option><option value="CONFERENCIA_MANUAL">Conferencia manual</option><option value="SEM_PENDENCIA">Sem pendencia</option></select></label>
+        <label>Categoria<select id="category-filter" disabled><option value="">Todas</option><option value="DUPLICIDADE">Possível duplicidade</option><option value="AMBIGUIDADE">Ambiguidade</option><option value="DADOS_FALTANTES">Dados faltantes</option><option value="VALOR_DIVERGENTE">Valor divergente</option><option value="SEM_CORRESPONDENCIA">Sem correspondência</option><option value="AGUARDANDO_FATURAMENTO">Aguardando faturamento</option><option value="DADOS_DIVERGENTES">Dados divergentes</option><option value="CONFERENCIA_MANUAL">Conferência manual</option><option value="SEM_PENDENCIA">Sem pendência</option></select></label>
         <label>Atendimento<input id="search" type="search"></label>
         <span id="count"></span>
-        <a id="download-doctor" hidden>Baixar relatorio do medico XLSX</a>
+        <a id="download-doctor" hidden>Baixar relatório do médico XLSX</a>
       </div>
-      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Medico</th><th>Procedimento</th><th>Codigo do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisao</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
-    <section class="conciliation-history"><h2>Relatorios anteriores</h2><ul id="history"></ul></section>
+    <section class="conciliation-history"><h2>Relatórios anteriores</h2><ul id="history"></ul></section>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">
     <form id="review-form">
       <header class="review-heading"><h2 id="review-title">Revisar visita</h2><button type="button" id="review-close" aria-label="Fechar revisao" title="Fechar revisao">X</button></header>
       <dl id="review-summary" class="review-summary"></dl>
       <section aria-labelledby="review-group-title"><h3 id="review-group-title">Visitas do atendimento</h3>
-        <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Medico</th><th>Status</th><th>Registro hospitalar</th><th>Revisao</th></tr></thead><tbody id="review-group"></tbody></table></div>
+        <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Médico</th><th>Status</th><th>Registro hospitalar</th><th>Revisão</th></tr></thead><tbody id="review-group"></tbody></table></div>
       </section>
       <h3>Registros do hospital</h3>
       <p id="review-candidate-message"></p>
-      <label class="candidate-doctor-filter">Medico no hospital<select id="candidate-doctor-filter"><option value="">Todos os medicos encontrados</option></select></label>
+      <label class="candidate-doctor-filter">Médico no hospital<select id="candidate-doctor-filter"><option value="">Todos os médicos encontrados</option></select></label>
       <p id="candidate-filter-count" role="status"></p>
       <section class="candidate-preview" aria-labelledby="candidate-preview-title" hidden>
         <h3 id="candidate-preview-title">Registro selecionado</h3>
         <dl id="candidate-preview-fields" class="review-summary"></dl>
         <button type="button" id="candidate-use" disabled>Preencher dados para revisao</button>
       </section>
-      <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Medico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
+      <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Médico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
       <div class="review-fields">
         <label>Decisao<select id="review-action" required>
           <option value="AJUSTAR_DADOS">Ajustar dados da visita</option>
-          <option value="CONFIRMAR_CORRESPONDENCIA">Confirmar correspondencia</option>
+          <option value="CONFIRMAR_CORRESPONDENCIA">Confirmar correspondência</option>
           <option value="MANTER_PENDENTE">Manter pendente</option>
           <option value="MANTER_DIVERGENTE">Manter divergente</option>
           <option value="RESTAURAR_AUTOMATICO">Restaurar resultado automatico</option>
@@ -75,10 +75,10 @@
         <div class="review-fields">
           <label>Data<input id="edit-date" type="date"></label>
           <label>Atendimento<input id="edit-attendance" required maxlength="80"></label>
-          <label>Medico<input id="edit-doctor" maxlength="180"></label>
-          <label>Medico cadastrado<select id="edit-doctor-id"><option value="">Sem vinculo ao cadastro</option></select></label>
+          <label>Médico<input id="edit-doctor" maxlength="180"></label>
+          <label>Médico cadastrado<select id="edit-doctor-id"><option value="">Sem vinculo ao cadastro</option></select></label>
           <label>Procedimento<input id="edit-procedure" maxlength="2000"></label>
-          <label>Codigo do procedimento<input id="edit-code" maxlength="40"></label>
+          <label>Código do procedimento<input id="edit-code" maxlength="40"></label>
           <label>Valor hospital (R$)<input id="edit-value" type="number" min="0" step="0.000001"></label>
           <label>Repasse (R$)<input id="edit-repasse" type="number" min="0" step="0.000001"></label>
           <label>Status<select id="edit-status" required><option>PENDENTE</option><option>DIVERGENTE</option><option>PAGA</option></select></label>
@@ -89,10 +89,10 @@
       </fieldset>
       <p id="review-message" role="status" aria-live="polite"></p>
       <div class="review-actions"><button type="button" id="review-reload" hidden>Atualizar detalhes</button><button type="submit" id="review-save" disabled>Salvar revisao</button></div>
-      <section class="review-history"><h3>Historico da visita</h3><ol id="review-history"></ol></section>
+      <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="auth.js?v=20261027-avisos"></script>
+  <script src="sidebar.js?v=20261029-1"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261027-avisos"></script>
   <script src="liberacao.js?v=20261015-1"></script>
   <script src="conciliacao.js?v=20261026-duplicidade"></script>
 </body>

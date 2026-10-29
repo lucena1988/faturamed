@@ -1,10 +1,10 @@
 .notification-toggle,.notification-icon { display: inline-grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; padding: 9px; border: 1px solid var(--line); border-radius: 6px; color: var(--primary); background: var(--surface); cursor: pointer; }
 .notification-toggle { position: relative; }
 .notification-toggle svg,.notification-icon svg { width: 22px; height: 22px; }
-.notification-badge { position: absolute; right: -5px; top: -6px; min-width: 19px; height: 19px; padding: 1px 4px; border-radius: 10px; color: #fff; background: #b33248; font: 700 11px/17px "Segoe UI",sans-serif; text-align: center; }
+.notification-badge { position: absolute; right: -5px; top: -6px; min-width: 19px; height: 19px; padding: 1px 4px; border-radius: 10px; color: #fff; background: var(--rose); font: 700 11px/17px "Segoe UI",sans-serif; text-align: center; }
 .notification-badge[hidden] { display: none; }
 #notification-dialog { width: min(540px,calc(100% - 24px)); max-height: calc(100dvh - 32px); padding: 20px; margin: auto; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: var(--surface); box-sizing: border-box; }
-#notification-dialog::backdrop { background: #0007; }
+#notification-dialog::backdrop { background: var(--backdrop); }
 #notification-dialog header,#notification-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 #notification-dialog h2 { font-size: 20px; margin: 0; }
 .notification-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
