@@ -82,46 +82,58 @@ Para executar o backend fora do Docker, com Java 21 e Maven instalados:
 
 ```bash
 docker compose up -d postgres
-mvn test
 mvn spring-boot:run
 ```
 
-### Executando os Testes Automatizados via Linha de Comando (Híbrido: Windows & macOS/Linux)
+### Testes automatizados: execucao padrao
 
-O projeto conta com solução híbrida multiplataforma para execução da suíte de testes via Docker (dispensa instalação local de Maven ou Node.js):
+Use **um unico fluxo completo**, com Docker em execucao e Python 3.10+ no PATH.
+Java, Maven, Node.js e PostgreSQL sao executados em containers.
+Na primeira utilizacao, instale as dependencias Python:
 
-#### 1. Universal (Python — Windows, macOS e Linux)
 ```bash
-python test.py             # Toda a suíte (Unitários + Integração PostgreSQL + Frontend JS)
-python test.py unit        # Apenas testes unitários Java
-python test.py integration # Testes de integração Java com PostgreSQL
-python test.py js          # Testes de frontend JavaScript (DOM simulado, Service Desk)
+python -m pip install -r requirements-test.txt
 ```
 
-#### 2. Scripts Nativos do Sistema
+Na raiz do projeto, execute:
 
-* **No macOS / Linux (Terminal / Bash / Zsh):**
-  ```bash
-  ./test.sh [all | unit | integration | js]
-  ```
+```bash
+python test.py
+```
 
-* **No Windows (PowerShell):**
-  ```powershell
-  .	est.ps1 [all | unit | integration | js]
-  ```
+No macOS/Linux, use `python3 test.py`. Os atalhos `./test.sh` e
+`powershell -NoProfile -ExecutionPolicy Bypass -File ./test.ps1` chamam esse mesmo
+executor. O argumento opcional `all` e equivalente; os antigos modos parciais
+foram retirados para manter uma execucao padrao.
 
-#### 3. Dashboard Visual de Indicadores e Cenários
+A execucao inclui, uma vez por rodada:
 
-Após a execução dos testes, é gerado automaticamente o **Dashboard Interativo de Testes** com os indicadores consolidados, distribuição por camada tecnológica e tabela pesquisável com todos os cenários:
+1. Cenarios HTTP de homologacao (importacao, conciliacao, financeiro, permissoes,
+   Service Desk, exportacoes, reinicio e restauracao de backup).
+2. Testes Java, incluindo integracao com PostgreSQL exclusivo de testes.
+3. Testes JavaScript com DOM simulado e verificacao do dashboard gerado.
 
-* **Arquivo gerado:** [dashboard-testes.html](dashboard-testes.html) (também disponível em `outputs/dashboard-testes.html`).
-* **Visualização:** Funciona offline sem necessidade de servidor web. Abra com dois cliques ou:
-  * No Mac: `open dashboard-testes.html`
-  * No Windows: `start dashboard-testes.html`
-* Para atualizar apenas o dashboard com base nos relatórios existentes:
-  ```bash
-  python scripts/gerar_dashboard_testes.py
-  ```
+Os bancos sao temporarios e isolados do PostgreSQL usado em `localhost:8080`.
+A homologacao usa a porta local **18081**, que precisa estar livre. Os containers
+e redes criados pela rodada sao removidos ao final; as evidencias ficam salvas.
+Uma falha de teste retorna codigo diferente de zero, mas as outras camadas
+continuam e o relatorio registra os resultados disponiveis.
+
+**Dashboard principal:** [outputs/dashboard-regressao.html](outputs/dashboard-regressao.html).
+Cada rodada preserva seu proprio `outputs/evidencias-auto-*/dashboard.html`, logs,
+resultados HTTP, relatorios Java e exportacoes. Falhas anteriores permanecem no
+historico e so sao reavaliadas com uma nova execucao completa.
+
+Para reconstruir somente o dashboard de uma rodada existente, sem executar testes:
+
+```bash
+python scripts/gerar_dashboard_regressao.py outputs/evidencias-auto-NOME-DA-RODADA
+```
+
+`dashboard-testes.html` e `outputs/dashboard-testes.html` sao atalhos de
+compatibilidade para o dashboard principal. O antigo gerador
+`gerar_dashboard_testes.py` apenas delega ao gerador unico; nao presume aprovacao
+de testes. Testes com DOM simulado e HTTP nao substituem validacao visual em navegador.
 
 ## Frontend
 
@@ -139,7 +151,7 @@ Arquivos em `src/main/resources/static`:
 ## Próximos Passos
 
 1. **Testes Automatizados do Service Desk:**
-   - Criar suíte de testes de integração (`ChamadoControllerTest` e `ChamadoServiceTest`) para cobrir regras de SLA, transições no Kanban e permissões de perfil (`DEV`, `ADMIN`, `MEDICO`).
+   - Ampliar a cobertura existente de SLA e transicoes no Kanban; permissoes, avisos e fluxos HTTP ja integram a execucao padrao.
 2. **Piloto Operacional com Dados Reais:**
    - Realizar homologação de ponta a ponta com os arquivos reais da clínica/hospital utilizando os cenários de teste em `examples/cenarios/`.
    - Convidar grupo piloto de médicos para validar usabilidade do portal médico e do widget de suporte.

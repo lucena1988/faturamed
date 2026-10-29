@@ -18,8 +18,8 @@ import zipfile
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / 'outputs' / ('evidencias-auto-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
-OUTPUT.mkdir(parents=True)
+OUTPUT = Path(os.environ['QA_OUTPUT_DIR']) if os.environ.get('QA_OUTPUT_DIR') else ROOT / 'outputs' / ('evidencias-auto-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+OUTPUT.mkdir(parents=True, exist_ok=True)
 BASE = 'http://127.0.0.1:18081'
 RUN_ID = secrets.token_hex(3)
 NETWORK = 'faturamed-qa-auto-network-' + RUN_ID
@@ -35,7 +35,10 @@ lock = threading.Lock()
 
 
 def docker(*arguments, data=None):
-    result = subprocess.run(['docker', *arguments], input=data, capture_output=True, check=True)
+    result = subprocess.run(['docker', *arguments], input=data, capture_output=True)
+    if result.returncode:
+        detail = result.stderr.decode(errors='replace').replace(PASSWORD, '[omitido]')
+        raise RuntimeError(f'Docker {arguments[0]} falhou: {detail}')
     return result.stdout
 
 
@@ -388,7 +391,8 @@ finally:
     save('resultados.json', cases)
     save('requisicoes-http.json', requests)
     for container in [APPLICATION, DATABASE, RESTORE]:
-        subprocess.run(['docker', 'stop', container], capture_output=True)
+        subprocess.run(['docker', 'rm', '-f', container], capture_output=True)
+    subprocess.run(['docker', 'network', 'rm', NETWORK], capture_output=True)
     manifest = []
     for file in OUTPUT.rglob('*'):
         if file.is_file() and 'privado' not in file.parts:

@@ -8,3 +8,6 @@ outputs/
 .DS_Store
 *.log
 *.pid
+
+__pycache__/
+dashboard-testes.html
