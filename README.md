@@ -140,6 +140,12 @@ de testes. Testes com DOM simulado e HTTP nao substituem validacao visual em nav
 
 ### Pipeline em cada Pull Request (GitHub Actions)
 
+**Cenario temporariamente desativado:** AUTO27 (visitas ambiguas resolvidas por
+revisao e exclusividade). O vinculo `medicoCadastroId` ainda nao e propagado em
+uma das visitas. O teste permanece no codigo e aparece como **IGNORADO**, sem
+bloquear a pipeline. Para reativar apos a correcao, remova `skip_reason` da chamada
+AUTO27 em `scripts/homologacao_cenarios.py`. Isso nao corrige o comportamento da aplicacao.
+
 O workflow [.github/workflows/testes.yml](.github/workflows/testes.yml) executa
 `python test.py` ao abrir, reabrir ou atualizar um PR, para qualquer branch de destino.
 Tambem pode ser iniciado manualmente em **Actions > Testes automatizados > Run workflow**

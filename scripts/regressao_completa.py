@@ -30,7 +30,7 @@ def report_results(folder, statuses, secret=''):
         try:
             for case in json.loads(results.read_text(encoding='utf-8')):
                 if case.get('resultado') != 'APROVADO':
-                    lines.append(f"{case.get('id')}: {case.get('titulo', '')} — {case.get('erro', case.get('resultado'))}")
+                    lines.append(f"{case.get('id')}: {case.get('titulo', '')} — {case.get('erro') or case.get('detalhes', {}).get('motivo') or case.get('resultado')}")
         except (ValueError, TypeError, AttributeError):
             lines.append('Nao foi possivel interpretar resultados.json; consulte o artefato.')
     text = '\n'.join(lines)
