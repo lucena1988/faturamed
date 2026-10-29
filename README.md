@@ -135,6 +135,32 @@ compatibilidade para o dashboard principal. O antigo gerador
 `gerar_dashboard_testes.py` apenas delega ao gerador unico; nao presume aprovacao
 de testes. Testes com DOM simulado e HTTP nao substituem validacao visual em navegador.
 
+### Pipeline em cada Pull Request (GitHub Actions)
+
+O workflow [.github/workflows/testes.yml](.github/workflows/testes.yml) executa
+`python test.py` ao abrir, reabrir ou atualizar um PR, para qualquer branch de destino.
+Tambem pode ser iniciado manualmente em **Actions > Testes automatizados > Run workflow**
+apos o arquivo estar na branch padrao.
+
+O runner Ubuntu prepara Python 3.12 e usa Docker para os ambientes exclusivos de QA.
+Nao precisa de `.env`, banco externo ou secrets de producao. Uma nova atualizacao do
+mesmo PR cancela a execucao anterior. O limite de cada job e 40 minutos.
+
+Os resultados aparecem nos checks do PR. Mesmo com testes reprovados, a pipeline
+publica os relatorios disponiveis em **Actions > execucao > Artifacts > regressao-...**,
+com retencao de 14 dias. Extraia o ZIP completo e abra `dashboard-regressao.html`;
+as subpastas contem os logs e evidencias vinculados. Backups em `privado/` e arquivos
+`.dump` ficam fora do artefato. Os resultados nao sao commitados no repositorio.
+
+Para ativar, inclua o workflow, `requirements-test.txt` e as alteracoes do projeto
+no commit e envie a branch ao GitHub. Actions precisa estar habilitado no repositorio;
+PRs de forks podem exigir aprovacao de um mantenedor para iniciar a execucao.
+
+Para impedir merge com testes reprovados, configure em **Settings > Rules > Rulesets**
+uma regra para a branch de destino e exija o check **Regressao completa** depois da
+primeira execucao. Criar o workflow sozinho nao torna esse check obrigatorio para merge.
+Falhas de cenarios sao mantidas como falhas na pipeline; nao ha `continue-on-error`.
+
 ## Frontend
 
 Arquivos em `src/main/resources/static`:
