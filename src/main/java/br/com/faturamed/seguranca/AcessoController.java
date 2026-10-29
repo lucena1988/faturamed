@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -24,14 +25,21 @@ public class AcessoController {
     @PostMapping("/api/auth/password") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void senha(@AuthenticationPrincipal UsuarioAutenticado user,@Valid @RequestBody TrocaSenha dados,HttpServletRequest request) {
         if(!encoder.matches(dados.senhaAtual(),users.loadUserByUsername(user.email()).getPassword())) throw new IllegalArgumentException("Senha atual incorreta");
-        users.redefinir(user.id(),new UsuarioService.NovaSenha(dados.novaSenha(),user.versao()));
+        users.redefinir(user.id(),new UsuarioService.NovaSenha(dados.novaSenha(),user.versao()),user.id());
         request.getSession().invalidate();
     }
-    @GetMapping("/api/usuarios") public List<UsuarioService.Usuario> listar() { return users.listar(); }
+    @GetMapping("/api/usuarios") public List<UsuarioService.Usuario> listar(@AuthenticationPrincipal UsuarioAutenticado user) { return users.listar().stream().filter(u -> !user.perfil().equals("OPERADOR") || u.perfil().equals("MEDICO")).toList(); }
     @PostMapping("/api/usuarios") @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioService.Usuario criar(@Valid @RequestBody UsuarioService.Novo dados) { return users.criar(dados); }
+    public UsuarioService.Usuario criar(@Valid @RequestBody UsuarioService.Novo dados,@AuthenticationPrincipal UsuarioAutenticado user) { exigirGestao(dados.perfil(),user); return users.criar(dados,user.id()); }
     @PutMapping("/api/usuarios/{id}/situacao")
-    public UsuarioService.Usuario situacao(@PathVariable long id,@Valid @RequestBody UsuarioService.Situacao dados,@AuthenticationPrincipal UsuarioAutenticado user) { return users.situacao(id,dados,user.id()); }
+    public UsuarioService.Usuario situacao(@PathVariable long id,@Valid @RequestBody UsuarioService.Situacao dados,@AuthenticationPrincipal UsuarioAutenticado user) { exigirGestaoDoUsuario(id,user); return users.situacao(id,dados,user.id()); }
     @PostMapping("/api/usuarios/{id}/senha") @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void redefinir(@PathVariable long id,@Valid @RequestBody UsuarioService.NovaSenha dados) { users.redefinir(id,dados); }
+    public void redefinir(@PathVariable long id,@Valid @RequestBody UsuarioService.NovaSenha dados,@AuthenticationPrincipal UsuarioAutenticado user) { exigirGestaoDoUsuario(id,user); users.redefinir(id,dados,user.id()); }
+    private void exigirGestaoDoUsuario(long id, UsuarioAutenticado operador) {
+        if (operador.perfil().equals("OPERADOR")) exigirGestao(users.buscar(id).perfil(),operador);
+    }
+    private void exigirGestao(String perfil, UsuarioAutenticado operador) {
+        if (operador.perfil().equals("OPERADOR") && !"MEDICO".equals(perfil))
+            throw new AccessDeniedException("Funcionario pode administrar somente acessos de medicos");
+    }
 }

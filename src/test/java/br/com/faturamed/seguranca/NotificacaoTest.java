@@ -34,7 +34,7 @@ class NotificacaoTest {
     }
     @Test void administradorTemEscopoIndividualSemMedico(){
         when(jdbc.update(anyString(),anyMap())).thenReturn(1);service.ler(admin,"PEDIDO",3);
-        verify(jdbc).update(contains(":perfil='ADMIN'"),argThat((Map<String,?> p)->p.get("escopo").equals("ADMIN:0")&&p.get("usuario").equals(8L)&&p.get("medico").equals(0L)));
+        verify(jdbc).update(contains(":perfil in ('ADMIN','DEV','OPERADOR')"),argThat((Map<String,?> p)->p.get("escopo").equals("ADMIN:0")&&p.get("usuario").equals(8L)&&p.get("medico").equals(0L)));
     }
     @Test void paginacaoContagemEFiltroUsamMesmoEscopo(){
         when(jdbc.queryForObject(anyString(),anyMap(),eq(Long.class))).thenReturn(22L);

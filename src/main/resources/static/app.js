@@ -3,7 +3,7 @@ const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const integer = new Intl.NumberFormat('pt-BR');
 const percentage = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
-const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importacoes', divergencias: 'Divergencias', layouts: 'Layouts', medicos: 'Medicos', hospitais: 'Hospitais', 'painel-medico': 'Painel do medico' };
+const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importações', divergencias: 'Divergências', layouts: 'Layouts', medicos: 'Médicos', hospitais: 'Hospitais', 'painel-medico': 'Painel do médico' };
 let reports = [];
 let report = null;
 let reportId = null;
@@ -95,6 +95,7 @@ function clearData(message) {
   $('#status-donut').style.background = 'var(--line)';
   $('#period-filter').disabled = true;
   $('#queue-count').textContent = '';
+  $('#nav-divergencias-count').hidden = true;
   $('#imports-context').textContent = '';
   $('#chart-context').textContent = '';
 }
@@ -189,6 +190,9 @@ function renderDashboard() {
   $('#status-donut').style.background = visits.length
     ? `conic-gradient(var(--green) 0 ${green}%, var(--amber) ${green}% ${amber}%, var(--rose) ${amber}% 100%)` : 'var(--line)';
   $('#queue-count').textContent = `${counts.DIVERGENTE + counts.PENDENTE} visitas para conferencia`;
+  const navCount = $('#nav-divergencias-count');
+  navCount.textContent = integer.format(counts.DIVERGENTE);
+  navCount.hidden = !counts.DIVERGENTE;
   fillAttentionTable($('#priority-table'), attentionVisits().slice(0, 10), false);
   const reasons = [...new Set(attentionVisits().map(visit => visit.motivo))];
   options($('#type-filter'), [['TODOS', 'Todos os motivos'], ...reasons.map(reason => [reason, reason])], $('#type-filter').value);

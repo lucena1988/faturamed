@@ -17,7 +17,7 @@ function doctorId(visit) {
   return found.length===1?found[0].id:null;
 }
 function doctorKey(visit) { const id=doctorId(visit);return id!=null?`id:${id}`:normalizeDoctor(visit.medico ?? visit.hospital?.medico ?? visit.original.medico); }
-const categoryLabels = { SEM_PENDENCIA: 'Sem pendencia', AMBIGUIDADE: 'Ambiguidade', DADOS_FALTANTES: 'Dados faltantes',
+const categoryLabels = { SEM_PENDENCIA: 'Sem pendencia', DUPLICIDADE: 'Possivel duplicidade', AMBIGUIDADE: 'Ambiguidade', DADOS_FALTANTES: 'Dados faltantes',
   VALOR_DIVERGENTE: 'Valor divergente', SEM_CORRESPONDENCIA: 'Sem correspondencia', AGUARDANDO_FATURAMENTO: 'Aguardando faturamento',
   DADOS_DIVERGENTES: 'Dados divergentes', CONFERENCIA_MANUAL: 'Conferencia manual' };
 const originLabels = { NAO_REVISADA: 'Nao revisada', MANUAL: 'Revisao manual', AUTOMATICA_IMPORTACAO: 'Automatica na importacao',
@@ -29,7 +29,7 @@ let reviewGeneration = 0;
 let queueOnly = false;
 let queueLastLine = null;
 let visibleQueue = [];
-const queuePriority = ['AMBIGUIDADE', 'DADOS_DIVERGENTES', 'VALOR_DIVERGENTE', 'DADOS_FALTANTES',
+const queuePriority = ['DUPLICIDADE', 'AMBIGUIDADE', 'DADOS_DIVERGENTES', 'VALOR_DIVERGENTE', 'DADOS_FALTANTES',
   'CONFERENCIA_MANUAL', 'SEM_CORRESPONDENCIA', 'AGUARDANDO_FATURAMENTO'];
 const reviewDialog = document.querySelector('#review-dialog');
 const actionLabels = { CONFIRMAR_CORRESPONDENCIA: 'Correspondencia confirmada', MANTER_PENDENTE: 'Mantida pendente',
@@ -191,7 +191,7 @@ function renderQueue(selectedDoctor, filtered) {
   document.querySelector('#queue-start').disabled = !ready || historical || !visibleQueue.length;
   document.querySelector('#queue-message').textContent = !ready ? 'Carregando fila...'
     : historical ? 'Relatorio historico: abra a versao mais recente para revisar.'
-    : visibleQueue.length ? `${visibleQueue.length} visitas a conferir nos filtros atuais. Prioridade: ambiguidades.`
+    : visibleQueue.length ? `${visibleQueue.length} visitas a conferir nos filtros atuais. Prioridade: ${categoryLabels[progress.get(visibleQueue[0].linhaMedico)?.categoria] || 'conferencia'}.`
     : 'Nenhuma visita a conferir nos filtros atuais.';
 }
 document.querySelector('#queue-start').addEventListener('click', () => {

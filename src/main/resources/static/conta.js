@@ -1,6 +1,6 @@
 (async function () {
   const message=document.querySelector('#account-message');
-  try {const user=await FaturamedAuth.request('/api/auth/me');document.querySelector('#account-name').textContent=`${user.nome} - ${user.email}`;document.querySelector('#account-back').href=user.perfil==='ADMIN'?'/':'/portal.html';}
+  try {const user=await FaturamedAuth.request('/api/auth/me');document.querySelector('#account-name').textContent=`${user.nome} - ${user.email}`;document.querySelector('#account-back').href=user.perfil==='MEDICO'?'/portal.html':'/';}
   catch(error){message.textContent=error.message;}
   const form=document.querySelector('#account-password');
   form.addEventListener('submit',async event=>{

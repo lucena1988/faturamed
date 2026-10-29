@@ -23,11 +23,13 @@ public class SegurancaConfig {
     @Bean SecurityFilterChain security(HttpSecurity http, UsuarioService users) throws Exception {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error").permitAll()
-                .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css").authenticated()
+                .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/tokens.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error").permitAll()
+                .requestMatchers("/api/usuarios/**", "/api/usuarios", "/usuarios.html", "/usuarios.js").hasAnyRole("ADMIN", "DEV", "OPERADOR")
+                .requestMatchers("/api/chamados", "/api/chamados/**", "/chamados-widget.js", "/chamados-widget.css").hasAnyRole("ADMIN", "DEV", "OPERADOR")
+                .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()
                 .requestMatchers("/api/medico/**", "/portal.html", "/portal.js", "/conferencia-portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
-                .requestMatchers("/api/**").hasRole("ADMIN")
-                .anyRequest().hasRole("ADMIN"))
+                .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
+                .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
             .requestCache(cache -> cache.disable())
             .headers(headers -> headers.contentSecurityPolicy(policy -> policy.policyDirectives(
                     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")))
@@ -48,7 +50,12 @@ public class SegurancaConfig {
             .formLogin(login -> login.loginPage("/login.html").loginProcessingUrl("/api/auth/login")
                 .successHandler((request,response,authentication) -> {
                     var user=(UsuarioAutenticado)authentication.getPrincipal(); users.sucesso(user.id());
-                    response.setContentType("application/json"); response.getWriter().write("{\"destino\":\""+(user.perfil().equals("ADMIN")?"/":"/portal.html")+"\"}");
+                    String destino = switch (user.perfil()) {
+                        case "ADMIN", "OPERADOR" -> "/";
+                        case "DEV" -> "/chamados.html";
+                        default -> "/portal.html";
+                    };
+                    response.setContentType("application/json"); response.getWriter().write("{\"destino\":\""+destino+"\"}");
                 })
                 .failureHandler((request,response,error) -> { users.falha(request.getParameter("username")); json(response,401,"Email ou senha invalidos, ou acesso indisponivel. Apos 5 tentativas, aguarde 15 minutos"); })
                 .permitAll())

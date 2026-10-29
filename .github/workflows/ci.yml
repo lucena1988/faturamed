@@ -1,0 +1,192 @@
+﻿name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  java:
+    name: Java (build e testes)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: faturamed_test_v2
+          POSTGRES_USER: faturamed_test
+          POSTGRES_PASSWORD: faturamed_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U faturamed_test -d faturamed_test_v2"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      BASE_HOSPITALAR_TEST_DB: 'true'
+      DB_URL: jdbc:postgresql://localhost:5432/faturamed_test_v2
+      DB_USER: faturamed_test
+      DB_PASSWORD: faturamed_test
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Preparar Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Compilar e testar
+        run: mvn -B verify
+
+      - name: Anotar testes na PR
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: target/surefire-reports/TEST-*.xml
+          check_name: Relatorio de testes Java
+          include_passed: false
+
+      - name: Publicar relatorios Surefire
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: surefire-${{ github.run_id }}
+          path: target/surefire-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend e scripts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Preparar Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Preparar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-test.txt
+
+      - name: Testes JavaScript
+        run: >-
+          node --test --test-reporter=spec
+          src/test/js/demonstrativo.test.cjs src/test/js/selecao.test.cjs
+          src/test/js/servicedesk.test.cjs scripts/painel-medico.test.cjs
+
+      - name: Testes das planilhas de QA
+        run: |
+          python -m pip install -r requirements-test.txt
+          python -m unittest scripts.test_qa_fixtures
+
+  seguranca:
+    name: Seguranca
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: read
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Procurar segredos commitados
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Revisar dependencias novas
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+      - name: Iniciar CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin, javascript-typescript, python
+          build-mode: none
+
+      - name: Analisar com CodeQL
+        uses: github/codeql-action/analyze@v4
+
+  regressao:
+    name: Regressao completa
+    needs: [java, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      PYTHONUNBUFFERED: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Preparar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-test.txt
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-test.txt
+
+      - name: Verificar Docker
+        run: docker info
+
+      - name: Executar suite completa
+        run: python test.py
+
+      - name: Publicar dashboard e evidencias
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: regressao-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            outputs/
+            !outputs/**/privado/**
+            !outputs/**/*.dump
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Orientar consulta dos resultados
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## Regressao completa
+          Consulte o resultado da etapa **Executar suite completa** acima.
+          Baixe o artefato `regressao-*`, extraia o ZIP e abra
+          `dashboard-regressao.html`. Preserve as subpastas para os links funcionarem.
+          Se a execucao falhar antes de gerar o dashboard, consulte os logs disponiveis.
+          Backups privados nao sao publicados. Retencao: 14 dias.
+          EOF

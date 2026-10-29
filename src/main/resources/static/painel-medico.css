@@ -19,7 +19,7 @@
 #conference-history { padding-left: 22px; overflow-wrap: anywhere; }
 #conference-history li { padding: 12px 0; border-bottom: 1px solid var(--line); }
 #answer-dialog { width: min(560px,calc(100% - 32px)); box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 24px; color: var(--text); background: var(--surface); }
-#answer-dialog::backdrop { background: #0007; }
+#answer-dialog::backdrop { background: var(--backdrop); }
 #answer-dialog h2 { font-size: 20px; }
 #answer-summary, #answer-reason { overflow-wrap: anywhere; }
 #requests-rows td:last-child { width: auto; }
