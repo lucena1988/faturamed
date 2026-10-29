@@ -13,8 +13,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET
-import zipfile
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,30 +125,10 @@ def case(identifier, title, operation):
     return result
 
 
-TEMPLATE = ROOT / 'outputs/homologacao/03-hospital-duas-visitas-legitimas.xlsx'
-NS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
-
-
 def fixture(name, rows):
-    content = io.BytesIO()
-    with zipfile.ZipFile(TEMPLATE) as original, zipfile.ZipFile(content, 'w', zipfile.ZIP_DEFLATED) as output:
-        for item in original.infolist():
-            raw = original.read(item.filename)
-            if item.filename == 'xl/worksheets/sheet1.xml':
-                root = ET.fromstring(raw)
-                sheet_data = root.find(NS + 'sheetData')
-                sheet_data.clear()
-                dimension = root.find(NS + 'dimension')
-                if dimension is not None:
-                    dimension.set('ref', f'A1:I{len(rows)}')
-                for row_index, values in enumerate(rows, 1):
-                    row = ET.SubElement(sheet_data, NS + 'row', {'r': str(row_index)})
-                    for column, value in enumerate(values):
-                        cell = ET.SubElement(row, NS + 'c', {'r': f'{chr(65 + column)}{row_index}', 't': 'inlineStr'})
-                        ET.SubElement(ET.SubElement(cell, NS + 'is'), NS + 't').text = str(value)
-                raw = ET.tostring(root, encoding='utf-8', xml_declaration=True)
-            output.writestr(item, raw)
-    result = content.getvalue()
+    # Generate every input from scenario data; outputs is never an input dependency.
+    from qa_fixtures import workbook_bytes
+    result = workbook_bytes(rows)
     save('entradas/' + name, result)
     return name, result
 
