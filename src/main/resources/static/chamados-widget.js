@@ -8,37 +8,40 @@
     return node;
   };
 
-  // Vector reproduction of the interlocked "BR" glass monogram from the reference icon
-  const BR_GLASS_SVG = `
-    <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  // Vector icon: Customer Support & Service Desk (Headset + Speech Bubble in Faturamed Liquid Glass)
+  const SUPPORT_GLASS_SVG = `
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
-        <linearGradient id="br-silver-b" x1="12" y1="14" x2="54" y2="86" gradientUnits="userSpaceOnUse">
+        <linearGradient id="fm-headset-grad" x1="18" y1="16" x2="82" y2="86" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stop-color="#FFFFFF"/>
-          <stop offset="55%" stop-color="#E2E8F0"/>
-          <stop offset="82%" stop-color="#A78BFA"/>
-          <stop offset="100%" stop-color="#7C3AED"/>
+          <stop offset="35%" stop-color="#E5F3F6"/>
+          <stop offset="70%" stop-color="#95D3D5"/>
+          <stop offset="100%" stop-color="#66AFC7"/>
         </linearGradient>
-        <linearGradient id="br-slash" x1="30" y1="46" x2="75" y2="86" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#E879F9"/>
-          <stop offset="45%" stop-color="#8B5CF6"/>
-          <stop offset="100%" stop-color="#4F46E5"/>
-        </linearGradient>
-        <linearGradient id="br-r-loop" x1="56" y1="14" x2="108" y2="86" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#F472B6"/>
-          <stop offset="28%" stop-color="#A855F7"/>
-          <stop offset="52%" stop-color="#6366F1"/>
-          <stop offset="72%" stop-color="#F8FAFC"/>
-          <stop offset="100%" stop-color="#FFFFFF"/>
+        <linearGradient id="fm-bubble-fill" x1="34" y1="34" x2="66" y2="64" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#95D3D5" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#24677D" stop-opacity="0.95"/>
         </linearGradient>
       </defs>
-      <!-- Left 'B' outer stem, upper loop, and lower curve -->
-      <path d="M12 15H44C55.5 15 62 22 62 32C62 38.8 58.2 44.2 52.5 46.8L46 43.5C48.5 41.2 49.8 38 49.8 34C49.8 28.8 46.2 26 40.5 26H25V74H41.5C46.8 74 50.5 71.5 52.8 67.5L60.5 76.5C56.2 82.2 49.8 85 41 85H12V15Z" fill="url(#br-silver-b)"/>
-      <!-- Middle-to-bottom diagonal glowing violet leg of the 'B' -->
-      <path d="M31 46H49.5C54.5 46 58.8 48.2 62 52.2L86 85H70.5L51.5 58.5C49.5 55.8 46.8 54.5 43 54.5H37.5L31 46Z" fill="url(#br-slash)"/>
-      <!-- Right interlocked 'R' top loop and diagonal leg -->
-      <path d="M56 15H86C99.5 15 108 23.2 108 35.5C108 45.8 102.2 53.2 92.8 55.8L110 85H94.5L78.5 57.5H65.5L57.5 46.5H83.5C90.2 46.5 94.5 42.5 94.5 36C94.5 29.5 90.2 26 83.5 26H64L56 15Z" fill="url(#br-r-loop)"/>
+      <!-- Headset arch -->
+      <path d="M 22 52 C 22 30 34 16 50 16 C 66 16 78 30 78 52" stroke="url(#fm-headset-grad)" stroke-width="6.5" stroke-linecap="round"/>
+      <!-- Left earpad -->
+      <rect x="15" y="44" width="12" height="22" rx="6" fill="url(#fm-headset-grad)"/>
+      <rect x="18" y="47" width="6" height="16" rx="3" fill="#194D60" opacity="0.6"/>
+      <!-- Right earpad -->
+      <rect x="73" y="44" width="12" height="22" rx="6" fill="url(#fm-headset-grad)"/>
+      <rect x="76" y="47" width="6" height="16" rx="3" fill="#194D60" opacity="0.6"/>
+      <!-- Mic boom -->
+      <path d="M 78 60 C 78 78 68 84 56 84 H 52" stroke="url(#fm-headset-grad)" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="44" y="81" width="9" height="6" rx="3" fill="#FFFFFF"/>
+      <!-- Center speech bubble -->
+      <path d="M 33 36 C 33 32.7 35.7 30 39 30 H 61 C 64.3 30 67 32.7 67 36 V 54 C 67 57.3 64.3 60 61 60 H 45 L 37 66 V 60 H 39 C 35.7 60 33 57.3 33 54 Z" fill="url(#fm-bubble-fill)" stroke="#FFFFFF" stroke-width="1.8"/>
+      <!-- Chat lines -->
+      <rect x="40" y="38" width="18" height="3" rx="1.5" fill="#FFFFFF"/>
+      <rect x="40" y="45" width="12" height="3" rx="1.5" fill="#E5F3F6"/>
     </svg>
   `;
+  const BR_GLASS_SVG = SUPPORT_GLASS_SVG;
 
   const STATUS_LABELS = {
     ABERTO: 'Aberto (Triagem)',
