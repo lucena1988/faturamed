@@ -107,13 +107,16 @@ class Client:
         self.token = self.call('GET', '/api/auth/csrf', log=False)
 
 
-def case(identifier, title, operation):
+def case(identifier, title, operation, skip_reason=None):
     global current_case
     current_case = identifier
     started = time.perf_counter()
     try:
-        detail = operation()
-        result = {'id': identifier, 'titulo': title, 'resultado': 'APROVADO', 'detalhes': detail}
+        if skip_reason:
+            result = {'id': identifier, 'titulo': title, 'resultado': 'IGNORADO', 'detalhes': {'motivo': skip_reason}}
+        else:
+            detail = operation()
+            result = {'id': identifier, 'titulo': title, 'resultado': 'APROVADO', 'detalhes': detail}
     except Exception as error:
         result = {'id': identifier, 'titulo': title, 'resultado': 'REPROVADO', 'erro': str(error).replace(PASSWORD, '[omitido]')}
     result['duracao_s'] = round(time.perf_counter() - started, 3)
@@ -121,7 +124,7 @@ def case(identifier, title, operation):
     save('resultados.json', cases)
     print(identifier, result['resultado'], title, flush=True)
     if result['resultado'] != 'APROVADO':
-        print(result.get('erro'), flush=True)
+        print(result.get('erro') or result.get('detalhes', {}).get('motivo'), flush=True)
     return result
 
 
@@ -383,4 +386,4 @@ finally:
     (OUTPUT / 'RESUMO.md').write_text('\n'.join(summary), encoding='utf-8')
     print('EVIDENCIAS:', OUTPUT, flush=True)
 
-raise SystemExit(0 if cases and all(item['resultado'] == 'APROVADO' for item in cases) else 1)
+raise SystemExit(0 if cases and all(item['resultado'] in ('APROVADO', 'IGNORADO') for item in cases) else 1)

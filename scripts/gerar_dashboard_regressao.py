@@ -60,7 +60,7 @@ def generate(folder):
         if not previous.is_dir() or not (previous / 'resultados.json').exists():
             continue
         old = read_json(previous / 'resultados.json', [])
-        data['history'].append({'run': previous.name, 'http': len(old), 'fail': sum(t['resultado'] != 'APROVADO' for t in old), 'available': previous == folder or (previous / 'dashboard.html').exists()})
+        data['history'].append({'run': previous.name, 'http': len(old), 'fail': sum(t['resultado'] not in ('APROVADO', 'IGNORADO') for t in old), 'available': previous == folder or (previous / 'dashboard.html').exists()})
     template = TEMPLATE.read_text(encoding='utf-8')
     def html(base):
         payload = json.dumps({**data, 'base': base}, ensure_ascii=False).replace('<', '\\u003c').replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
