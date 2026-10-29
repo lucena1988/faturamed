@@ -1,12 +1,46 @@
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Entrar | FaturaMed</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="identidade.css?v=20261009-1"><link rel="stylesheet" href="login.css?v=20261009-logo"><link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
-<body class="access-page">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Entrar | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261029-barra"><link rel="stylesheet" href="login.css?v=20261029-tela3"><link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
+<body class="access-page login-page">
   <main class="access-layout">
-    <div class="access-identity"><img src="assets/faturamed-logo.jpeg" alt="Logo FaturaMed - Prestacao de servicos" width="500" height="500"></div>
-    <section class="access-form"><a class="company-name" href="login.html">FaturaMed</a><h1>Entrar</h1>
-      <form id="login-form" class="stack-form"><label>Email<input name="username" type="email" required maxlength="180" autocomplete="username"></label><label>Senha<input name="password" type="password" required maxlength="72" autocomplete="current-password"></label><button class="primary-button" type="submit">Entrar</button></form>
-      <p id="login-message" role="status" aria-live="polite"></p>
+    <section class="login-showcase" aria-label="Como o FaturaMed trabalha">
+      <div class="login-stage">
+        <img class="login-logo login-logo-dark" src="assets/faturamed-logo.jpeg" alt="FaturaMed - Prestação de serviços" width="500" height="500">
+        <div class="login-pitch">
+          <h2>Cada atendimento, conciliado.</h2>
+          <p>Visitas, consultas, exames e procedimentos: produção médica e faturamento hospitalar lado a lado, em tempo real.</p>
+        </div>
+        <div class="login-feed" aria-hidden="true">
+          <ol class="login-feed-track">
+            <li><span class="feed-icon"></span><span class="feed-text">Visita hospitalar · UTI adulto</span><b class="pill success">Paga</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Consulta em pronto-socorro</span><b class="pill warning">Pendente</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Colecistectomia videolaparoscópica</span><b class="pill success">Paga</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Parecer de cardiologia · enfermaria</span><b class="pill danger">Divergente</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Parto cesáreo · centro obstétrico</span><b class="pill success">Paga</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Endoscopia digestiva alta</span><b class="pill warning">Pendente</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Plantão de UTI neonatal</span><b class="pill success">Paga</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Artroplastia total de joelho</span><b class="pill danger">Divergente</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Hemodiálise · sessão</span><b class="pill success">Paga</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Tomografia de crânio com contraste</span><b class="pill warning">Pendente</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Apendicectomia</span><b class="pill success">Paga</b></li>
+            <li><span class="feed-icon"></span><span class="feed-text">Visita de anestesiologia pré-operatória</span><b class="pill success">Paga</b></li>
+          </ol>
+        </div>
+        <dl class="login-stats">
+          <div><dt>98,4%</dt><dd>conciliado</dd></div>
+          <div><dt>12 s</dt><dd>por relatório</dd></div>
+          <div><dt>LGPD</dt><dd>dados protegidos</dd></div>
+        </dl>
+        <p class="login-note">Exemplos ilustrativos.</p>
+      </div>
     </section>
-  </main><script src="auth.js?v=20261027-avisos"></script><script src="login.js?v=20261009-1"></script>
+
+    <section class="access-form"><h1>Entrar</h1>
+      <p class="login-subtitle">Acesse o painel de faturamento</p>
+      <form id="login-form" class="stack-form"><label>E-mail<input name="username" type="email" required maxlength="180" autocomplete="username" placeholder="nome@hospital.com.br"></label><label>Senha<input name="password" type="password" required maxlength="72" autocomplete="current-password"></label><button class="primary-button" type="submit">Entrar</button></form>
+      <p id="login-message" role="status" aria-live="polite"></p>
+      <p class="login-health" id="login-health" data-state="checking"><span class="status-dot"></span><span>Verificando o sistema...</span></p>
+    </section>
+  </main><script src="auth.js?v=20261027-avisos"></script><script src="login.js?v=20261029-tela2"></script>
+
 </body></html>

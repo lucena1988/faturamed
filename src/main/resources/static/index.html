@@ -4,92 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faturamed</title>
-  <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./conciliacao.css?v=20261013-faturamento">
+  <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="./styles.css?v=20261029-ui">
+  <link rel="stylesheet" href="./conciliacao.css?v=20261029-ui">
   <link rel="stylesheet" href="./medicos.css?v=20261009-2">
-  <link rel="stylesheet" href="./identidade.css?v=20261009-1">
-  <link rel="stylesheet" href="./painel-medico.css?v=20261009-1">
-  <link rel="stylesheet" href="./login.css?v=20261009-1">
-<link rel="stylesheet" href="tema.css?v=20261009-1"><script src="tema.js?v=20261009-1"></script></head>
+  <link rel="stylesheet" href="./identidade.css?v=20261029-barra">
+  <link rel="stylesheet" href="./painel-medico.css?v=20261029-ui">
+  <link rel="stylesheet" href="./login.css?v=20261029-ui">
+<link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Navegacao principal">
-      <a class="brand" href="#dashboard" data-view-link="dashboard" aria-label="Faturamed dashboard">
-        <span class="brand-mark" aria-hidden="true">
-          <svg id="faturamed-mark" viewBox="0 0 24 24" role="img">
-            <path d="M5 4.75A2.75 2.75 0 0 1 7.75 2h8.5A2.75 2.75 0 0 1 19 4.75v14.5A2.75 2.75 0 0 1 16.25 22h-8.5A2.75 2.75 0 0 1 5 19.25V4.75Z"/>
-            <path d="M9 7h6M9 11h6M9 15h2.5"/>
-            <path d="M14.25 14.25v4.5M12 16.5h4.5"/>
-          </svg>
-        </span>
-        <span>
-          <strong>FaturaMed</strong>
-          <small>Faturamento e consultoria</small>
-        </span>
-      </a>
-
-      <nav class="nav-list" aria-label="Modulos">
-        <a class="nav-item" href="base-hospitalar.html"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Base hospitalar</a>
-        <a class="nav-item" href="recebimentos.html" title="Recebimentos">
-          <span class="nav-icon" aria-hidden="true"><svg class="lucide lucide-banknote" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg></span>
-          Recebimentos
-        </a>
-        <a class="nav-item" href="cobrancas.html" title="Fila de cobranca"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Fila de cobranca</a>
-        <a class="nav-item" href="solicitacoes-medicos.html"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Solicitacoes dos medicos</a>
-        <a class="nav-item" href="conciliacao.html" title="Conciliacao de visitas" aria-label="Conciliacao de visitas">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/></svg></span>
-          Conciliacao de visitas
-        </a>
-        <button class="nav-item active" type="button" data-view-link="dashboard">
-          <span class="nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/></svg>
-          </span>
-          Dashboard
-        </button>
-        <button class="nav-item" type="button" data-view-link="importacoes">
-          <span class="nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/></svg>
-          </span>
-          Importacoes
-        </button>
-        <button class="nav-item" type="button" data-view-link="divergencias">
-          <span class="nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>
-          </span>
-          Divergencias
-        </button>
-        <button class="nav-item" type="button" data-view-link="layouts">
-          <span class="nav-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><path d="M8 3v4M15 10v4M11 17v4"/></svg>
-          </span>
-          Layouts
-        </button>
-        <a class="nav-item" href="#medicos" data-view-link="medicos" title="Medicos" aria-label="Medicos">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>
-          Medicos
-        </a>
-        <a class="nav-item" href="#hospitais" data-view-link="hospitais" title="Hospitais" aria-label="Hospitais">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>
-          Hospitais
-        </a>
-        <a class="nav-item" href="#painel-medico" data-view-link="painel-medico" title="Painel do medico" aria-label="Painel do medico"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Painel do medico</a>
-        <a class="nav-item" href="chamados.html" title="Central de Chamados (Service Desk)" aria-label="Central de Chamados"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Central de Chamados</a>
-        <a class="nav-item" href="usuarios.html" title="Acessos" aria-label="Acessos"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#faturamed-mark"/></svg></span>Acessos</a>
-      </nav>
-
-      <a class="company-identity" href="./assets/faturamed-identidade.jpeg" target="_blank" rel="noopener" aria-label="Identidade da FaturaMed">
-        <img src="./assets/faturamed-identidade.jpeg" alt="FaturaMed: faturamento de contas medicas e consultoria medica">
-      </a>
-      <div class="sidebar-foot">
-        <span class="status-dot"></span>
-        <span>Ambiente local</span>
-      </div>
-    </aside>
+    <aside class="sidebar" aria-label="Navegação principal"></aside>
 
     <main class="workspace">
       <header class="topbar">
         <div>
-          <p class="eyebrow" id="report-context">Carregando conciliacoes</p>
+          <p class="eyebrow" id="report-context">Carregando conciliações</p>
           <h1 id="view-title">Dashboard</h1>
         </div>
         <div class="topbar-actions">
@@ -98,11 +27,11 @@
             <select id="unit-filter" disabled></select>
           </label>
           <label class="select-field">
-            <span>Relatorio</span>
+            <span>Relatório</span>
             <select id="report-filter" disabled></select>
           </label>
           <label class="select-field">
-            <span>Periodo</span>
+            <span>Período</span>
             <select id="period-filter" disabled></select>
           </label>
           <button class="icon-button" type="button" title="Atualizar indicadores" aria-label="Atualizar indicadores" id="refresh-button">
@@ -115,65 +44,74 @@
       <p id="dashboard-message" role="status" aria-live="polite"></p>
 
       <section class="view active" id="dashboard-view" data-view="dashboard">
-        <div class="kpi-grid" aria-label="Indicadores principais">
-          <article class="kpi-card risk">
-            <span class="kpi-label">Repasse de visitas</span>
-            <strong id="kpi-repasse">...</strong>
-            <small id="kpi-repasse-detail">Total da planilha do hospital</small>
-          </article>
-          <article class="kpi-card">
-            <span class="kpi-label">Itens analisados</span>
-            <strong id="kpi-total">...</strong>
-            <small id="kpi-total-detail"></small>
-          </article>
-          <article class="kpi-card">
-            <span class="kpi-label">Pagas</span>
-            <strong id="kpi-pagas">...</strong>
-            <small id="kpi-pagas-detail"></small>
-          </article>
-          <article class="kpi-card">
-            <span class="kpi-label">Valor das pagas</span>
-            <strong id="kpi-valor-pagas">...</strong>
-            <small id="kpi-valor-pagas-detail"></small>
-          </article>
-            <article class="kpi-card"><span class="kpi-label">Recebido</span><strong id="kpi-recebido">-</strong><small id="kpi-recebido-detail"></small></article>
-            <article class="kpi-card"><span class="kpi-label">A receber</span><strong id="kpi-saldo">-</strong><small id="kpi-saldo-detail"></small></article>
-          <article class="kpi-card alert">
-            <span class="kpi-label">Pendentes</span>
-            <strong id="kpi-pendentes">...</strong>
-            <small>Sem faturamento confirmado nesta rodada</small>
-          </article>
-          <article class="kpi-card alert">
-            <span class="kpi-label">Valor pendente</span>
-            <strong id="kpi-valor-pendentes">...</strong>
-            <small id="kpi-valor-pendentes-detail"></small>
-          </article>
-          <article class="kpi-card alert">
-            <span class="kpi-label">Divergencias</span>
-            <strong id="kpi-divergentes">...</strong>
-            <small>Visitas que exigem conferencia</small>
-          </article>
-          <article class="kpi-card alert">
-            <span class="kpi-label">Valor divergente</span>
-            <strong id="kpi-valor-divergentes">...</strong>
-            <small id="kpi-valor-divergentes-detail"></small>
-          </article>
-        </div>
+        <section class="cycle" aria-labelledby="cycle-title">
+          <div class="cycle-heading">
+            <h2 id="cycle-title">Ciclo da conta</h2>
+            <p>Repasse das visitas do relatório e período selecionados, da produção ao recebimento.</p>
+          </div>
+          <div class="cycle-strip">
+            <article class="cycle-stage" data-tone="neutral">
+              <span class="cycle-label">Produzido</span>
+              <strong id="kpi-repasse">...</strong>
+              <span class="cycle-count"><b id="kpi-total">...</b> visitas</span>
+              <small id="kpi-total-detail"></small>
+              <small id="kpi-repasse-detail">Total da planilha do hospital</small>
+            </article>
+            <article class="cycle-stage" data-tone="success">
+              <span class="cycle-label">Pagas</span>
+              <strong id="kpi-valor-pagas">...</strong>
+              <span class="cycle-count"><b id="kpi-pagas">...</b> visitas</span>
+              <small id="kpi-pagas-detail"></small>
+              <small id="kpi-valor-pagas-detail"></small>
+            </article>
+            <article class="cycle-stage" data-tone="warning">
+              <span class="cycle-label">Pendentes</span>
+              <strong id="kpi-valor-pendentes">...</strong>
+              <span class="cycle-count"><b id="kpi-pendentes">...</b> visitas</span>
+              <small>Sem faturamento confirmado nesta rodada</small>
+              <small id="kpi-valor-pendentes-detail"></small>
+            </article>
+            <article class="cycle-stage" data-tone="danger">
+              <span class="cycle-label">Divergentes</span>
+              <strong id="kpi-valor-divergentes">...</strong>
+              <span class="cycle-count"><b id="kpi-divergentes">...</b> visitas</span>
+              <small>Visitas que exigem conferência</small>
+              <small id="kpi-valor-divergentes-detail"></small>
+            </article>
+            <article class="cycle-stage" data-tone="info">
+              <span class="cycle-label">Recebido</span>
+              <strong id="kpi-recebido">-</strong>
+              <span class="cycle-count">A receber <b id="kpi-saldo">-</b></span>
+              <small id="kpi-recebido-detail"></small>
+              <small id="kpi-saldo-detail"></small>
+            </article>
+          </div>
+        </section>
 
         <div class="content-grid">
-          <section class="panel wide">
+          <section class="panel wide attention-panel">
             <div class="panel-header">
               <div>
-                <h2>Mapa de conferencia</h2>
-                <p id="chart-context">Visitas no periodo selecionado.</p>
+                <h2>Visitas que pedem atenção</h2>
+                <p id="queue-count">Pendências e divergências.</p>
               </div>
-              <div class="segmented" role="tablist" aria-label="Agrupamento do grafico">
-                <button class="active" type="button" role="tab" aria-selected="true" data-chart="status">Status</button>
-                <button type="button" role="tab" aria-selected="false" data-chart="medico">Medico</button>
-                <button type="button" role="tab" aria-selected="false" data-chart="motivo">Motivo</button>
-              </div>
+              <button class="text-button" type="button" data-view-link="divergencias">Ver todas</button>
             </div>
-            <div class="audit-chart" id="audit-chart" aria-label="Quantidade de visitas"></div>
+            <div class="table-wrap">
+              <table class="attention-table">
+                <thead>
+                  <tr>
+                    <th>Atendimento</th>
+                    <th>Procedimento</th>
+                    <th>Motivo</th>
+                    <th>Médico</th>
+                    <th class="money">Repasse informado</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="priority-table"></tbody>
+              </table>
+            </div>
           </section>
 
           <section class="panel">
@@ -194,26 +132,16 @@
           <section class="panel wide">
             <div class="panel-header">
               <div>
-                <h2>Fila de analise</h2>
-                <p id="queue-count">Pendencias e divergencias.</p>
+                <h2>Mapa de conferência</h2>
+                <p id="chart-context">Visitas no período selecionado.</p>
               </div>
-              <button class="text-button" type="button" data-view-link="divergencias">Ver todas</button>
+              <div class="segmented" role="tablist" aria-label="Agrupamento do gráfico">
+                <button class="active" type="button" role="tab" aria-selected="true" data-chart="status">Status</button>
+                <button type="button" role="tab" aria-selected="false" data-chart="medico">Médico</button>
+                <button type="button" role="tab" aria-selected="false" data-chart="motivo">Motivo</button>
+              </div>
             </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Atendimento</th>
-                    <th>Procedimento</th>
-                    <th>Motivo</th>
-                    <th>Medico</th>
-                    <th>Repasse informado</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="priority-table"></tbody>
-              </table>
-            </div>
+            <div class="audit-chart" id="audit-chart" aria-label="Quantidade de visitas"></div>
           </section>
         </div>
       </section>
@@ -234,7 +162,7 @@
           <section class="panel wide">
             <div class="panel-header">
               <div>
-                <h2>Arquivos da conciliacao</h2>
+                <h2>Arquivos da conciliação</h2>
                 <p id="imports-context"></p>
               </div>
               <span class="badge" id="imports-count">...</span>
@@ -261,7 +189,7 @@
         <section class="panel">
           <div class="panel-header">
             <div>
-              <h2>Divergencias</h2>
+              <h2>Divergências</h2>
               <p>Itens que exigem conferencia ou contestacao.</p>
             </div>
             <div class="filters">
@@ -324,31 +252,31 @@
       </section>
       <section class="view conciliation-workspace medicos-module" id="medicos-view" data-view="medicos" data-medicos>
         <form id="medico-form" class="medico-form">
-          <h2 id="form-title">Novo medico</h2>
+          <h2 id="form-title">Novo médico</h2>
           <label>Nome completo<input id="nome" required maxlength="180" autocomplete="name"></label>
           <label>CRM<input id="crm" required pattern="[0-9]{1,20}" maxlength="20" inputmode="numeric"></label>
           <label>UF<select id="uf" required><option value="">Selecione</option></select></label>
           <label class="aliases-field">Aliases (um nome por linha)<textarea id="aliases" rows="4"></textarea></label>
           <label class="active-field"><input id="ativo" type="checkbox" checked>Ativo</label>
-          <div class="medico-actions"><button id="save" type="submit">Salvar medico</button><button id="new" type="button">Novo cadastro</button></div>
+          <div class="medico-actions"><button id="save" type="submit">Salvar médico</button><button id="new" type="button">Novo cadastro</button></div>
         </form>
         <p id="message" role="status" aria-live="polite"></p>
-        <div class="conciliation-filters"><label>Buscar medico<input id="medico-search" type="search"></label><label>Situacao<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
-        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Aliases</th><th>Situacao</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
+        <div class="conciliation-filters"><label>Buscar médico<input id="medico-search" type="search"></label><label>Situação<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Aliases</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
       </section>
-      <section class="view" data-view="painel-medico" aria-label="Painel do medico">
-        <div class="doctor-toolbar"><label class="select-field">Medico<select id="panel-doctor" disabled><option value="">Selecione um medico</option></select></label><span id="doctor-scope"></span></div>
-        <p id="doctor-message" role="status">Selecione um medico.</p>
+      <section class="view" data-view="painel-medico" aria-label="Painel do médico">
+        <div class="doctor-toolbar"><label class="select-field">Médico<select id="panel-doctor" disabled><option value="">Selecione um médico</option></select></label><span id="doctor-scope"></span></div>
+        <p id="doctor-message" role="status">Selecione um médico.</p>
         <div class="kpi-grid">
           <article class="kpi-card"><span class="kpi-label">Faturado pelo hospital</span><strong id="doctor-paid">-</strong><small id="doctor-paid-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Recebido</span><strong id="doctor-received">-</strong><small id="doctor-received-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">A receber</span><strong id="doctor-balance">-</strong><small id="doctor-balance-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Aguardando faturamento</span><strong id="doctor-pending">-</strong><small id="doctor-pending-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Valor em conferencia</span><strong id="doctor-blocked">-</strong><small id="doctor-blocked-detail"></small></article>
-          <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondencia nao confirmados</small></article>
+          <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondência nao confirmados</small></article>
         </div>
         <section class="doctor-section"><h2>Resumo do hospital</h2><div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Visitas</th><th>Faturado</th><th>Aguardando</th><th>Em conferencia</th></tr></thead><tbody id="doctor-hospitals"></tbody></table></div></section>
-        <section class="doctor-section"><h2>Pendencias da producao</h2><div class="doctor-toolbar"><label class="select-field">Situacao<select id="doctor-status"><option value="">Todas as pendencias</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferencia</option></select></label><label class="select-field">Atendimento<input id="doctor-search" type="search"></label><span id="doctor-count"></span></div><div class="doctor-table"><table><thead><tr><th>Atendimento</th><th>Data</th><th>Procedimento</th><th>Repasse</th><th>Situacao</th><th>Motivo</th></tr></thead><tbody id="doctor-visits"></tbody></table></div></section>
+        <section class="doctor-section"><h2>Pendências da producao</h2><div class="doctor-toolbar"><label class="select-field">Situação<select id="doctor-status"><option value="">Todas as pendencias</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferencia</option></select></label><label class="select-field">Atendimento<input id="doctor-search" type="search"></label><span id="doctor-count"></span></div><div class="doctor-table"><table><thead><tr><th>Atendimento</th><th>Data</th><th>Procedimento</th><th>Repasse</th><th>Situação</th><th>Motivo</th></tr></thead><tbody id="doctor-visits"></tbody></table></div></section>
       </section>
       <section class="view conciliation-workspace medicos-module" id="hospitais-view" data-view="hospitais" data-hospitais>
         <form id="hospital-form" class="medico-form">
@@ -361,8 +289,8 @@
           <div class="medico-actions"><button id="h-save" type="submit">Salvar hospital</button><button id="h-new" type="button">Novo cadastro</button></div>
         </form>
         <p id="h-message" role="status" aria-live="polite"></p>
-        <div class="conciliation-filters"><label>Buscar hospital<input id="h-search" type="search"></label><label>Situacao<select id="h-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="h-count"></span><button id="h-reload" type="button">Atualizar</button></div>
-        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>Documento</th><th>Cidade</th><th>UF</th><th>Situacao</th><th>Cadastro</th></tr></thead><tbody id="h-rows"></tbody></table></div>
+        <div class="conciliation-filters"><label>Buscar hospital<input id="h-search" type="search"></label><label>Situação<select id="h-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="h-count"></span><button id="h-reload" type="button">Atualizar</button></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>Documento</th><th>Cidade</th><th>UF</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="h-rows"></tbody></table></div>
       </section>
     </main>
   </div>
@@ -370,7 +298,9 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth.js?v=20261027-avisos"></script>
   <script src="./painel-medico.js?v=20261014-financeiro"></script>
-  <script src="./app.js?v=20261015-base"></script>
+  <script src="./sidebar.js?v=20261029-1"></script>
+  <script src="./menu.js?v=20261029-3"></script>
+  <script src="./app.js?v=20261029-ciclo"></script>
   <script src="./medicos.js?v=20261009-2"></script>
   <script src="./hospitais.js?v=20261009-hospitais"></script>
 </body>

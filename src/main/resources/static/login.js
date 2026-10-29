@@ -8,3 +8,11 @@ loginForm.addEventListener('submit', async event => {
   } catch(error) { loginMessage.textContent = error.message; loginMessage.className = 'access-error'; }
   finally { button.disabled = false; }
 });
+const loginHealth = document.querySelector('#login-health');
+if (loginHealth) fetch('/api/health').then(response => {
+  loginHealth.dataset.state = response.ok ? 'ok' : 'down';
+  loginHealth.lastElementChild.textContent = response.ok ? 'Sistema operando normalmente' : 'Sistema indisponível no momento';
+}).catch(() => { loginHealth.dataset.state = 'down'; loginHealth.lastElementChild.textContent = 'Sistema indisponível no momento'; });
+// Duplica a lista de procedimentos para a rolagem continua nao ter emenda.
+const loginFeed = document.querySelector('.login-feed-track');
+if (loginFeed) loginFeed.append(...[...loginFeed.children].map(item => item.cloneNode(true)));

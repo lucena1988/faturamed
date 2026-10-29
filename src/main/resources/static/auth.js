@@ -41,7 +41,7 @@
           document.querySelectorAll('a[href="chamados.html"],a[href="/chamados.html"]').forEach(link=>link.remove());
         }
       }).catch(()=>{});
-      const css=document.createElement('link');css.rel='stylesheet';css.href='/notificacoes.css?v=20261015-1';document.head.append(css);
+      const css=document.createElement('link');css.rel='stylesheet';css.href='/notificacoes.css?v=20261029-ui';document.head.append(css);
       const script=document.createElement('script');script.src='/notificacoes.js?v=20261015-1';document.body.append(script);
     }
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {

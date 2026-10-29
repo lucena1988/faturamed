@@ -10,7 +10,7 @@ body.sd-liquid-body { min-height:100dvh; background:var(--bg); color:var(--text)
 .sd-topbar h1 { margin:5px 0 0; font-size:28px; color:var(--text); }
 .sd-nav-actions { flex-wrap:wrap; justify-content:flex-end; }
 .sd-nav-actions a,.sd-nav-actions .text-button,.secondary-button,.sd-mini-btn,.sd-close { border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--primary); padding:10px 14px; text-decoration:none; font:inherit; font-size:13px; cursor:pointer; }
-.sd-workspace .primary-button { border:1px solid #216a7e; border-radius:8px; background:#216a7e; color:white; padding:11px 18px; font:inherit; font-weight:600; cursor:pointer; }
+.sd-workspace .primary-button { border:1px solid var(--primary-fill); border-radius:var(--radius-sm); background:var(--primary-fill); color:var(--on-primary); padding:11px 18px; font:inherit; font-weight:600; cursor:pointer; }
 .sd-workspace button:hover,.sd-nav-actions a:hover { filter:brightness(.96); }
 .sd-workspace [hidden] { display:none!important; }
 .sd-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
@@ -28,7 +28,7 @@ body.sd-liquid-body { min-height:100dvh; background:var(--bg); color:var(--text)
 .sd-kanban-col { background:var(--surface-soft); border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; min-height:420px; max-height:72dvh; }
 .sd-col-header { align-items:flex-start; padding:16px 14px; border-bottom:1px solid var(--line); border-top:3px solid var(--blue); border-radius:10px 10px 0 0; min-height:88px; }
 .sd-col-header h2 { font-size:14px; margin:0 0 6px; }.sd-col-header small { font-size:11px; line-height:1.5; color:var(--muted); }
-.st-em_atendimento { border-top-color:var(--amber); }.st-aguardando_usuario { border-top-color:#c2853c; }.st-resolvido { border-top-color:var(--green); }.st-fechado { border-top-color:var(--muted); }
+.st-em_atendimento { border-top-color:var(--amber); }.st-aguardando_usuario { border-top-color:var(--warning-line); }.st-resolvido { border-top-color:var(--green); }.st-fechado { border-top-color:var(--muted); }
 .sd-col-count { background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:3px 8px; font-size:12px; font-weight:600; }
 .sd-col-cards { padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; flex:1; }
 .sd-card { padding:14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); display:flex; flex-direction:column; gap:10px; cursor:pointer; box-shadow:0 2px 5px #002d3b08; }

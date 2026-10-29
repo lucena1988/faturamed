@@ -23,7 +23,7 @@ public class SegurancaConfig {
     @Bean SecurityFilterChain security(HttpSecurity http, UsuarioService users) throws Exception {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error").permitAll()
+                .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/tokens.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error").permitAll()
                 .requestMatchers("/api/usuarios/**", "/api/usuarios", "/usuarios.html", "/usuarios.js").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .requestMatchers("/api/chamados", "/api/chamados/**", "/chamados-widget.js", "/chamados-widget.css").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()
