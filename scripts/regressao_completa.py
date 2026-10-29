@@ -15,6 +15,30 @@ root = Path(__file__).resolve().parents[1]
 def command(args, **kwargs):
     return subprocess.run(args, cwd=root, capture_output=True, **kwargs)
 
+def report_results(folder, statuses, secret=''):
+    """Mostra as causas no console, inclusive quando o dashboard nao foi gerado."""
+    lines = ['Resumo da execucao:']
+    for stage, code in statuses.items():
+        lines.append(f'- {stage}: {"APROVADO" if code == 0 else "FALHOU"} (codigo {code})')
+        if code != 0:
+            for log in [folder / f'{stage}-execucao.log', folder / f'{stage}-infraestrutura.log']:
+                if log.exists():
+                    lines.append(f'Ultimas linhas de {log.name}:')
+                    lines.extend(log.read_text(encoding='utf-8', errors='replace').splitlines()[-30:])
+    results = folder / 'resultados.json'
+    if results.exists():
+        try:
+            for case in json.loads(results.read_text(encoding='utf-8')):
+                if case.get('resultado') != 'APROVADO':
+                    lines.append(f"{case.get('id')}: {case.get('titulo', '')} — {case.get('erro', case.get('resultado'))}")
+        except (ValueError, TypeError, AttributeError):
+            lines.append('Nao foi possivel interpretar resultados.json; consulte o artefato.')
+    text = '\n'.join(lines)
+    if secret:
+        text = text.replace(secret, '[omitido]')
+    print(text, flush=True)
+    (folder / 'resumo-execucao.txt').write_text(text, encoding='utf-8')
+
 def main():
     if not shutil.which('docker'):
         raise SystemExit('Docker nao encontrado no PATH.')
@@ -37,11 +61,12 @@ def main():
         result = command(args, **kwargs)
         (folder / (name + '-execucao.log')).write_bytes(result.stdout + result.stderr)
         statuses[name] = result.returncode
+        print(f'Etapa {name}: codigo {result.returncode}', flush=True)
         return result
     try:
         for tag, extra in [(builder, ['--target', 'build']), (image, [])]:
-            if execute('build', ['docker', 'build', *extra, '-t', tag, '.']).returncode:
-                raise RuntimeError('Build falhou; consulte build-execucao.log')
+            if execute('build-java' if extra else 'build-app', ['docker', 'build', *extra, '-t', tag, '.']).returncode:
+                raise RuntimeError('Build falhou; consulte o resumo e os logs')
         execute('http', [sys.executable, 'scripts/homologacao_automatica.py'],
                 env={**os.environ, 'QA_APP_IMAGE': image, 'QA_OUTPUT_DIR': str(folder)})
         try:
@@ -64,6 +89,7 @@ def main():
             (folder / 'java').mkdir(exist_ok=True)
             if command(['docker', 'cp', tests + ':/app/target/surefire-reports/.', str(folder / 'java')]).returncode:
                 statuses['java'] = 1
+                (folder / 'java-infraestrutura.log').write_text('Falha ao copiar relatorios Surefire do container.', encoding='utf-8')
         except Exception as error:
             statuses['java'] = 1
             (folder / 'java-infraestrutura.log').write_text(str(error), encoding='utf-8')
@@ -81,6 +107,7 @@ def main():
         for tag in [image, builder]:
             command(['docker', 'image', 'rm', tag])
         (folder / 'execucao.json').write_text(json.dumps(statuses), encoding='utf-8')
+        report_results(folder, statuses, password)
         print('Evidencias:', folder, flush=True)
     print('Dashboard:', root / 'outputs/dashboard-regressao.html', flush=True)
     return 0 if statuses and all(code == 0 for code in statuses.values()) else 1
