@@ -1,0 +1,62 @@
+name: Imagem Docker
+
+# Publica a imagem somente depois que a CI passou num push para main ou develop.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    name: Build, scan e publicacao
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGEM: ghcr.io/${{ github.repository }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - name: Obter o commit testado
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Construir imagem
+        run: docker build -t "$IMAGEM:$SHA" .
+
+      - name: Procurar vulnerabilidades criticas (Trivy)
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL --ignore-unfixed
+          --no-progress "$IMAGEM:$SHA"
+
+      - name: Entrar no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar imagem
+        run: |
+          docker tag "$IMAGEM:$SHA" "$IMAGEM:$BRANCH"
+          docker push "$IMAGEM:$SHA"
+          docker push "$IMAGEM:$BRANCH"
+          if [ "$BRANCH" = main ]; then
+            docker tag "$IMAGEM:$SHA" "$IMAGEM:latest"
+            docker push "$IMAGEM:latest"
+          fi
+          {
+            echo "## Imagem publicada"
+            echo "- \`$IMAGEM:$SHA\`"
+            echo "- \`$IMAGEM:$BRANCH\`"
+          } >> "$GITHUB_STEP_SUMMARY"
