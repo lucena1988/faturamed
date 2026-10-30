@@ -146,7 +146,7 @@
     find('medico').disabled = !individual;
     find('production-help').textContent = individual
       ? 'Na produção individual, selecione o médico e envie Atendimento e Dt.'
-      : 'Na produção coletiva, envie Atendimento e Dt. Medico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
+      : 'Na produção coletiva, envie Atendimento e Dt. Médico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
   }
   function renderFlow() {
     find('flow-stats').replaceChildren(); find('flow-rows').replaceChildren(); find('flow-money').textContent = '';

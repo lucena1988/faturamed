@@ -1,5 +1,5 @@
 (function (root) {
-  const statuses = {PAGA: 'Faturado pelo hospital', PENDENTE: 'Aguardando faturamento', DIVERGENTE: 'Em conferencia'};
+  const statuses = {PAGA: 'Faturado pelo hospital', PENDENTE: 'Aguardando faturamento', DIVERGENTE: 'Em conferência'};
   const normalize = name => (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
   const nameOf = visit => visit.medico ?? visit.hospital?.medico ?? visit.original?.medico ?? '';
   const keyOf = visit => visit.medicoCadastroId != null ? `id:${visit.medicoCadastroId}` : normalize(nameOf(visit));
@@ -24,7 +24,7 @@
   if (!root.document) return;
   const $ = id => document.getElementById(id);
   const money = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'});
-  const format = value => value == null ? 'Nao informado' : money.format(value);
+  const format = value => value == null ? 'Não informado' : money.format(value);
   let currentReport = null, currentVisits = [];
   function row(table, values) {
     const tr = document.createElement('tr');
@@ -39,8 +39,8 @@
     const selected = $('panel-doctor').value;
     const visits = currentVisits.filter(visit => selected && keyOf(visit) === selected);
     const summary = summarize(visits);
-    $('doctor-scope').textContent = currentReport ? `${currentReport.hospital} - Relatorio #${currentReport.id ?? root.document.querySelector('#report-filter').value}` : '';
-    $('doctor-message').textContent = !currentReport ? 'Selecione hospital e relatorio.' : !selected ? 'Selecione um medico.' : !visits.length ? 'Sem visitas neste periodo.' : '';
+    $('doctor-scope').textContent = currentReport ? `${currentReport.hospital} - Relatório #${currentReport.id ?? root.document.querySelector('#report-filter').value}` : '';
+    $('doctor-message').textContent = !currentReport ? 'Selecione hospital e relatório.' : !selected ? 'Selecione um médico.' : !visits.length ? 'Sem visitas neste período.' : '';
     for (const [status, suffix] of [['PAGA', 'paid'], ['PENDENTE', 'pending'], ['DIVERGENTE', 'blocked']]) {
       $('doctor-' + suffix).textContent = selected ? format(summary[status].value) : '-';
       $('doctor-' + suffix + '-detail').textContent = selected ? `${summary[status].count} visitas${summary[status].missing ? `; ${summary[status].missing} sem valor definido` : ''}` : '';
@@ -49,7 +49,7 @@
     for(const [field,id] of [['recebido','doctor-received'],['saldo','doctor-balance']]){
       const known=visits.filter(v=>v.financeiro?.[field]!=null),missing=visits.filter(v=>field==='recebido'?v.financeiro?.[field]==null:v.status==='PAGA'&&v.financeiro?.[field]==null).length;
       $(id).textContent=selected?format(known.length||!visits.length?known.reduce((s,v)=>s+Number(v.financeiro[field]),0):null):'-';
-      $(id+'-detail').textContent=selected?(missing?`${missing} visitas com financeiro nao confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos'):'';
+      $(id+'-detail').textContent=selected?(missing?`${missing} visitas com financeiro não confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos'):'';
     }
     $('doctor-hospitals').replaceChildren();
     if (selected && currentReport) row($('doctor-hospitals'), [currentReport.hospital, visits.length, format(summary.PAGA.value), format(summary.PENDENTE.value), format(summary.DIVERGENTE.value)]);
@@ -58,17 +58,17 @@
     const pending = visits.filter(visit => visit.status !== 'PAGA' && (!status || status === visit.status) && String(visit.atendimento).includes(search));
     $('doctor-count').textContent = selected ? `${pending.length} visitas` : '';
     $('doctor-visits').replaceChildren();
-    for (const visit of pending) row($('doctor-visits'), [visit.atendimento, visit.data ? visit.data.split('-').reverse().join('/') : 'Nao informada',
-      (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original?.['procedimento/mat-med']) || 'Nao identificado',
+    for (const visit of pending) row($('doctor-visits'), [visit.atendimento, visit.data ? visit.data.split('-').reverse().join('/') : 'Não informada',
+      (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original?.['procedimento/mat-med']) || 'Não identificado',
       format(valueOf(visit)), statuses[visit.status], visit.motivo]);
-    if (!pending.length) row($('doctor-visits'), [selected ? 'Nenhuma pendencia neste filtro.' : 'Selecione um medico.', '', '', '', '', '']);
+    if (!pending.length) row($('doctor-visits'), [selected ? 'Nenhuma pendência neste filtro.' : 'Selecione um médico.', '', '', '', '', '']);
   }
   api.render = (report, visits) => {
     currentReport = report; currentVisits = visits;
     const select = $('panel-doctor'), previous = select.value;
     const doctors = new Map();
     for (const visit of report?.visitas || []) if (keyOf(visit) && nameOf(visit).trim()) doctors.set(keyOf(visit), `${nameOf(visit)}${visit.medicoCadastroId != null ? ` (cadastro #${visit.medicoCadastroId})` : ''}`);
-    select.replaceChildren(new Option('Selecione um medico', ''), ...[...doctors].sort((a,b) => a[1].localeCompare(b[1], 'pt-BR')).map(([key, name]) => new Option(name, key)));
+    select.replaceChildren(new Option('Selecione um médico', ''), ...[...doctors].sort((a,b) => a[1].localeCompare(b[1], 'pt-BR')).map(([key, name]) => new Option(name, key)));
     if (doctors.has(previous)) select.value = previous;
     select.disabled = !report || !doctors.size;
     update();

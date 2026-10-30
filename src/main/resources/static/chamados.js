@@ -66,7 +66,7 @@
     document.querySelector('#kpi-avaliacao').textContent = resumo.mediaAvaliacao != null ? `${resumo.mediaAvaliacao} ★` : '-';
     document.querySelector('#kpi-avaliacao-detalhe').textContent = resumo.totalAvaliacoes
       ? `${resumo.totalAvaliacoes} avaliacao(oes) registrada(s)`
-      : 'Sem avaliacoes ate o momento';
+      : 'Sem avaliacoes até o momento';
   }
 
   function renderKanban() {
@@ -132,7 +132,7 @@
           });
           actions.append(bIniciar);
         } else if (c.status === 'EM_ATENDIMENTO') {
-          const bAguardar = el('button', 'sd-mini-btn', 'Aguardar Usuario');
+          const bAguardar = el('button', 'sd-mini-btn', 'Aguardar Usuário');
           bAguardar.type = 'button';
           bAguardar.addEventListener('click', e => {
             e.stopPropagation();
@@ -262,7 +262,7 @@
     const txtReply = el('textarea');
     txtReply.rows = 3;
     txtReply.maxLength = 4000;
-    txtReply.placeholder = 'Responda ao usuario ou registre evidencias da solucao...';
+    txtReply.placeholder = 'Responda ao usuário ou registre evidencias da solucao...';
     lblReply.append(txtReply);
 
     const lblFiles = el('label', '', 'Anexar prints / arquivos (PNG, JPG, WEBP, PDF)');
@@ -304,7 +304,7 @@
       return;
     }
     const rightCol = el('form', 'sd-control-panel');
-    rightCol.append(el('strong', '', 'Gerenciamento e Distribuicao do Chamado'));
+    rightCol.append(el('strong', '', 'Gerenciamento e Distribuição do Chamado'));
 
     const lblStatus = el('label', '', 'Etapa do Kanban (Status)');
     const selStatus = el('select');
@@ -313,7 +313,7 @@
     }
     lblStatus.append(selStatus);
 
-    const lblFila = el('label', '', 'Fila de Destino (Distribuicao)');
+    const lblFila = el('label', '', 'Fila de Destino (Distribuição)');
     const selFila = el('select');
     selFila.append(
       new Option('Fila DEV (Desenvolvimento / Bugs)', 'DEV', c.filaDestino === 'DEV', c.filaDestino === 'DEV'),
@@ -330,21 +330,21 @@
 
     const lblResp = el('label', '', 'Atendente Responsavel');
     const selResp = el('select');
-    selResp.append(new Option('-- Nao atribuido --', '0'));
+    selResp.append(new Option('-- Não atribuido --', '0'));
     for (const a of atendentes) {
       const selected = c.responsavelId === a.id;
       selResp.append(new Option(`${a.nome} (${a.perfil})`, String(a.id), selected, selected));
     }
     lblResp.append(selResp);
 
-    const lblObs = el('label', '', 'Observacao de transicao (opcional)');
+    const lblObs = el('label', '', 'Observação de transicao (opcional)');
     const inpObs = el('textarea');
     inpObs.rows = 2;
     inpObs.maxLength = 2000;
     inpObs.placeholder = 'Motivo do redirecionamento ou conclusao...';
     lblObs.append(inpObs);
 
-    const btnSaveStatus = el('button', 'primary-button', 'Salvar Alteracoes do Chamado');
+    const btnSaveStatus = el('button', 'primary-button', 'Salvar Alterações do Chamado');
     btnSaveStatus.type = 'submit';
 
     const btnAssumir = el('button', 'secondary-button', 'Assumir para Mim e Iniciar Atendimento');
@@ -359,7 +359,7 @@
         });
         await carregarChamados();
         renderModalDetalhe(atualizado);
-        showBanner('Voce assumiu o chamado.');
+        showBanner('Você assumiu o chamado.');
       } catch (err) {
         showBanner(err.message, true);
       } finally {
@@ -412,7 +412,7 @@
     const table = el('table', 'sd-sla-table');
     const thead = el('thead');
     const trHead = el('tr');
-    ['Categoria', 'Fila Automatica', 'Prioridade Padrao', 'Prazo SLA (Horas)', 'Acao'].forEach(h => trHead.append(el('th', '', h)));
+    ['Categoria', 'Fila Automatica', 'Prioridade Padrao', 'Prazo SLA (Horas)', 'Ação'].forEach(h => trHead.append(el('th', '', h)));
     thead.append(trHead);
     const tbody = el('tbody');
 

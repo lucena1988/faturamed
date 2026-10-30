@@ -42,13 +42,13 @@
     const user = await FaturamedAuth.request('/api/auth/me'); $('portal-name').textContent = user.nome;
     items = await FaturamedAuth.request('/api/medico/relatorios');
     const preferred=new URLSearchParams(location.search).get('relatorio');
-    if(preferred&&!/^\d+$/.test(preferred))throw new Error('Relatorio invalido.');
+    if(preferred&&!/^\d+$/.test(preferred))throw new Error('Relatório inválido.');
     if(preferred&&!items.some(item=>String(item.id)===preferred)){
       const target=await FaturamedAuth.request(`/api/medico/relatorios/${preferred}`);items.push({id:target.id,hospital:target.hospital,visitas:target.visitas.length});
     }
     optionList($('portal-hospital'), [...new Set(items.map(item=>item.hospital))].map(name=>[name,name]));
     if(preferred)$('portal-hospital').value=items.find(item=>String(item.id)===preferred).hospital;
     await hospitals(preferred);
-    if (!items.length) $('portal-message').textContent = 'Ainda nao ha relatorios liberados para o seu cadastro.';
+    if (!items.length) $('portal-message').textContent = 'Ainda não ha relatórios liberados para o seu cadastro.';
   } catch(error) { $('portal-message').textContent = error.message; }
 })();

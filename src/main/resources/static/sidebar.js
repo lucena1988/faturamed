@@ -7,6 +7,8 @@
 
   const page = location.pathname.split('/').pop() || 'index.html';
   const onIndex = page === 'index.html';
+  const host = location.hostname;
+  const ambiente = host === 'localhost' || host === '127.0.0.1' ? 'local' : host.includes('homologacao') ? 'de homologação' : 'de produção';
   const groups = [
     ['nav-producao', 'Produção', [
       ['Base hospitalar', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
@@ -57,7 +59,7 @@
     <a class="company-identity" href="./assets/faturamed-identidade.jpeg" target="_blank" rel="noopener" aria-label="Identidade da FaturaMed">
       <img src="./assets/faturamed-identidade.jpeg" alt="FaturaMed: faturamento de contas medicas e consultoria medica">
     </a>
-    <div class="sidebar-foot"><span class="status-dot"></span><span>Ambiente local</span></div>`;
+    <div class="sidebar-foot"><span class="status-dot"></span><span>Ambiente ${ambiente}</span></div>`;
 
   let aside = document.querySelector('aside.sidebar');
   if (!aside) {

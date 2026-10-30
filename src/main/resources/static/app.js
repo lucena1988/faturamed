@@ -55,7 +55,7 @@ function renderValues(visits) {
   const allocated = new Map(report.visitas.filter(visit => visit.hospital)
     .map(visit => [visit.hospital.linha, visit.linhaMedico]));
   $('#kpi-repasse').textContent = knownTotal.length
-    ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Nao informado';
+    ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Não informado';
   $('#kpi-repasse-detail').textContent = knownTotal.length < allHospital.length
     ? `Total informado; ${allHospital.length - knownTotal.length} registros sem repasse`
     : 'Total da planilha do hospital';
@@ -72,11 +72,11 @@ function renderValues(visits) {
     }).length;
     $(`#kpi-valor-${suffix}`).textContent = rows.length || corrected.length || !selected.length
       ? currency.format(rows.reduce((sum, row) => sum + Number(row.repasse), 0)
-        + corrected.reduce((sum, visit) => sum + Number(effectiveRepasse(visit)), 0)) : 'Nao informado';
+        + corrected.reduce((sum, visit) => sum + Number(effectiveRepasse(visit)), 0)) : 'Não informado';
     $(`#kpi-valor-${suffix}-detail`).textContent = missing
       ? `${missing} visitas sem valor informado`
-      : selected.some(visit => visit.camposRevisados) ? 'Repasse com ajustes da revisao'
-      : status === 'DIVERGENTE' ? 'Repasse dos registros em conferencia' : 'Repasse informado pelo hospital';
+      : selected.some(visit => visit.camposRevisados) ? 'Repasse com ajustes da revisão'
+      : status === 'DIVERGENTE' ? 'Repasse dos registros em conferência' : 'Repasse informado pelo hospital';
   }
 }
 function clearData(message) {
@@ -103,7 +103,7 @@ async function loadReports(preferredId) {
   controller?.abort(); controller = new AbortController();
   const signal = controller.signal;
   const token = ++generation;
-  clearData('Carregando conciliacoes...');
+  clearData('Carregando conciliações...');
   $('#unit-filter').disabled = true; $('#report-filter').disabled = true;
   try {
     const items = await request('/api/conciliacoes/visitas', { signal });
@@ -116,7 +116,7 @@ async function loadReports(preferredId) {
     populateReports(selected?.id);
     if (selected) await loadReport(selected.id);
     else {
-      clearSelection(reports.length ? 'Selecione hospital e relatorio.' : 'Nenhuma conciliacao salva.');
+      clearSelection(reports.length ? 'Selecione hospital e relatório.' : 'Nenhuma conciliação salva.');
       for (const id of ['kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes', 'legend-pagas', 'legend-pendentes', 'legend-divergentes']) $(`#${id}`).textContent = '0';
       $('#kpi-repasse').textContent = currency.format(0);
       for (const suffix of ['pagas', 'pendentes', 'divergentes']) $(`#kpi-valor-${suffix}`).textContent = currency.format(0);
@@ -125,18 +125,18 @@ async function loadReports(preferredId) {
     }
   } catch (error) {
     if (error.name === 'AbortError' || token !== generation) return;
-    clearData(error.message); $('#report-context').textContent = 'Dados indisponiveis';
+    clearData(error.message); $('#report-context').textContent = 'Dados indisponíveis';
   }
 }
 function populateReports(selected) {
   const items = reports.filter(item => item.hospital === $('#unit-filter').value);
-  options($('#report-filter'), [['', 'Selecione um relatorio'], ...items.map(item => [item.id, `#${item.id} - ${item.arquivo_medico}`])], selected ?? '');
+  options($('#report-filter'), [['', 'Selecione um relatório'], ...items.map(item => [item.id, `#${item.id} - ${item.arquivo_medico}`])], selected ?? '');
 }
-function clearSelection(message = 'Selecione hospital e relatorio.') {
+function clearSelection(message = 'Selecione hospital e relatório.') {
   controller?.abort(); ++generation; reportId = '';
   clearData(message); options($('#period-filter'), [['', 'Todos os meses']], '');
   $('#period-filter').disabled = true;
-  $('#report-context').textContent = 'Nenhum relatorio selecionado';
+  $('#report-context').textContent = 'Nenhum relatório selecionado';
   for (const id of ['kpi-repasse', 'kpi-total', 'kpi-pagas', 'kpi-pendentes', 'kpi-divergentes',
     'kpi-valor-pagas', 'kpi-valor-pendentes', 'kpi-valor-divergentes', 'legend-pagas', 'legend-pendentes',
     'legend-divergentes', 'paid-percent', 'imports-count']) $(`#${id}`).textContent = '-';
@@ -161,7 +161,7 @@ async function loadReport(id) {
     renderDashboard();
   } catch (error) {
     if (error.name === 'AbortError' || token !== generation) return;
-    clearData(error.message); $('#report-context').textContent = 'Dados indisponiveis';
+    clearData(error.message); $('#report-context').textContent = 'Dados indisponíveis';
   }
 }
 function renderDashboard() {
@@ -170,12 +170,12 @@ function renderDashboard() {
   window.FaturamedPainel.render(report, visits);
   const counts = Object.fromEntries(Object.keys(labels).map(status => [status, visits.filter(visit => visit.status === status).length]));
   const paidRate = visits.length ? counts.PAGA / visits.length : 0;
-  $('#report-context').textContent = `${report.hospital} - Conciliacao #${reportId}`;
+  $('#report-context').textContent = `${report.hospital} - Conciliação #${reportId}`;
   renderValues(visits);
   for(const field of ['recebido','saldo']){
     const known=visits.filter(v=>v.financeiro?.[field]!=null),missing=visits.filter(v=>field==='recebido'?v.financeiro?.[field]==null:v.status==='PAGA'&&v.financeiro?.[field]==null).length;
-    $(`#kpi-${field}`).textContent=known.length||!visits.length?currency.format(known.reduce((s,v)=>s+Number(v.financeiro[field]),0)):'Nao informado';
-    $(`#kpi-${field}-detail`).textContent=missing?`${missing} visitas com financeiro nao confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos';
+    $(`#kpi-${field}`).textContent=known.length||!visits.length?currency.format(known.reduce((s,v)=>s+Number(v.financeiro[field]),0)):'Não informado';
+    $(`#kpi-${field}-detail`).textContent=missing?`${missing} visitas com financeiro não confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos';
   }
   $('#kpi-total').textContent = integer.format(visits.length);
   $('#kpi-total-detail').textContent = `${new Set(visits.map(v => v.atendimento)).size} atendimentos`;
@@ -189,7 +189,7 @@ function renderDashboard() {
   const amber = green + (visits.length ? counts.PENDENTE / visits.length * 100 : 0);
   $('#status-donut').style.background = visits.length
     ? `conic-gradient(var(--green) 0 ${green}%, var(--amber) ${green}% ${amber}%, var(--rose) ${amber}% 100%)` : 'var(--line)';
-  $('#queue-count').textContent = `${counts.DIVERGENTE + counts.PENDENTE} visitas para conferencia`;
+  $('#queue-count').textContent = `${counts.DIVERGENTE + counts.PENDENTE} visitas para conferência`;
   const navCount = $('#nav-divergencias-count');
   navCount.textContent = integer.format(counts.DIVERGENTE);
   navCount.hidden = !counts.DIVERGENTE;
@@ -205,7 +205,7 @@ function renderChart() {
   const groups = new Map();
   for (const visit of currentVisits()) {
     const label = chartMode === 'status' ? labels[visit.status]
-      : chartMode === 'medico' ? (visit.medico ?? visit.hospital?.medico ?? visit.original.medico) || 'Nao identificado'
+      : chartMode === 'medico' ? (visit.medico ?? visit.hospital?.medico ?? visit.original.medico) || 'Não identificado'
       : visit.motivo;
     groups.set(label, (groups.get(label) || 0) + 1);
   }
@@ -218,24 +218,24 @@ function renderChart() {
     row.append(element('span', label), bar, element('strong', integer.format(count))); chart.append(row);
   }
   $('#chart-context').textContent = `${integer.format(currentVisits().length)} visitas`;
-  if (!groups.size) chart.append(element('p', 'Sem visitas neste periodo.'));
+  if (!groups.size) chart.append(element('p', 'Sem visitas neste período.'));
 }
 function fillAttentionTable(table, visits, detailed) {
   table.replaceChildren();
   for (const visit of visits) {
     const row = element('tr');
     const value = effectiveRepasse(visit);
-    const cells = detailed ? [visit.atendimento, visit.data ? visit.data.split('-').reverse().join('/') : 'Nao informada',
-      (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Nao identificado', visit.motivo,
-      value == null ? 'Nao informado' : currency.format(value)]
-      : [visit.atendimento, (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Nao identificado',
-        visit.motivo, (visit.medico ?? visit.hospital?.medico ?? visit.original.medico) || 'Nao identificado',
-        value == null ? 'Nao informado' : currency.format(value)];
+    const cells = detailed ? [visit.atendimento, visit.data ? visit.data.split('-').reverse().join('/') : 'Não informada',
+      (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Não identificado', visit.motivo,
+      value == null ? 'Não informado' : currency.format(value)]
+      : [visit.atendimento, (visit.procedimento ?? visit.hospital?.procedimento ?? visit.original['procedimento/mat-med']) || 'Não identificado',
+        visit.motivo, (visit.medico ?? visit.hospital?.medico ?? visit.original.medico) || 'Não identificado',
+        value == null ? 'Não informado' : currency.format(value)];
     for (const value of cells) row.append(element('td', value));
     const status = element('td');
     status.append(element('span', labels[visit.status], `pill ${visit.status === 'DIVERGENTE' ? 'danger' : 'warning'}`));
     row.append(status);
-    const url = `conciliacao.html?relatorio=${encodeURIComponent(reportId)}&atendimento=${encodeURIComponent(visit.atendimento)}&status=${visit.status}`;
+    const url = `conciliação.html?relatorio=${encodeURIComponent(reportId)}&atendimento=${encodeURIComponent(visit.atendimento)}&status=${visit.status}`;
     const link = element('a', detailed ? 'Abrir' : visit.atendimento);
     link.href = url;
     if (detailed) { const action = element('td'); action.append(link); row.append(action); }
@@ -243,7 +243,7 @@ function fillAttentionTable(table, visits, detailed) {
     table.append(row);
   }
   if (!visits.length) {
-    const row = element('tr'); const cell = element('td', 'Nenhum item para conferencia.');
+    const row = element('tr'); const cell = element('td', 'Nenhum item para conferência.');
     cell.colSpan = detailed ? 7 : 6; row.append(cell); table.append(row);
   }
 }
@@ -268,7 +268,7 @@ function renderImports() {
     table.append(row);
   }
   $('#imports-count').textContent = '2 arquivos';
-  $('#imports-context').textContent = `Conciliacao #${reportId} - ${report.hospital}`;
+  $('#imports-context').textContent = `Conciliação #${reportId} - ${report.hospital}`;
 }
 function showView(view) {
   if (!viewTitles[view]) view = 'dashboard';
@@ -300,7 +300,7 @@ document.querySelectorAll('[data-chart]').forEach(button => button.addEventListe
 }));
 
 const layoutFields = [['A', 'data_atendimento', 'dd/MM/yyyy'], ['B', 'paciente_nome', 'texto'],
-  ['C', 'paciente_documento', 'CPF/carteirinha'], ['D', 'procedimento_codigo', 'codigo TUSS'],
+  ['C', 'paciente_documento', 'CPF/carteirinha'], ['D', 'procedimento_codigo', 'código TUSS'],
   ['E', 'procedimento_nome', 'texto'], ['F', 'medico_nome', 'texto'], ['G', 'quantidade', 'numero'], ['H', 'valor_total', 'moeda']];
 function renderLayoutBoard() {
   const board = $('#layout-board'); board.replaceChildren();
