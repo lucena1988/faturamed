@@ -1,0 +1,111 @@
+name: Deploy
+
+# Entrega no Railway somente o commit que passou na CI:
+#   develop -> homologacao (automatico)
+#   main    -> producao (aguarda aprovacao no environment "producao")
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Ambiente de destino
+        type: choice
+        options: [homologacao, producao]
+        default: homologacao
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.inputs.ambiente || github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  destino:
+    name: Definir destino
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    outputs:
+      ambiente: ${{ steps.escolha.outputs.ambiente }}
+      ref: ${{ steps.escolha.outputs.ref }}
+    steps:
+      - name: Escolher ambiente e commit
+        id: escolha
+        env:
+          EVENTO: ${{ github.event_name }}
+          AMBIENTE_MANUAL: ${{ github.event.inputs.ambiente }}
+          BRANCH_CI: ${{ github.event.workflow_run.head_branch }}
+          SHA_CI: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$EVENTO" = workflow_dispatch ]; then
+            echo "ambiente=$AMBIENTE_MANUAL" >> "$GITHUB_OUTPUT"
+            echo "ref=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          elif [ "$BRANCH_CI" = main ]; then
+            echo "ambiente=producao" >> "$GITHUB_OUTPUT"
+            echo "ref=$SHA_CI" >> "$GITHUB_OUTPUT"
+          else
+            echo "ambiente=homologacao" >> "$GITHUB_OUTPUT"
+            echo "ref=$SHA_CI" >> "$GITHUB_OUTPUT"
+          fi
+
+  railway:
+    name: Railway (${{ needs.destino.outputs.ambiente }})
+    needs: destino
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: ${{ needs.destino.outputs.ambiente }}
+      url: ${{ vars.APP_URL }}
+    steps:
+      - name: Obter o commit testado
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.destino.outputs.ref }}
+          persist-credentials: false
+
+      - name: Preparar Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Instalar Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Publicar no Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          SERVICO: ${{ vars.RAILWAY_SERVICE }}
+        run: railway up --service "$SERVICO" --ci
+
+      - name: Verificar saude da aplicacao
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fsS "$APP_URL/api/health"; then
+              echo
+              echo "Aplicacao respondendo em $APP_URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$APP_URL/api/health nao respondeu em 5 minutos"
+          exit 1
+
+      - name: Resumo
+        if: always()
+        env:
+          AMBIENTE: ${{ needs.destino.outputs.ambiente }}
+          REF: ${{ needs.destino.outputs.ref }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          {
+            echo "## Deploy em $AMBIENTE"
+            echo "- Commit: \`$REF\`"
+            echo "- URL: $APP_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
