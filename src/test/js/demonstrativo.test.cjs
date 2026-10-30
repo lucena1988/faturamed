@@ -21,7 +21,7 @@ test('selecao nao afirma que o relatorio foi liberado', () => {
   selecionar('46', '8', 'Hospital teste', 'Andreia');
   const scope = elements['demonstrativo-scope'].textContent;
   assert.match(scope, /Andreia.*Hospital teste.*Relatório #46/);
-  assert.match(scope, /PDF exige uma publicacao liberada/);
+  assert.match(scope, /PDF exige uma publicação liberada/);
   assert.match(scope, /disponibilidade sera verificada ao baixar/);
   assert.doesNotMatch(scope, /Copia liberada para o médico/);
   assert.equal(elements['demonstrativo-fields'].disabled, false);
