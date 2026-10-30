@@ -1,0 +1,10 @@
+# Configuracao do gitleaks usada pela CI (job Seguranca).
+# Mantem todas as regras padrao e libera apenas senhas ficticias dos testes automatizados.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Senhas ficticias usadas em testes com usuarios simulados"
+condition = "AND"
+paths = ['''^src/test/''']
+regexes = ['''^SenhaTeste[A-Za-z0-9]*$''']
