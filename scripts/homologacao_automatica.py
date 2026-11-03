@@ -320,6 +320,8 @@ def run():
     executar(globals(), admin, alfa, beta)
     from homologacao_servicedesk import executar as executar_servicedesk
     executar_servicedesk(globals(), admin)
+    from homologacao_empresas import executar as executar_empresas
+    executar_empresas(globals(), admin)
     persistence_before = admin.call('GET', f'/api/base-hospitalar/acompanhamento?hospitalId={hospital}')
 
     def persistence():

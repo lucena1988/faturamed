@@ -27,7 +27,7 @@ public class ConciliacaoVisitasController {
     public List<Map<String,Object>> listar() {
         return jdbc.queryForList("""
                 select id,criado_em,relatorio->>'hospital' as hospital,
-                relatorio->>'arquivoMedico' as arquivo_medico,numero_versao,anterior_id,medico_producao_id,base_hospitalar,
+                relatorio->>'arquivoMedico' as arquivo_medico,numero_versao,anterior_id,medico_producao_id,base_hospitalar,empresa_id,
                 (select id from conciliacao_visitas seguinte where seguinte.anterior_id=conciliacao_visitas.id) as proxima_id
                 from conciliacao_visitas order by id desc limit 100
                 """);

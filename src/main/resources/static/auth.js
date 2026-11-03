@@ -31,10 +31,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     if(location.pathname!=='/login.html'){
       request('/api/auth/me').then(user => {
-        if (user.perfil === 'MEDICO') {
+        const externo = ['MEDICO','EMPRESA'].includes(user.perfil);
+        if (externo) {
           document.querySelectorAll('a[href="usuarios.html"],a[href="/usuarios.html"]').forEach(link=>link.remove());
         }
-        if (user.perfil !== 'MEDICO') {
+        if (!externo) {
           const hdCss=document.createElement('link');hdCss.rel='stylesheet';hdCss.href='/chamados-widget.css?v=20261027-avisos';document.head.append(hdCss);
           const hdScript=document.createElement('script');hdScript.src='/chamados-widget.js?v=20261027-avisos';document.body.append(hdScript);
         } else {

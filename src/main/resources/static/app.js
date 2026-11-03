@@ -3,7 +3,7 @@ const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const integer = new Intl.NumberFormat('pt-BR');
 const percentage = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
-const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importações', divergencias: 'Divergências', layouts: 'Layouts', medicos: 'Médicos', hospitais: 'Hospitais', 'painel-medico': 'Painel do médico' };
+const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importações', divergencias: 'Divergências', layouts: 'Layouts', medicos: 'Médicos', hospitais: 'Hospitais', empresas: 'Empresas', 'painel-medico': 'Painel do médico' };
 let reports = [];
 let report = null;
 let reportId = null;
@@ -275,8 +275,8 @@ function showView(view) {
   document.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.dataset.view === view));
   document.querySelectorAll('[data-view-link]').forEach(button => button.classList.toggle('active', button.dataset.viewLink === view));
   $('#view-title').textContent = viewTitles[view];
-  $('#report-context').hidden = ['medicos','hospitais'].includes(view);
-  document.querySelector('.topbar-actions').hidden = ['medicos','hospitais'].includes(view);
+  $('#report-context').hidden = ['medicos','hospitais','empresas'].includes(view);
+  document.querySelector('.topbar-actions').hidden = ['medicos','hospitais','empresas'].includes(view);
   if (location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
 }
 window.addEventListener('hashchange', () => showView(location.hash.slice(1)));

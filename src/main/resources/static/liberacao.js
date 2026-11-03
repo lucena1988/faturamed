@@ -17,5 +17,15 @@
     catch(error){if(token===generation){state=null;$('release-status').textContent=error.message+' Atualize a liberação antes de tentar novamente.';}}
     finally{saving=false;$('release-refresh').disabled=false;if(state){$('release-fields').disabled=!state.podeLiberar;$('release-save').disabled=!state.podeLiberar;}}
   };
-  $('release-refresh').onclick=()=>{if(!saving&&report)load(report);};window.FaturamedLiberacao={carregar:load};
+  // Empresa da producao: define em qual dashboard de empresa a publicacao aparece (vale para toda a cadeia de versoes).
+  let companies=null,companyToken=0;
+  async function loadCompany(id){const token=++companyToken,select=$('company-assign-select');select.disabled=true;$('company-assign-save').disabled=true;$('company-assign-status').textContent='';
+    try{companies??=await FaturamedAuth.request('/api/empresas-clientes');const atual=await FaturamedAuth.request(`/api/empresas-clientes/conciliacoes/${id}`);if(token!==companyToken)return;
+      select.replaceChildren(new Option('Sem empresa',''),...companies.filter(c=>c.ativo||c.id===atual.empresaId).map(c=>new Option(c.nome+(c.ativo?'':' (inativa)'),c.id)));select.value=atual.empresaId??'';select.disabled=false;$('company-assign-save').disabled=false;
+      $('company-assign').hidden=!companies.length;
+    }catch(e){if(token===companyToken)$('company-assign-status').textContent=e.message;}}
+  $('company-assign').addEventListener('submit',async event=>{event.preventDefault();if(!report)return;const button=$('company-assign-save');button.disabled=true;
+    try{const value=$('company-assign-select').value;await FaturamedAuth.request(`/api/empresas-clientes/conciliacoes/${report}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:value?Number(value):null})});$('company-assign-status').textContent='Empresa salva para todas as versões e publicações deste relatório.';}
+    catch(e){$('company-assign-status').textContent=e.message;}finally{button.disabled=false;}});
+  $('release-refresh').onclick=()=>{if(!saving&&report)load(report);};window.FaturamedLiberacao={carregar:id=>{load(id);if(id)loadCompany(id);}};
 })();

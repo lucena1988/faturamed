@@ -24,9 +24,10 @@ public class BaseHospitalarController {
     }
     @PostMapping(value="/producao",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado producao(@RequestParam long hospitalId,@RequestParam(required=false) Long medicoId,
+            @RequestParam(required=false) Long empresaId,
             @RequestParam(defaultValue="UNICO") String modoProducao,@RequestParam String competencia,
             @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
-        return service.importarProducao(hospitalId,medicoId,modoProducao,competencia,arquivo,usuario);
+        return service.importarProducao(hospitalId,medicoId,empresaId,modoProducao,competencia,arquivo,usuario);
     }
     @GetMapping("/arquivos")
     public List<Map<String,Object>> arquivos(@RequestParam long hospitalId) { return service.arquivos(hospitalId); }

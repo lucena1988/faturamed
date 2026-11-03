@@ -55,9 +55,9 @@ public class VersoesConciliacaoService {
         var resultado=atualizador.atualizar(estado,arquivoMedico,arquivoHospital,producao,faturamento);
         int numero=((Number)row.get("numero_versao")).intValue()+1;
         Long id=jdbc.queryForObject("""
-                insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,hash_hospital,linhas_producao,medico_producao_id)
-                values(?::jsonb,?,?,?,?,?::jsonb,?) returning id
-                """,Long.class,json.writeValueAsString(resultado.relatorio()),baseId,numero,hashProducao,hashHospital,json.writeValueAsString(resultado.linhasProducao()),medicoProducaoId);
+                insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,hash_hospital,linhas_producao,medico_producao_id,empresa_id)
+                select ?::jsonb,?,?,?,?,?::jsonb,?,empresa_id from conciliacao_visitas where id=? returning id
+                """,Long.class,json.writeValueAsString(resultado.relatorio()),baseId,numero,hashProducao,hashHospital,json.writeValueAsString(resultado.linhasProducao()),medicoProducaoId,baseId);
         jdbc.update("""
                 insert into revisao_visita(conciliacao_id,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em)
                 select ?,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em from revisao_visita where conciliacao_id=? order by id

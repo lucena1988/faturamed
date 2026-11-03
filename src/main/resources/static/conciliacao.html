@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conciliação de visitas | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
-  <link rel="stylesheet" href="conciliacao.css?v=20261029-ui">
+  <link rel="stylesheet" href="conciliacao.css?v=20261103-empresas">
   <link rel="stylesheet" href="identidade.css?v=20261029-barra">
   <link rel="stylesheet" href="login.css?v=20261029-ui">
 <link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
@@ -23,7 +23,7 @@
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
-      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
@@ -92,8 +92,8 @@
       <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="sidebar.js?v=20261030-ambiente"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261027-avisos"></script>
-  <script src="liberacao.js?v=20261015-1"></script>
+  <script src="sidebar.js?v=20261103-empresas"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script>
+  <script src="liberacao.js?v=20261103-empresas"></script>
   <script src="conciliacao.js?v=20261026-duplicidade"></script>
 </body>
 </html>

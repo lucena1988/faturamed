@@ -2,7 +2,7 @@
   const find = id => document.getElementById(id);
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
-  let visits = [], generation = 0, selectedVisit, busy = false, flow = null;
+  let visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
   const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',FATURADO_SEM_RECEBIMENTO:'Faturado sem recebimento',RECEBIDO_PARCIALMENTE:'Recebido parcialmente',SEM_SALDO:'Sem saldo a receber',EM_CONFERENCIA:'Em conferência'};
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
@@ -126,6 +126,7 @@
     }
     data.set('competencia', compNormalizada);
     data.set('hospitalId', find('hospital').value);
+    if (!data.get('empresaId')) data.delete('empresaId');
     try {
       await perform(async () => {
         showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
@@ -139,11 +140,27 @@
       });
     } catch (error) { showMessage('error', error.message); }
   });
+  // Producao individual: somente as empresas do medico (preenchida quando ha uma so).
+  // Producao coletiva: qualquer empresa ativa, ou nenhuma.
+  function updateCompany() {
+    const select = find('empresa'), previous = select.value;
+    const individual = find('production-mode').value === 'UNICO';
+    const doctor = doctors.find(item => String(item.id) === find('medico').value);
+    const options = individual ? companies.filter(item => item.ativo && (doctor?.empresas || []).includes(item.id)) : companies.filter(item => item.ativo);
+    const first = individual && options.length > 1 ? new Option('Selecione a empresa', '') : new Option('Sem empresa', '');
+    select.replaceChildren(...(individual && options.length === 1 ? [] : [first]), ...options.map(item => new Option(item.nome, item.id)));
+    if ([...select.options].some(option => option.value === previous)) select.value = previous;
+    select.required = individual && options.length > 1;
+    select.disabled = individual && options.length <= 1;
+    // Desabilitado nao vai no FormData; a API resolve a empresa unica do medico.
+    find('production-company-label').hidden = !companies.some(item => item.ativo);
+  }
   function updateProduction() {
     const individual = find('production-mode').value === 'UNICO';
     find('production-doctor-label').hidden = !individual;
     find('medico').required = individual;
     find('medico').disabled = !individual;
+    updateCompany();
     find('production-help').textContent = individual
       ? 'Na produção individual, selecione o médico e envie Atendimento e Dt.'
       : 'Na produção coletiva, envie Atendimento e Dt. Médico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
@@ -192,6 +209,7 @@
   });
   find('decision-action').addEventListener('change', updateDecision);
   find('production-mode').addEventListener('change', updateProduction);
+  find('medico').addEventListener('change', updateCompany);
   find('flow-filter').replaceChildren(new Option('Todas as etapas',''),...Object.entries(stages).map(([value,label]) => new Option(label,value)));
   find('flow-filter').addEventListener('change', renderFlow);
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
@@ -200,7 +218,8 @@
   find('hospital').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
   find('reload').addEventListener('click', () => load().catch(error => showMessage('error', error.message)));
   async function initialize() {
-    const [hospitals, doctors] = await Promise.all([request('/api/hospitais'), request('/api/medicos')]);
+    let hospitals;
+    [hospitals, doctors, companies] = await Promise.all([request('/api/hospitais'), request('/api/medicos'), request('/api/empresas-clientes')]);
     find('hospital').replaceChildren(new Option('Selecione um hospital', ''), ...hospitals.filter(item => item.ativo).map(item => new Option(item.nome, item.id)));
     find('medico').replaceChildren(new Option('Selecione o médico', ''), ...doctors.filter(item => item.ativo).map(item => new Option(`${item.nome} · CRM ${item.crm}/${item.uf}`, item.id)));
     const params = new URLSearchParams(location.search);

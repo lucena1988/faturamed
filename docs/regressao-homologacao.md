@@ -77,6 +77,14 @@ As linhas agrupam variações do mesmo fluxo. HTTP significa requisições reais
 | Permissões do funcionário, chamado técnico privado e CSRF | AUTO35; ChamadoPermissoesTest | API real; link de acompanhamento não concede ações técnicas |
 | Categoria, campos, mensagem e avaliação inválidos | AUTO36 | Verifica ausência de criação, nota de 1 a 5 e avaliação somente pelo solicitante |
 | Formulário simplificado, origem automática, anexos e erro de envio | JS servicedesk.test.cjs | Executa widget real em DOM simulado; layout e validação nativa do navegador continuam visuais |
+| Empresas: cadastro, CNPJ duplicado e edição concorrente | AUTO37 | CNPJ comparado sem máscara; versão obsoleta retorna 409 |
+| Vínculo médico com uma ou várias empresas | AUTO38; MedicoCadastroServiceTest | Cliente antigo sem o campo `empresas` preserva vínculos |
+| Empresa da produção na importação individual e coletiva | AUTO39; BaseHospitalarIntegracaoTest | Rejeições não criam relatório; empresa única é automática |
+| Publicação e nova versão herdam a empresa | AUTO40 | Publicação anterior da cadeia não duplica valores no painel |
+| Painel da empresa: totais, filtros por médico/período/hospital e recebimentos | AUTO41; BaseHospitalarIntegracaoTest | Mesmo médico em duas empresas fica isolado por empresa; não é captura visual |
+| Perfil Empresa: vínculo obrigatório, rotas negadas e revogação de sessão | AUTO42; PerfilIntegracaoTest | Inclui funcionário criando acesso de empresa e parâmetro `empresaId` ignorado |
+| Atribuição de empresa a conciliações antigas | AUTO43 | Move toda a cadeia de versões e publicações; remoção oculta dos painéis |
+| Desvínculo e revínculo de médico | AUTO44 | Histórico do médico desvinculado deixa de aparecer na empresa |
 
 ## Pontos que continuam visuais ou fora desta regressão
 

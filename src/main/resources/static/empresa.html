@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Painel da empresa | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261029-barra"><link rel="stylesheet" href="painel-medico.css?v=20261029-ui"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="empresa.css?v=20261103-empresas"><link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
+<body><main class="account-workspace company-portal">
+  <header class="account-heading"><div><a class="company-name" href="empresa.html">FaturaMed</a><h1>Painel da empresa</h1><span id="company-name"></span></div><div class="session-actions"><a href="conta.html">Minha conta</a><button class="text-button" type="button" data-logout>Sair</button></div></header>
+  <form class="doctor-toolbar" id="company-filters">
+    <label class="select-field">Médico<select id="company-doctor" disabled><option value="">Todos os médicos</option></select></label>
+    <label class="select-field">Hospital<select id="company-hospital" disabled><option value="">Todos os hospitais</option></select></label>
+    <label class="select-field">Visitas de<input id="company-from" type="date"></label>
+    <label class="select-field">Até<input id="company-to" type="date"></label>
+    <button class="text-button" type="reset">Limpar filtros</button>
+    <span id="company-scope"></span>
+  </form>
+  <p id="company-message" role="status" aria-live="polite">Carregando...</p>
+  <div class="kpi-grid">
+    <article class="kpi-card"><span class="kpi-label">Faturado pelo hospital</span><strong id="company-paid">-</strong><small id="company-paid-detail"></small></article>
+    <article class="kpi-card"><span class="kpi-label">Recebido</span><strong id="company-received">-</strong><small>Valores já repassados</small></article>
+    <article class="kpi-card"><span class="kpi-label">A receber</span><strong id="company-balance">-</strong><small>Faturado ainda não recebido</small></article>
+    <article class="kpi-card"><span class="kpi-label">Aguardando faturamento</span><strong id="company-pending">-</strong><small id="company-pending-detail"></small></article>
+    <article class="kpi-card"><span class="kpi-label">Valor em conferência</span><strong id="company-blocked">-</strong><small id="company-blocked-detail"></small></article>
+    <article class="kpi-card"><span class="kpi-label">Visitas publicadas</span><strong id="company-visits">-</strong><small id="company-doctors-detail"></small></article>
+  </div>
+  <section class="doctor-section"><h2>Por médico</h2><p class="company-hint">Selecione um médico para filtrar todo o painel.</p><div class="doctor-table company-table"><table><thead><tr><th>Médico</th><th>Visitas</th><th>Faturado</th><th>Recebido</th><th>A receber</th><th>Aguardando</th><th>Em conferência</th></tr></thead><tbody id="company-by-doctor"></tbody></table></div></section>
+  <section class="doctor-section"><h2>Por hospital</h2><div class="doctor-table company-table"><table><thead><tr><th>Hospital</th><th>Visitas</th><th>Faturado</th><th>Recebido</th><th>A receber</th><th>Aguardando</th><th>Em conferência</th></tr></thead><tbody id="company-by-hospital"></tbody></table></div></section>
+  <section class="doctor-section"><h2>Por mês da visita</h2><div class="doctor-table company-table"><table><thead><tr><th>Mês</th><th>Visitas</th><th>Faturado</th><th>Recebido</th><th>A receber</th><th>Aguardando</th><th>Em conferência</th></tr></thead><tbody id="company-by-month"></tbody></table></div></section>
+  <section class="doctor-section"><h2>Visitas</h2>
+    <div class="doctor-toolbar"><label class="select-field">Situação<select id="company-status"><option value="">Todas</option><option value="PAGA">Faturada</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferência</option></select></label><label class="select-field">Atendimento ou procedimento<input id="company-search" type="search"></label><button class="text-button" type="button" id="company-export" disabled>Exportar CSV</button><span id="company-count"></span></div>
+    <div class="doctor-table company-visits"><table><thead><tr><th>Data</th><th>Médico</th><th>Hospital</th><th>Atendimento</th><th>Procedimento</th><th>Repasse</th><th>Recebido</th><th>Situação</th><th>Motivo</th></tr></thead><tbody id="company-visits-rows"></tbody></table></div>
+  </section>
+</main><script src="auth.js?v=20261103-empresas"></script><script src="empresa.js?v=20261103-empresas"></script></body></html>

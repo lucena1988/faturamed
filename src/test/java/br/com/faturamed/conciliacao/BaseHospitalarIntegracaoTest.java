@@ -6,6 +6,7 @@ import br.com.faturamed.seguranca.LiberacaoRelatorioService;
 import br.com.faturamed.seguranca.PortalMedicoController;
 import br.com.faturamed.seguranca.ExtratoMedicoService;
 import br.com.faturamed.seguranca.ExportadorDemonstrativoPdf;
+import br.com.faturamed.seguranca.PainelEmpresaService;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,6 +33,8 @@ class BaseHospitalarIntegracaoTest {
     @Autowired PortalMedicoController portal;
     @Autowired ExtratoMedicoService extratos;
     @Autowired ExportadorDemonstrativoPdf pdf;
+    @Autowired EmpresaClienteService empresas;
+    @Autowired PainelEmpresaService painel;
     long hospital, ana, bruno;
     UsuarioAutenticado usuario;
 
@@ -67,6 +70,38 @@ class BaseHospitalarIntegracaoTest {
         }
     }
     int id(Map<String,Object> visita) { return ((Number)visita.get("id")).intValue(); }
+
+    @Test void producaoPorEmpresaAlimentaSomenteODashboardDaEmpresaAtribuida() throws Exception {
+        long clinica=empresas.salvar(null,new EmpresaClienteService.Dados("Clinica "+UUID.randomUUID(),null,true,0L)).id();
+        long grupo=empresas.salvar(null,new EmpresaClienteService.Dados("Grupo "+UUID.randomUUID(),null,true,0L)).id();
+        jdbc.update("insert into medico_empresa(medico_id,empresa_id) values(?,?),(?,?),(?,?)",ana,clinica,ana,grupo,bruno,grupo);
+        service.importarHospital(hospital,"2026-09",hospital(nome(ana),nome(bruno)),usuario);
+        assertThatThrownBy(()->service.importarProducao(hospital,ana,null,"UNICO","2026-09",producao(),usuario))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("mais de uma empresa");
+        assertThatThrownBy(()->service.importarProducao(hospital,bruno,clinica,"UNICO","2026-09",producao(),usuario))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("nao pertence");
+        var daAna=service.importarProducao(hospital,ana,clinica,"UNICO","2026-09",producao(),usuario);
+        var doBruno=service.importarProducao(hospital,bruno,null,"UNICO","2026-09",producao(),usuario);
+        assertThat(jdbc.queryForObject("select empresa_id from conciliacao_visitas where id=?",Long.class,doBruno.relatorioId())).isEqualTo(grupo);
+        liberacoes.liberar(daAna.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        liberacoes.liberar(doBruno.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        recebimentos.registrar(daAna.relatorioId(),2,new RecebimentoService.Dados(new BigDecimal("40"),LocalDate.of(2026,9,2),"Parcial",0L),usuario);
+
+        var daClinica=painel.consultar(clinica,null,null,null,null);
+        assertThat(daClinica.visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(ana);
+        assertThat(daClinica.resumo().faturado()).isEqualByComparingTo("100");
+        assertThat(daClinica.resumo().recebido()).isEqualByComparingTo("40");
+        assertThat(daClinica.medicos()).extracting(PainelEmpresaService.MedicoResumo::id).containsExactly(ana);
+        var doGrupo=painel.consultar(grupo,null,null,null,null);
+        assertThat(doGrupo.visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(bruno);
+        assertThat(painel.consultar(grupo,ana,null,null,null).visitas()).isEmpty();
+        assertThat(painel.consultar(grupo,bruno,LocalDate.of(2026,10,1),null,null).visitas()).isEmpty();
+        assertThatThrownBy(()->painel.consultar(clinica,bruno,null,null,null)).isInstanceOf(IllegalArgumentException.class);
+
+        empresas.atribuir(daAna.relatorioId(),grupo);
+        assertThat(painel.consultar(clinica,null,null,null,null).visitas()).isEmpty();
+        assertThat(painel.consultar(grupo,null,null,null,null).visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(ana,bruno);
+    }
 
     @Test void arredondaPorVisitaAntesDeSomarEReceberPreservandoArquivo() throws Exception {
         var arquivo=planilha(List.of(List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor"),

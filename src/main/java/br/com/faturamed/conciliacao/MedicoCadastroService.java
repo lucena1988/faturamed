@@ -10,11 +10,15 @@ import br.com.faturamed.shared.RecursoNaoEncontradoException;
 
 @Service
 public class MedicoCadastroService {
-    public record Medico(long id, String nome, String crm, String uf, boolean ativo, long versao, List<String> aliases) {}
+    public record Medico(long id, String nome, String crm, String uf, boolean ativo, long versao, List<String> aliases, List<Long> empresas) {
+        public Medico(long id, String nome, String crm, String uf, boolean ativo, long versao, List<String> aliases) { this(id,nome,crm,uf,ativo,versao,aliases,List.of()); }
+    }
     public record Dados(@NotBlank @Size(max=180) String nome, @NotBlank @Pattern(regexp="[0-9]{1,20}") String crm,
             @NotBlank @Pattern(regexp="AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO") String uf,
             boolean ativo, @NotNull @Size(max=30) List<@NotBlank @Size(max=180) String> aliases,
-            @NotNull @PositiveOrZero Long versao) {}
+            @NotNull @PositiveOrZero Long versao, @Size(max=50) List<@NotNull Long> empresas) {
+        public Dados(String nome, String crm, String uf, boolean ativo, List<String> aliases, Long versao) { this(nome,crm,uf,ativo,aliases,versao,null); }
+    }
     private final JdbcTemplate jdbc;
     public MedicoCadastroService(JdbcTemplate jdbc) { this.jdbc=jdbc; }
 
@@ -23,7 +27,9 @@ public class MedicoCadastroService {
         var aliases=jdbc.queryForList("select medico_id, nome from medico_alias order by nome");
         Map<Long,List<String>> porMedico=new HashMap<>();
         aliases.forEach(a -> porMedico.computeIfAbsent(((Number)a.get("medico_id")).longValue(),k->new ArrayList<>()).add(a.get("nome").toString()));
-        return jdbc.query("select * from medico_cadastro order by nome, uf, crm",(r,n)->new Medico(r.getLong("id"),r.getString("nome"),r.getString("crm"),r.getString("uf"),r.getBoolean("ativo"),r.getLong("versao"),List.copyOf(porMedico.getOrDefault(r.getLong("id"),List.of()))));
+        Map<Long,List<Long>> empresas=new HashMap<>();
+        jdbc.queryForList("select medico_id, empresa_id from medico_empresa order by empresa_id").forEach(e -> empresas.computeIfAbsent(((Number)e.get("medico_id")).longValue(),k->new ArrayList<>()).add(((Number)e.get("empresa_id")).longValue()));
+        return jdbc.query("select * from medico_cadastro order by nome, uf, crm",(r,n)->new Medico(r.getLong("id"),r.getString("nome"),r.getString("crm"),r.getString("uf"),r.getBoolean("ativo"),r.getLong("versao"),List.copyOf(porMedico.getOrDefault(r.getLong("id"),List.of())),List.copyOf(empresas.getOrDefault(r.getLong("id"),List.of()))));
     }
     @Transactional(readOnly=true)
     public Medico buscar(long id) {
@@ -51,6 +57,13 @@ public class MedicoCadastroService {
                 jdbc.update("delete from medico_alias where medico_id=?",id);
             }
             for(var alias:aliases.entrySet()) jdbc.update("insert into medico_alias(medico_id,nome,normalizado) values(?,?,?)",id,alias.getValue(),alias.getKey());
+            // Sem a lista (clientes antigos), os vinculos com empresas ficam como estao.
+            if(dados.empresas()!=null) {
+                var empresas=new LinkedHashSet<>(dados.empresas());
+                for(Long empresa:empresas) if(jdbc.queryForList("select id from empresa_cliente where id=?",empresa).isEmpty()) throw new IllegalArgumentException("Empresa nao encontrada");
+                jdbc.update("delete from medico_empresa where medico_id=?",id);
+                for(Long empresa:empresas) jdbc.update("insert into medico_empresa(medico_id,empresa_id) values(?,?)",id,empresa);
+            }
             return buscar(id);
         } catch(DuplicateKeyException e) {
             throw new ConflitoRevisaoException("CRM/UF ja cadastrado ou alias vinculado a outro medico");
