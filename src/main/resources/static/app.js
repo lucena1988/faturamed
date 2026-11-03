@@ -31,14 +31,18 @@ async function request(url, options = {}) {
   return response.json();
 }
 const DATE_RANGE = 'INTERVALO';
-function currentVisits() {
+// Mesmo criterio de periodo para visitas da producao e linhas do hospital.
+function inPeriod(date) {
   const period = $('#period-filter').value;
   if (period === DATE_RANGE) {
-    // Datas ISO (AAAA-MM-DD) comparam corretamente como texto; visitas sem data ficam de fora.
+    // Datas ISO (AAAA-MM-DD) comparam corretamente como texto; registros sem data ficam de fora.
     const from = $('#period-from').value, to = $('#period-to').value;
-    return (report?.visitas || []).filter(visit => visit.data && (!from || visit.data >= from) && (!to || visit.data <= to));
+    return !!date && (!from || date >= from) && (!to || date <= to);
   }
-  return (report?.visitas || []).filter(visit => !period || (period === 'SEM_DATA' ? !visit.data : visit.data?.startsWith(period)));
+  return !period || (period === 'SEM_DATA' ? !date : !!date?.startsWith(period));
+}
+function currentVisits() {
+  return (report?.visitas || []).filter(visit => inPeriod(visit.data));
 }
 function updateDateRange() {
   const range = $('#period-filter').value === DATE_RANGE;
@@ -64,8 +68,9 @@ function knownRepasse(rows) {
   return uniqueHospitalRows(rows).filter(row => row.repasse != null && Number.isFinite(Number(row.repasse)));
 }
 function renderValues(visits) {
+  const filtered = !!$('#period-filter').value;
   const allHospital = uniqueHospitalRows([...report.hospitalSemProducao,
-    ...report.visitas.flatMap(visit => visit.candidatos)]);
+    ...report.visitas.flatMap(visit => visit.candidatos)]).filter(row => inPeriod(row.data));
   const knownTotal = knownRepasse(allHospital);
   const allocated = new Map(report.visitas.filter(visit => visit.hospital)
     .map(visit => [visit.hospital.linha, visit.linhaMedico]));
@@ -73,7 +78,7 @@ function renderValues(visits) {
     ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Não informado';
   $('#kpi-repasse-detail').textContent = knownTotal.length < allHospital.length
     ? `Total informado; ${allHospital.length - knownTotal.length} registros sem repasse`
-    : 'Total da planilha do hospital';
+    : filtered ? 'Total do hospital no período' : 'Total da planilha do hospital';
   for (const [status, suffix] of [['PAGA', 'pagas'], ['PENDENTE', 'pendentes'], ['DIVERGENTE', 'divergentes']]) {
     const selected = visits.filter(visit => visit.status === status);
     const candidatesForValue = visit => (visit.hospital ? [visit.hospital] : visit.candidatos)
