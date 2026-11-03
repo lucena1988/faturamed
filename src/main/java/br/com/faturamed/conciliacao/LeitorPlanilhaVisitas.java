@@ -139,12 +139,66 @@ public class LeitorPlanilhaVisitas {
     }
 
     static LocalDate data(String valor, int linha) {
-        for (String formato : List.of("uuuu-MM-dd", "dd/MM/uuuu", "d/M/uuuu")) {
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalArgumentException("Data invalida na linha " + linha);
+        }
+        String texto = valor.replace('\u00a0', ' ').trim();
+
+        // 1. Numero serial de data do Excel (ex.: 46024 ou 46024.5)
+        if (texto.matches("^[0-9]+(?:\\.[0-9]+)?$")) {
             try {
-                return LocalDate.parse(valor, java.time.format.DateTimeFormatter.ofPattern(formato)
+                double num = Double.parseDouble(texto);
+                if (num >= 1.0 && num <= 100000.0 && DateUtil.isValidExcelDate(num)) {
+                    return DateUtil.getLocalDateTime(num).toLocalDate();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Separacao de horario quando presente (ex.: 30/10/2026 00:00:00 ou 2026-10-30T14:30:00)
+        String parteData = texto;
+        if (texto.contains(" ")) {
+            int sep = texto.indexOf(' ');
+            String rem = texto.substring(sep + 1).trim();
+            if (rem.matches("^[0-9]{1,2}:[0-9]{2}(?::[0-9]{2}(?:\\.[0-9]+)?)?(?:\\s*(?:AM|PM|am|pm))?$")) {
+                parteData = texto.substring(0, sep).trim();
+            }
+        } else if (texto.contains("T") || texto.contains("t")) {
+            int sep = texto.indexOf('T') != -1 ? texto.indexOf('T') : texto.indexOf('t');
+            String rem = texto.substring(sep + 1).trim();
+            if (rem.matches("^[0-9]{1,2}:[0-9]{2}(?::[0-9]{2}(?:\\.[0-9]+)?)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?$")) {
+                parteData = texto.substring(0, sep).trim();
+            }
+        }
+
+        // 3. Formatos com ano de 4 digitos (estritos)
+        for (String formato : List.of(
+                "uuuu-MM-dd",
+                "dd/MM/uuuu",
+                "d/M/uuuu",
+                "dd-MM-uuuu",
+                "d-M-uuuu",
+                "dd.MM.uuuu",
+                "d.M.uuuu",
+                "uuuu/MM/dd",
+                "uuuu.MM.dd")) {
+            try {
+                return LocalDate.parse(parteData, java.time.format.DateTimeFormatter.ofPattern(formato)
                         .withResolverStyle(java.time.format.ResolverStyle.STRICT));
             } catch (java.time.format.DateTimeParseException ignored) {}
         }
+
+        // 4. Formatos com ano de 2 digitos (seculo 21: 2000-2099)
+        for (String prefixo : List.of("dd/MM/", "d/M/", "dd-MM-", "d-M-", "dd.MM.", "d.M.")) {
+            try {
+                var formatter = new java.time.format.DateTimeFormatterBuilder()
+                        .appendPattern(prefixo)
+                        .appendValueReduced(java.time.temporal.ChronoField.YEAR, 2, 2, 2000)
+                        .toFormatter()
+                        .withResolverStyle(java.time.format.ResolverStyle.STRICT);
+                return LocalDate.parse(parteData, formatter);
+            } catch (java.time.format.DateTimeParseException ignored) {}
+        }
+
         throw new IllegalArgumentException("Data invalida na linha " + linha);
     }
 
