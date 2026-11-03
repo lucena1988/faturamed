@@ -200,6 +200,26 @@ document.querySelector('#queue-start').addEventListener('click', () => {
   const next = visibleQueue[(previous + 1) % visibleQueue.length];
   queueLastLine = next.linhaMedico; openReview(next.linhaMedico);
 });
+function chainRoot(items, item) {
+  let current = item;
+  for (let guard = 0; current?.anterior_id && guard < 1000; guard++) current = items.find(other => other.id === current.anterior_id) || null;
+  return current?.id ?? item.id;
+}
+// Confirmacao com a senha de quem esta logado; resolve com a senha ou null se cancelar.
+function askDeletePassword(item, versoes) {
+  const dialog = document.querySelector('#delete-dialog');
+  const form = dialog.querySelector('form'), input = dialog.querySelector('#delete-password');
+  dialog.querySelector('#delete-summary').textContent = `Relatório #${item.id} - ${item.hospital} - ${item.arquivo_medico}`;
+  dialog.querySelector('#delete-versions').textContent = versoes.length > 1 ? `Serão apagadas todas as versões: ${versoes.join(', ')}.` : '';
+  form.reset();
+  return new Promise(resolve => {
+    const done = value => { form.onsubmit = null; dialog.onclose = null; dialog.close(); resolve(value); };
+    form.onsubmit = event => { event.preventDefault(); if (input.value) done(input.value); };
+    dialog.querySelector('#delete-cancel').onclick = () => done(null);
+    dialog.onclose = () => resolve(null);
+    dialog.showModal(); input.focus();
+  });
+}
 async function loadHistory() {
   const items = await request('/api/conciliacoes/visitas');
   reportsHistory=items;
@@ -212,15 +232,17 @@ async function loadHistory() {
       catch (error) { message.textContent = error.message; }
     });
     const remove = document.createElement('button');
-    remove.type = 'button'; remove.className = 'delete-report';
+    remove.type = 'button'; remove.className = 'delete-report history-delete';
     remove.textContent = 'Excluir'; remove.title = `Excluir relatório #${item.id}`;
     remove.setAttribute('aria-label', `Excluir relatório ${item.id}`);
     remove.addEventListener('click', async () => {
-      if (!confirm(`Excluir definitivamente o relatório #${item.id} de ${item.hospital}?\nAs visitas conciliadas e todo o histórico de revisoes deste relatório serao apagados. Esta ação não pode ser desfeita.`)) return;
+      const versoes = items.filter(other => chainRoot(items, other) === chainRoot(items, item)).map(other => `#${other.id}`);
+      const senha = await askDeletePassword(item, versoes);
+      if (senha == null) return;
       remove.disabled = true; button.disabled = true;
       try {
-        await request(`/api/conciliacoes/visitas/${item.id}`, { method: 'DELETE' });
-        if (String(reportId) === String(item.id)) {
+        await request(`/api/conciliacoes/visitas/${item.id}/exclusao`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha }) });
+        if (versoes.includes(`#${reportId}`)) {
           ++reviewGeneration; reviewDetail = null; reviewDialog.close(); report = null; reportId = null;
           ++progressGeneration; progress.clear();
           document.querySelector('#results').hidden = true; document.querySelector('#download').hidden = true;
@@ -229,11 +251,12 @@ async function loadHistory() {
           const url = new URL(location.href); url.searchParams.delete('relatorio');
           window.history.replaceState(null, '', url);
         }
-        message.textContent = `Relatório #${item.id} excluido.`;
+        message.textContent = `Relatório #${item.id} excluído${versoes.length > 1 ? ` com as versões ${versoes.join(', ')}` : ''}.`;
         await loadHistory();
       } catch (error) { message.textContent = error.message; remove.disabled = false; button.disabled = false; }
     });
-    li.append(button); if (!item.base_hospitalar) li.append(remove); list.append(li);
+    // A exclusao apaga a cadeia inteira; o botao fica so na versao mais recente.
+    li.append(button); if (!item.proxima_id) li.append(remove); list.append(li);
   }
   if (!items.length) list.append(node('li', 'Nenhum relatório salvo.'));
 }

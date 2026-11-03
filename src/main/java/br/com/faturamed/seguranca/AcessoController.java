@@ -14,13 +14,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class AcessoController {
     public record TrocaSenha(@NotBlank String senhaAtual,@NotBlank String novaSenha) {}
+    private static final Set<String> GERIDOS_POR_FUNCIONARIO = Set.of("MEDICO", "EMPRESA");
     private final UsuarioService users;
     private final PasswordEncoder encoder;
     public AcessoController(UsuarioService users,PasswordEncoder encoder) { this.users=users; this.encoder=encoder; }
     @GetMapping("/api/auth/csrf") public Map<String,String> csrf(CsrfToken token) { return Map.of("token",token.getToken(),"header",token.getHeaderName()); }
     @GetMapping("/api/auth/me") public Map<String,Object> me(@AuthenticationPrincipal UsuarioAutenticado user) {
         var result=new LinkedHashMap<String,Object>(); result.put("id",user.id()); result.put("nome",user.nome()); result.put("email",user.email());
-        result.put("perfil",user.perfil()); result.put("medicoId",user.medicoId()); return result;
+        result.put("perfil",user.perfil()); result.put("medicoId",user.medicoId()); result.put("empresaId",user.empresaId()); return result;
     }
     @PostMapping("/api/auth/password") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void senha(@AuthenticationPrincipal UsuarioAutenticado user,@Valid @RequestBody TrocaSenha dados,HttpServletRequest request) {
@@ -28,7 +29,7 @@ public class AcessoController {
         users.redefinir(user.id(),new UsuarioService.NovaSenha(dados.novaSenha(),user.versao()),user.id());
         request.getSession().invalidate();
     }
-    @GetMapping("/api/usuarios") public List<UsuarioService.Usuario> listar(@AuthenticationPrincipal UsuarioAutenticado user) { return users.listar().stream().filter(u -> !user.perfil().equals("OPERADOR") || u.perfil().equals("MEDICO")).toList(); }
+    @GetMapping("/api/usuarios") public List<UsuarioService.Usuario> listar(@AuthenticationPrincipal UsuarioAutenticado user) { return users.listar().stream().filter(u -> !user.perfil().equals("OPERADOR") || GERIDOS_POR_FUNCIONARIO.contains(u.perfil())).toList(); }
     @PostMapping("/api/usuarios") @ResponseStatus(HttpStatus.CREATED)
     public UsuarioService.Usuario criar(@Valid @RequestBody UsuarioService.Novo dados,@AuthenticationPrincipal UsuarioAutenticado user) { exigirGestao(dados.perfil(),user); return users.criar(dados,user.id()); }
     @PutMapping("/api/usuarios/{id}/situacao")
@@ -39,7 +40,7 @@ public class AcessoController {
         if (operador.perfil().equals("OPERADOR")) exigirGestao(users.buscar(id).perfil(),operador);
     }
     private void exigirGestao(String perfil, UsuarioAutenticado operador) {
-        if (operador.perfil().equals("OPERADOR") && !"MEDICO".equals(perfil))
-            throw new AccessDeniedException("Funcionario pode administrar somente acessos de medicos");
+        if (operador.perfil().equals("OPERADOR") && !GERIDOS_POR_FUNCIONARIO.contains(perfil))
+            throw new AccessDeniedException("Funcionario pode administrar somente acessos de medicos e empresas");
     }
 }

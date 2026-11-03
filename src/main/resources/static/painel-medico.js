@@ -39,7 +39,7 @@
     const selected = $('panel-doctor').value;
     const visits = currentVisits.filter(visit => selected && keyOf(visit) === selected);
     const summary = summarize(visits);
-    $('doctor-scope').textContent = currentReport ? `${currentReport.hospital} - Relatório #${currentReport.id ?? root.document.querySelector('#report-filter').value}` : '';
+    $('doctor-scope').textContent = currentReport ? `${currentReport.hospital} - ${currentReport.rotulo ?? `Relatório #${currentReport.id ?? root.document.querySelector('#report-filter').value}`}` : '';
     $('doctor-message').textContent = !currentReport ? 'Selecione hospital e relatório.' : !selected ? 'Selecione um médico.' : !visits.length ? 'Sem visitas neste período.' : '';
     for (const [status, suffix] of [['PAGA', 'paid'], ['PENDENTE', 'pending'], ['DIVERGENTE', 'blocked']]) {
       $('doctor-' + suffix).textContent = selected ? format(summary[status].value) : '-';

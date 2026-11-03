@@ -3,7 +3,7 @@ const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const integer = new Intl.NumberFormat('pt-BR');
 const percentage = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
-const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importações', divergencias: 'Divergências', layouts: 'Layouts', medicos: 'Médicos', hospitais: 'Hospitais', 'painel-medico': 'Painel do médico' };
+const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importações', divergencias: 'Divergências', layouts: 'Layouts', medicos: 'Médicos', hospitais: 'Hospitais', empresas: 'Empresas', 'painel-medico': 'Painel do médico' };
 let reports = [];
 let report = null;
 let reportId = null;
@@ -30,9 +30,28 @@ async function request(url, options = {}) {
   }
   return response.json();
 }
-function currentVisits() {
+const DATE_RANGE = 'INTERVALO';
+// Mesmo criterio de periodo para visitas da producao e linhas do hospital.
+function inPeriod(date) {
   const period = $('#period-filter').value;
-  return (report?.visitas || []).filter(visit => !period || (period === 'SEM_DATA' ? !visit.data : visit.data?.startsWith(period)));
+  if (period === DATE_RANGE) {
+    // Datas ISO (AAAA-MM-DD) comparam corretamente como texto; registros sem data ficam de fora.
+    const from = $('#period-from').value, to = $('#period-to').value;
+    return !!date && (!from || date >= from) && (!to || date <= to);
+  }
+  return !period || (period === 'SEM_DATA' ? !date : !!date?.startsWith(period));
+}
+function currentVisits() {
+  return (report?.visitas || []).filter(visit => inPeriod(visit.data));
+}
+function updateDateRange() {
+  const range = $('#period-filter').value === DATE_RANGE;
+  document.querySelectorAll('.date-range-field').forEach(field => { field.hidden = !range; });
+  const from = $('#period-from'), to = $('#period-to');
+  to.min = from.value; from.max = to.value;
+  const invalid = range && from.value && to.value && from.value > to.value;
+  from.setCustomValidity(invalid ? 'A data inicial deve ser anterior à final' : '');
+  return !invalid;
 }
 function attentionVisits() {
   return currentVisits().filter(visit => visit.status !== 'PAGA').sort((a, b) =>
@@ -49,8 +68,9 @@ function knownRepasse(rows) {
   return uniqueHospitalRows(rows).filter(row => row.repasse != null && Number.isFinite(Number(row.repasse)));
 }
 function renderValues(visits) {
+  const filtered = !!$('#period-filter').value;
   const allHospital = uniqueHospitalRows([...report.hospitalSemProducao,
-    ...report.visitas.flatMap(visit => visit.candidatos)]);
+    ...report.visitas.flatMap(visit => visit.candidatos)]).filter(row => inPeriod(row.data));
   const knownTotal = knownRepasse(allHospital);
   const allocated = new Map(report.visitas.filter(visit => visit.hospital)
     .map(visit => [visit.hospital.linha, visit.linhaMedico]));
@@ -58,7 +78,7 @@ function renderValues(visits) {
     ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Não informado';
   $('#kpi-repasse-detail').textContent = knownTotal.length < allHospital.length
     ? `Total informado; ${allHospital.length - knownTotal.length} registros sem repasse`
-    : 'Total da planilha do hospital';
+    : filtered ? 'Total do hospital no período' : 'Total da planilha do hospital';
   for (const [status, suffix] of [['PAGA', 'pagas'], ['PENDENTE', 'pendentes'], ['DIVERGENTE', 'divergentes']]) {
     const selected = visits.filter(visit => visit.status === status);
     const candidatesForValue = visit => (visit.hospital ? [visit.hospital] : visit.candidatos)
@@ -109,6 +129,13 @@ async function loadReports(preferredId) {
     const items = await request('/api/conciliacoes/visitas', { signal });
     if (token !== generation) return;
     reports = items;
+    const hospital = $('#unit-filter').value;
+    if ((preferredId ?? reportId) === ALL_REPORTS && latestReports(hospital).length > 1) {
+      options($('#unit-filter'), [['', 'Selecione um hospital'], ...[...new Set(reports.map(item => item.hospital))].map(name => [name, name])], hospital);
+      populateReports(ALL_REPORTS);
+      await loadReport(ALL_REPORTS);
+      return;
+    }
     const selected = reports.find(item => String(item.id) === String(preferredId ?? reportId))
       || (reportId === '' && preferredId == null ? null : reports[0]);
     const hospitals = [...new Set(reports.map(item => item.hospital))];
@@ -128,9 +155,41 @@ async function loadReports(preferredId) {
     clearData(error.message); $('#report-context').textContent = 'Dados indisponíveis';
   }
 }
+const ALL_REPORTS = 'TODOS';
+// Versao mais recente de cada cadeia: versoes antigas repetiriam as mesmas visitas.
+function latestReports(hospital) {
+  return reports.filter(item => item.hospital === hospital && !item.proxima_id);
+}
 function populateReports(selected) {
   const items = reports.filter(item => item.hospital === $('#unit-filter').value);
-  options($('#report-filter'), [['', 'Selecione um relatório'], ...items.map(item => [item.id, `#${item.id} - ${item.arquivo_medico}`])], selected ?? '');
+  const all = latestReports($('#unit-filter').value).length > 1 ? [[ALL_REPORTS, 'Todos os relatórios do hospital']] : [];
+  options($('#report-filter'), [['', 'Selecione um relatório'], ...all, ...items.map(item => [item.id, `#${item.id} - ${item.arquivo_medico}`])], selected ?? '');
+}
+async function fetchReport(id, signal) {
+  const [data, financeiro] = await Promise.all([request(`/api/conciliacoes/visitas/${id}`, { signal }), request(`/api/conciliacoes/visitas/${id}/recebimentos`, { signal })]);
+  for (const visit of data.visitas) {
+    const saldo = financeiro.visitas.find(v => v.linha === visit.linhaMedico);
+    visit.financeiro = saldo ? { recebido: saldo.inconsistente ? null : saldo.recebido, saldo: saldo.inconsistente ? null : saldo.saldo, inconsistente: saldo.inconsistente } : null;
+    visit.relatorioId = id;
+  }
+  return data;
+}
+// Junta as conciliacoes do hospital num unico relatorio para o painel.
+// As linhas da producao sao deslocadas por relatorio para nao colidirem. Na base hospitalar
+// a linha do hospital e o ID permanente da visita, entao a mesma visita conta uma vez so;
+// nos relatorios antigos ela e a linha da planilha e tambem e deslocada.
+function mergeReports(hospital, items, parts) {
+  const offset = 10000000;
+  const shift = (row, delta) => row && delta ? { ...row, linha: row.linha + delta } : row;
+  const visitas = [], semProducao = [];
+  parts.forEach((data, index) => {
+    const hospitalDelta = items[index].base_hospitalar ? 0 : (index + 1) * offset;
+    for (const visit of data.visitas) visitas.push({ ...visit, linhaMedico: visit.linhaMedico + (index + 1) * offset,
+      hospital: shift(visit.hospital, hospitalDelta), candidatos: visit.candidatos.map(row => shift(row, hospitalDelta)) });
+    semProducao.push(...data.hospitalSemProducao.map(row => shift(row, hospitalDelta)));
+  });
+  return { ...parts[0], hospital, rotulo: `Todos os relatórios (${parts.length})`, visitas, hospitalSemProducao: semProducao,
+    partes: parts.map((data, index) => ({ id: items[index].id, arquivoMedico: data.arquivoMedico, arquivoHospital: data.arquivoHospital, visitas: data.visitas.length, criadoEm: items[index].criado_em })) };
 }
 function clearSelection(message = 'Selecione hospital e relatório.') {
   controller?.abort(); ++generation; reportId = '';
@@ -147,16 +206,20 @@ async function loadReport(id) {
   const token = ++generation;
   clearData('Carregando resultados...');
   try {
-    const [data,financeiro] = await Promise.all([request(`/api/conciliacoes/visitas/${id}`, { signal: controller.signal }),request(`/api/conciliacoes/visitas/${id}/recebimentos`, { signal: controller.signal })]);
-    for(const visit of data.visitas){const saldo=financeiro.visitas.find(v=>v.linha===visit.linhaMedico);visit.financeiro=saldo?{recebido:saldo.inconsistente?null:saldo.recebido,saldo:saldo.inconsistente?null:saldo.saldo,inconsistente:saldo.inconsistente}:null;}
+    let data;
+    if (id === ALL_REPORTS) {
+      const hospital = $('#unit-filter').value, items = latestReports(hospital);
+      data = mergeReports(hospital, items, await Promise.all(items.map(item => fetchReport(item.id, controller.signal))));
+    } else data = await fetchReport(id, controller.signal);
     if (token !== generation) return;
     report = data; reportId = id;
     const previousPeriod = $('#period-filter').value;
     const periods = [...new Set(data.visitas.filter(visit => visit.data).map(visit => visit.data.slice(0, 7)))].sort().reverse();
     const undated = data.visitas.some(visit => !visit.data) ? [['SEM_DATA', 'Sem data informada']] : [];
-    options($('#period-filter'), [['', 'Todos os meses'], ...undated, ...periods.map(period => [period,
+    options($('#period-filter'), [['', 'Todos os meses'], [DATE_RANGE, 'Intervalo de datas…'], ...undated, ...periods.map(period => [period,
       new Date(`${period}-01T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })])],
-      periods.includes(previousPeriod) || (undated.length && previousPeriod === 'SEM_DATA') ? previousPeriod : '');
+      periods.includes(previousPeriod) || previousPeriod === DATE_RANGE || (undated.length && previousPeriod === 'SEM_DATA') ? previousPeriod : '');
+    updateDateRange();
     $('#dashboard-message').textContent = '';
     renderDashboard();
   } catch (error) {
@@ -170,7 +233,7 @@ function renderDashboard() {
   window.FaturamedPainel.render(report, visits);
   const counts = Object.fromEntries(Object.keys(labels).map(status => [status, visits.filter(visit => visit.status === status).length]));
   const paidRate = visits.length ? counts.PAGA / visits.length : 0;
-  $('#report-context').textContent = `${report.hospital} - Conciliação #${reportId}`;
+  $('#report-context').textContent = `${report.hospital} - ${report.rotulo ?? `Conciliação #${reportId}`}`;
   renderValues(visits);
   for(const field of ['recebido','saldo']){
     const known=visits.filter(v=>v.financeiro?.[field]!=null),missing=visits.filter(v=>field==='recebido'?v.financeiro?.[field]==null:v.status==='PAGA'&&v.financeiro?.[field]==null).length;
@@ -235,7 +298,7 @@ function fillAttentionTable(table, visits, detailed) {
     const status = element('td');
     status.append(element('span', labels[visit.status], `pill ${visit.status === 'DIVERGENTE' ? 'danger' : 'warning'}`));
     row.append(status);
-    const url = `conciliação.html?relatorio=${encodeURIComponent(reportId)}&atendimento=${encodeURIComponent(visit.atendimento)}&status=${visit.status}`;
+    const url = `conciliacao.html?relatorio=${encodeURIComponent(visit.relatorioId ?? reportId)}&atendimento=${encodeURIComponent(visit.atendimento)}&status=${visit.status}`;
     const link = element('a', detailed ? 'Abrir' : visit.atendimento);
     link.href = url;
     if (detailed) { const action = element('td'); action.append(link); row.append(action); }
@@ -255,6 +318,17 @@ function renderDivergenceTable() {
     (type === 'TODOS' || visit.motivo === type) && (status === 'TODOS' || visit.status === status)), true);
 }
 function renderImports() {
+  if (report.partes) {
+    const table = $('#imports-table'); table.replaceChildren();
+    for (const part of report.partes) {
+      const row = element('tr');
+      for (const value of [`#${part.id} - ${part.arquivoMedico}`, 'PRODUCAO', part.visitas, 'Processada', new Date(part.criadoEm).toLocaleString('pt-BR')]) row.append(element('td', value));
+      table.append(row);
+    }
+    $('#imports-count').textContent = `${report.partes.length} conciliações`;
+    $('#imports-context').textContent = `${report.rotulo} - ${report.hospital}`;
+    return;
+  }
   const metadata = reports.find(item => String(item.id) === String(reportId));
   const hospitalRows = new Set(report.hospitalSemProducao.map(row => row.linha));
   for (const visit of report.visitas) for (const candidate of visit.candidatos) hospitalRows.add(candidate.linha);
@@ -275,8 +349,8 @@ function showView(view) {
   document.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.dataset.view === view));
   document.querySelectorAll('[data-view-link]').forEach(button => button.classList.toggle('active', button.dataset.viewLink === view));
   $('#view-title').textContent = viewTitles[view];
-  $('#report-context').hidden = ['medicos','hospitais'].includes(view);
-  document.querySelector('.topbar-actions').hidden = ['medicos','hospitais'].includes(view);
+  $('#report-context').hidden = ['medicos','hospitais','empresas'].includes(view);
+  document.querySelector('.topbar-actions').hidden = ['medicos','hospitais','empresas'].includes(view);
   if (location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
 }
 window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
@@ -288,7 +362,11 @@ document.querySelectorAll('[data-view-link]').forEach(button => button.addEventL
 $('#refresh-button').addEventListener('click', () => loadReports());
 $('#unit-filter').addEventListener('change', () => { populateReports(); loadReport($('#report-filter').value); });
 $('#report-filter').addEventListener('change', () => loadReport($('#report-filter').value));
-$('#period-filter').addEventListener('change', renderDashboard);
+$('#period-filter').addEventListener('change', () => { updateDateRange(); renderDashboard(); });
+for (const id of ['#period-from', '#period-to']) $(id).addEventListener('change', () => {
+  if (updateDateRange()) { $('#dashboard-message').textContent = ''; renderDashboard(); }
+  else $('#dashboard-message').textContent = 'A data inicial deve ser anterior à data final.';
+});
 $('#type-filter').addEventListener('change', renderDivergenceTable);
 $('#status-filter').addEventListener('change', renderDivergenceTable);
 document.querySelectorAll('[data-chart]').forEach(button => button.addEventListener('click', () => {
