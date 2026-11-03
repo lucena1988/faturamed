@@ -85,6 +85,7 @@ As linhas agrupam variações do mesmo fluxo. HTTP significa requisições reais
 | Perfil Empresa: vínculo obrigatório, rotas negadas e revogação de sessão | AUTO42; PerfilIntegracaoTest | Inclui funcionário criando acesso de empresa e parâmetro `empresaId` ignorado |
 | Atribuição de empresa a conciliações antigas | AUTO43 | Move toda a cadeia de versões e publicações; remoção oculta dos painéis |
 | Desvínculo e revínculo de médico | AUTO44 | Histórico do médico desvinculado deixa de aparecer na empresa |
+| Exclusão de relatório com senha | AUTO45; BaseHospitalarIntegracaoTest | Senha errada, vazia, sem CSRF, médico e anônimo recusados sem apagar; cascata em publicações e financeiro; visitas do hospital preservadas; reimportação e bloqueio após 5 erros |
 
 ## Pontos que continuam visuais ou fora desta regressão
 

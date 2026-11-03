@@ -18,7 +18,7 @@
 .conciliation-form { display: grid; grid-template-columns: minmax(150px,1fr) minmax(180px,1fr) minmax(180px,1fr) minmax(180px,1fr) auto; gap: 18px; align-items: end; padding: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .conciliation-workspace label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 14px; }
 .conciliation-workspace input, .conciliation-workspace select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--text); background: var(--surface); }
-.conciliation-workspace button:not(.notification-toggle) { padding: 12px 18px; background: var(--primary-fill); color: var(--on-primary); border: 0; border-radius: var(--radius-sm); }
+.conciliation-workspace button:not(.notification-toggle):not(.theme-toggle) { padding: 12px 18px; background: var(--primary-fill); color: var(--on-primary); border: 0; border-radius: var(--radius-sm); }
 .conciliation-workspace button:disabled { opacity: .6; cursor: default; }
 .conciliation-stats { display: flex; flex-wrap: wrap; gap: 30px; padding: 20px 0; }
 .conciliation-stats strong { display: block; font-size: 23px; margin-top: 8px; }
@@ -127,3 +127,12 @@
 .company-assign { display:flex; flex-wrap:wrap; align-items:end; gap:12px; margin:0 0 16px; }
 .company-assign label { display:flex; flex-direction:column; gap:4px; min-width:min(280px,100%); }
 .company-assign[hidden] { display:none; }
+#delete-dialog { width: min(520px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: var(--surface); }
+#delete-dialog::backdrop { background: var(--backdrop); }
+#delete-dialog h2 { margin: 0 0 12px; font-size: 20px; }
+.delete-warning { padding: 12px; border: 1px solid var(--danger-line); border-radius: 6px; color: var(--danger-fg); background: var(--danger-bg); font-size: 14px; }
+.delete-form label { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.delete-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.delete-actions button { padding: 10px 16px; border-radius: var(--radius-sm); cursor: pointer; }
+#delete-cancel { border: 1px solid var(--line); background: var(--surface-soft); color: var(--text); }
+.delete-confirm { border: 1px solid var(--danger-line); background: var(--danger-fg); color: var(--surface); font-weight: 700; }

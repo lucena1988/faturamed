@@ -47,7 +47,7 @@ h1, h2, h3 { color: var(--primary-strong); }
 input, select, textarea { color: var(--text); background: var(--surface); border-color: var(--line); border-radius: var(--radius-sm); }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-.primary-button:hover, .conciliation-workspace button:not(.notification-toggle):not(.history-open):not(.history-delete):hover { background: var(--primary-fill-hover); }
+.primary-button:hover, .conciliation-workspace button:not(.notification-toggle):not(.theme-toggle):not(.history-open):not(.history-delete):hover { background: var(--primary-fill-hover); }
 thead { background: var(--surface-soft); }
 tbody tr:hover { background: var(--surface-soft); }
 td.number, td.money, .money, .number { font-variant-numeric: tabular-nums; }

@@ -16,12 +16,17 @@ public class ConciliacaoVisitasController {
     private final FiltroRelatorioMedico filtroMedico;
     private final AcompanhamentoRevisao acompanhamento;
     private final MedicoCadastroService medicos;
+    private final ExclusaoRelatorioService exclusoes;
+    private final br.com.faturamed.seguranca.UsuarioService usuarios;
+    private final org.springframework.security.crypto.password.PasswordEncoder encoder;
 
     public ConciliacaoVisitasController(ExportadorRelatorioVisitas exportador, JdbcTemplate jdbc,
             RevisaoVisitasService revisoes, FiltroRelatorioMedico filtroMedico,
-            AcompanhamentoRevisao acompanhamento, MedicoCadastroService medicos) {
+            AcompanhamentoRevisao acompanhamento, MedicoCadastroService medicos, ExclusaoRelatorioService exclusoes,
+            br.com.faturamed.seguranca.UsuarioService usuarios, org.springframework.security.crypto.password.PasswordEncoder encoder) {
         this.exportador=exportador; this.jdbc=jdbc; this.revisoes=revisoes;
         this.filtroMedico=filtroMedico; this.acompanhamento=acompanhamento; this.medicos=medicos;
+        this.exclusoes=exclusoes; this.usuarios=usuarios; this.encoder=encoder;
     }
     @GetMapping
     public List<Map<String,Object>> listar() {
@@ -34,9 +39,20 @@ public class ConciliacaoVisitasController {
     }
     @GetMapping("/{id}")
     public ConciliadorVisitas.Relatorio buscar(@PathVariable Long id) throws Exception { return revisoes.carregar(id).atual(); }
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void excluir(@PathVariable Long id) { revisoes.excluir(id); }
+    public record ConfirmacaoExclusao(String senha) {}
+    // Exclusao definitiva so com a senha de quem esta logado; erro conta como tentativa de login.
+    @PostMapping("/{id}/exclusao")
+    public ExclusaoRelatorioService.Resultado excluir(@PathVariable long id,@RequestBody ConfirmacaoExclusao dados,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal br.com.faturamed.seguranca.UsuarioAutenticado usuario) {
+        var conta=usuarios.loadUserByUsername(usuario.email());
+        if(!conta.isAccountNonLocked()) throw new org.springframework.security.access.AccessDeniedException("Acesso bloqueado temporariamente apos tentativas invalidas. Aguarde 15 minutos");
+        if(dados==null||dados.senha()==null||dados.senha().isBlank()||!encoder.matches(dados.senha(),conta.getPassword())) {
+            usuarios.falha(usuario.email());
+            throw new IllegalArgumentException("Senha incorreta. O relatorio nao foi excluido");
+        }
+        usuarios.sucesso(usuario.id());
+        return exclusoes.excluir(id,usuario);
+    }
     @GetMapping("/{id}/acompanhamento")
     public AcompanhamentoRevisao.Resultado acompanhamento(@PathVariable Long id) throws Exception { return acompanhamento.analisar(revisoes.carregar(id)); }
     @GetMapping("/{id}/visitas/{linha}/revisao")

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conciliação de visitas | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
-  <link rel="stylesheet" href="conciliacao.css?v=20261103-dark">
-  <link rel="stylesheet" href="identidade.css?v=20261103-sino">
+  <link rel="stylesheet" href="conciliacao.css?v=20261103-exclusao">
+  <link rel="stylesheet" href="identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="login.css?v=20261029-ui">
 <link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
 <body>
@@ -41,6 +41,7 @@
       <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="conciliation-history"><h2>Relatórios anteriores</h2><ul id="history"></ul></section>
+    <dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog" class="delete-form"><h2 id="delete-title">Excluir relatório definitivamente</h2><p id="delete-summary"></p><p class="delete-warning">Serão apagados também as publicações para o médico e a empresa, ciências, pedidos de revisão, recebimentos, pagamentos, comprovantes e contatos de cobrança deste relatório. As visitas do hospital continuam guardadas. Esta ação não pode ser desfeita e fica registrada em auditoria.</p><p id="delete-versions"></p><label>Confirme com a sua senha<input id="delete-password" type="password" required autocomplete="current-password" maxlength="72"></label><div class="delete-actions"><button type="button" id="delete-cancel" class="history-open">Cancelar</button><button type="submit" class="delete-confirm history-delete">Excluir definitivamente</button></div></form></dialog>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">
     <form id="review-form">
@@ -94,6 +95,6 @@
   </dialog>
   <script src="sidebar.js?v=20261103-empresas"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script>
   <script src="liberacao.js?v=20261103-empresas"></script>
-  <script src="conciliacao.js?v=20261026-duplicidade"></script>
+  <script src="conciliacao.js?v=20261103-exclusao"></script>
 </body>
 </html>
