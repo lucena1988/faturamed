@@ -1,25 +1,31 @@
 (function () {
   const form = document.querySelector('#access-form'), message = document.querySelector('#access-message');
   const rows = document.querySelector('#access-rows'), dialog = document.querySelector('#password-dialog');
-  let doctors = [], resetting = null;
+  let doctors = [], companies = [], resetting = null;
   const api = FaturamedAuth.request;
   const json = (method, body) => ({method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  function profile() { const medical = form.perfil.value === 'MEDICO'; document.querySelector('#access-doctor-label').hidden = !medical; form.medicoId.disabled = !medical; form.medicoId.required = medical; }
+  function profile() {
+    const medical = form.perfil.value === 'MEDICO', company = form.perfil.value === 'EMPRESA';
+    document.querySelector('#access-doctor-label').hidden = !medical; form.medicoId.disabled = !medical; form.medicoId.required = medical;
+    document.querySelector('#access-company-label').hidden = !company; form.empresaId.disabled = !company; form.empresaId.required = company;
+  }
   async function load() {
     const users = await api('/api/usuarios');
     rows.replaceChildren();
     for (const user of users) {
       const tr = document.createElement('tr');
       const doctor = doctors.find(d=>d.id===user.medicoId);
-      const perfilLabel = ({ADMIN:'Administrador técnico',DEV:'Administrador técnico (legado)',OPERADOR:'Funcionário FaturaMed',MEDICO:'Médico'})[user.perfil] || user.perfil;
-      const values = [user.nome,user.email,perfilLabel,doctor?`${doctor.nome} - CRM ${doctor.crm}/${doctor.uf}`:'-',user.ativo?'Ativo':'Inativo'];
+      const company = companies.find(c=>c.id===user.empresaId);
+      const perfilLabel = ({ADMIN:'Administrador técnico',DEV:'Administrador técnico (legado)',OPERADOR:'Funcionário FaturaMed',MEDICO:'Médico',EMPRESA:'Empresa'})[user.perfil] || user.perfil;
+      const vinculo = doctor ? `${doctor.nome} - CRM ${doctor.crm}/${doctor.uf}` : company ? company.nome : '-';
+      const values = [user.nome,user.email,perfilLabel,vinculo,user.ativo?'Ativo':'Inativo'];
       values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;td.dataset.label=rows.closest('table').querySelectorAll('th')[index].textContent;tr.append(td);});
-      const actions = document.createElement('td'); actions.dataset.label='Acoes';
+      const actions = document.createElement('td'); actions.dataset.label='Ações';
       const toggle = document.createElement('button'); toggle.type='button'; toggle.className='text-button'; toggle.textContent=user.ativo?'Desativar':'Ativar';
       toggle.addEventListener('click',async()=>{
         if (!confirm(`${toggle.textContent} o acesso de ${user.nome}?`)) return;
         toggle.disabled=true;
-        try {await api(`/api/usuarios/${user.id}/situacao`,json('PUT',{ativo:!user.ativo,versao:user.versao})); await load();message.textContent='Situacao atualizada.';}
+        try {await api(`/api/usuarios/${user.id}/situacao`,json('PUT',{ativo:!user.ativo,versao:user.versao})); await load();message.textContent='Situação atualizada.';}
         catch(error){message.textContent=error.message;toggle.disabled=false;}
       });
       const reset=document.createElement('button');reset.type='button';reset.className='text-button';reset.textContent='Redefinir senha';
@@ -30,7 +36,7 @@
   form.perfil.addEventListener('change',profile);
   form.addEventListener('submit',async event=>{
     event.preventDefault();const button=form.querySelector('button');button.disabled=true;message.textContent='Criando acesso...';
-    try {await api('/api/usuarios',json('POST',{nome:form.nome.value,email:form.email.value,senha:form.senha.value,perfil:form.perfil.value,medicoId:form.perfil.value==='MEDICO'?Number(form.medicoId.value):null}));form.reset();profile();await load();message.textContent='Acesso criado.';}
+    try {await api('/api/usuarios',json('POST',{nome:form.nome.value,email:form.email.value,senha:form.senha.value,perfil:form.perfil.value,medicoId:form.perfil.value==='MEDICO'?Number(form.medicoId.value):null,empresaId:form.perfil.value==='EMPRESA'?Number(form.empresaId.value):null}));form.reset();profile();await load();message.textContent='Acesso criado.';}
     catch(error){message.textContent=error.message;}
     finally {button.disabled=false;}
   });
@@ -42,5 +48,5 @@
     catch(error){document.querySelector('#reset-message').textContent=error.message;}
     finally{button.disabled=false;}
   });
-  (async()=>{try{const user=await api('/api/auth/me');if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'));document.querySelector('h1').textContent='Acessos de médicos';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}doctors=await api('/api/medicos');form.medicoId.replaceChildren(new Option('Selecione um medico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm}/${d.uf}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
+  (async()=>{try{const user=await api('/api/auth/me');if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'),new Option('Empresa','EMPRESA'));document.querySelector('h1').textContent='Acessos de médicos e empresas';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}[doctors,companies]=await Promise.all([api('/api/medicos'),api('/api/empresas-clientes')]);form.empresaId.replaceChildren(new Option('Selecione uma empresa',''),...companies.filter(c=>c.ativo).map(c=>new Option(c.nome,c.id)));form.medicoId.replaceChildren(new Option('Selecione um médico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm}/${d.uf}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
 })();

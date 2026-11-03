@@ -28,6 +28,7 @@ public class SegurancaConfig {
                 .requestMatchers("/api/chamados", "/api/chamados/**", "/chamados-widget.js", "/chamados-widget.css").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()
                 .requestMatchers("/api/medico/**", "/portal.html", "/portal.js", "/conferencia-portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
+                .requestMatchers("/api/empresa/**", "/empresa.html", "/empresa.js", "/empresa.css").hasRole("EMPRESA")
                 .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
             .requestCache(cache -> cache.disable())
@@ -44,6 +45,8 @@ public class SegurancaConfig {
                         var authentication=SecurityContextHolder.getContext().getAuthentication();
                         if(authentication!=null && authentication.getPrincipal() instanceof UsuarioAutenticado user && user.perfil().equals("MEDICO"))
                             response.sendRedirect("/portal.html");
+                        else if(authentication!=null && authentication.getPrincipal() instanceof UsuarioAutenticado user && user.perfil().equals("EMPRESA"))
+                            response.sendRedirect("/empresa.html");
                         else response.sendError(403,"Acesso nao permitido");
                     }
                 }))
@@ -53,6 +56,7 @@ public class SegurancaConfig {
                     String destino = switch (user.perfil()) {
                         case "ADMIN", "OPERADOR" -> "/";
                         case "DEV" -> "/chamados.html";
+                        case "EMPRESA" -> "/empresa.html";
                         default -> "/portal.html";
                     };
                     response.setContentType("application/json"); response.getWriter().write("{\"destino\":\""+destino+"\"}");

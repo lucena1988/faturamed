@@ -7,6 +7,8 @@
 
   const page = location.pathname.split('/').pop() || 'index.html';
   const onIndex = page === 'index.html';
+  const host = location.hostname;
+  const ambiente = host === 'localhost' || host === '127.0.0.1' ? 'local' : host.includes('homologacao') ? 'de homologação' : 'de produção';
   const groups = [
     ['nav-producao', 'Produção', [
       ['Base hospitalar', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
@@ -23,6 +25,7 @@
     ['nav-cadastros', 'Cadastros', [
       ['Médicos', null, 'medicos', '<path d="M6 3v5a4 4 0 0 0 8 0V3"/><path d="M10 12v3a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="11" r="2"/>'],
       ['Hospitais', null, 'hospitais', '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 7v6M9 10h6M9 21v-4h6v4"/>'],
+      ['Empresas', null, 'empresas', '<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-3h4v3"/>'],
       ['Painel do médico', null, 'painel-medico', '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>']]],
     ['nav-gestao', 'Gestão', [
       ['Central de chamados', 'chamados.html', null, '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
@@ -57,7 +60,7 @@
     <a class="company-identity" href="./assets/faturamed-identidade.jpeg" target="_blank" rel="noopener" aria-label="Identidade da FaturaMed">
       <img src="./assets/faturamed-identidade.jpeg" alt="FaturaMed: faturamento de contas medicas e consultoria medica">
     </a>
-    <div class="sidebar-foot"><span class="status-dot"></span><span>Ambiente local</span></div>`;
+    <div class="sidebar-foot"><span class="status-dot"></span><span>Ambiente ${ambiente}</span></div>`;
 
   let aside = document.querySelector('aside.sidebar');
   if (!aside) {

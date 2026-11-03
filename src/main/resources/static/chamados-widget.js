@@ -279,7 +279,7 @@
   function renderListaMeus() {
     viewMeus.replaceChildren();
     if (!meusChamados.length) {
-      viewMeus.append(el('p', '', 'Voce ainda nao possui protocolos registrados.'));
+      viewMeus.append(el('p', '', 'Você ainda não possui protocolos registrados.'));
       return;
     }
     const list = el('div', 'hd-ticket-list');

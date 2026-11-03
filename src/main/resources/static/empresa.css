@@ -1,0 +1,9 @@
+.company-portal .doctor-toolbar .select-field { width: min(260px, 100%); }
+.company-portal .doctor-toolbar .select-field:has(#company-doctor) { width: min(360px, 100%); }
+.company-hint { margin: -8px 0 12px; color: var(--muted); font-size: 13px; }
+.company-table th:first-child { width: 28%; }
+.company-table td:first-child .text-button { padding: 0; text-align: left; }
+.company-bar { display: block; height: 6px; margin-top: 6px; width: var(--share); min-width: 2px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent, #1f7a5a) var(--paid), color-mix(in srgb, var(--accent, #1f7a5a) 30%, transparent) var(--paid)); }
+.company-visits table { min-width: 900px; table-layout: auto; }
+.company-visits { overflow-x: auto; }
