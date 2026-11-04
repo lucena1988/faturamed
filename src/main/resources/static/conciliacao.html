@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Conciliação de visitas | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
-  <link rel="stylesheet" href="conciliacao.css?v=20261029-ui">
-  <link rel="stylesheet" href="identidade.css?v=20261029-barra">
+  <link rel="stylesheet" href="conciliacao.css?v=20261103-exclusao">
+  <link rel="stylesheet" href="identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="login.css?v=20261029-ui">
-<link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
+<link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
     <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação de visitas</h1></div>
@@ -23,7 +23,7 @@
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
-      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
@@ -41,6 +41,7 @@
       <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="conciliation-history"><h2>Relatórios anteriores</h2><ul id="history"></ul></section>
+    <dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog" class="delete-form"><h2 id="delete-title">Excluir relatório definitivamente</h2><p id="delete-summary"></p><p class="delete-warning">Serão apagados também as publicações para o médico e a empresa, ciências, pedidos de revisão, recebimentos, pagamentos, comprovantes e contatos de cobrança deste relatório. As visitas do hospital continuam guardadas. Esta ação não pode ser desfeita e fica registrada em auditoria.</p><p id="delete-versions"></p><label>Confirme com a sua senha<input id="delete-password" type="password" required autocomplete="current-password" maxlength="72"></label><div class="delete-actions"><button type="button" id="delete-cancel" class="history-open">Cancelar</button><button type="submit" class="delete-confirm history-delete">Excluir definitivamente</button></div></form></dialog>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">
     <form id="review-form">
@@ -92,8 +93,8 @@
       <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="sidebar.js?v=20261029-1"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261027-avisos"></script>
-  <script src="liberacao.js?v=20261015-1"></script>
-  <script src="conciliacao.js?v=20261026-duplicidade"></script>
+  <script src="sidebar.js?v=20261103-empresas"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script>
+  <script src="liberacao.js?v=20261103-empresas"></script>
+  <script src="conciliacao.js?v=20261103-exclusao"></script>
 </body>
 </html>

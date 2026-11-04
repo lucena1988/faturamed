@@ -9,3 +9,9 @@
 .medico-actions { display:flex; gap:12px; flex-wrap:wrap; }
 #medicos-rows td { overflow-wrap:anywhere; }
 @media(max-width:550px) { .medico-form { grid-template-columns:1fr; } }
+.empresas-field { grid-column:1/-1; border:1px solid var(--line); border-radius:4px; padding:10px 12px; margin:0; }
+.empresas-field legend { padding:0 4px; }
+.empresas-options { display:flex; flex-wrap:wrap; gap:8px 20px; }
+.empresas-options label { flex-direction:row; align-items:center; gap:6px; font-weight:normal; }
+.empresas-options input { width:18px; height:18px; }
+.empresas-hint { grid-column:1/-1; margin:0; color:var(--muted, #666); font-size:.9em; }

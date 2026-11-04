@@ -48,6 +48,8 @@ public class LiberacaoRelatorioService {
         boolean alerta=relatorio.visitas().stream().anyMatch(v->v.status()!=ConciliadorVisitas.Status.PAGA)||dados.values().stream().mapToInt(List::size).sum()!=relatorio.visitas().size();
         if(alerta&&!request.confirmaPendencias())throw new IllegalArgumentException("Confirme a conferencia das pendencias, divergencias e visitas sem medico");
         jdbc.update("insert into liberacao_relatorio(relatorio_id,relatorio_raiz_id,versao_revisao,hospital,dados,observacao,usuario_id,responsavel) values(?,?,?,?,?::jsonb,?,?,?)",id,raiz(id),estado.versao(),relatorio.hospital(),json.writeValueAsString(dados),request.observacao().trim(),user.id(),user.nome()+" ("+user.email()+")");
+        // A publicacao herda a empresa da producao para alimentar o dashboard da empresa.
+        jdbc.update("update liberacao_relatorio set empresa_id=(select empresa_id from conciliacao_visitas where id=?) where relatorio_id=? and versao_revisao=?",id,id,estado.versao());
         return consultar(id);
     }
     @Transactional(readOnly=true)

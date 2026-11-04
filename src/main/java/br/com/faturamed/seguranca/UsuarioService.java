@@ -1,6 +1,7 @@
 package br.com.faturamed.seguranca;
 
 import br.com.faturamed.conciliacao.ConflitoRevisaoException;
+import br.com.faturamed.conciliacao.EmpresaClienteService;
 import br.com.faturamed.conciliacao.MedicoCadastroService;
 import br.com.faturamed.shared.RecursoNaoEncontradoException;
 import jakarta.validation.constraints.*;
@@ -15,16 +16,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UsuarioService implements UserDetailsService {
-    public record Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao) {}
+    public record Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao, Long empresaId) {
+        public Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao) { this(id,email,nome,perfil,medicoId,ativo,versao,null); }
+    }
     public record Novo(@NotBlank @Email @Size(max=180) String email, @NotBlank @Size(max=180) String nome,
-            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV|OPERADOR") @NotNull String perfil, Long medicoId) {}
+            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV|OPERADOR|EMPRESA") @NotNull String perfil, Long medicoId, Long empresaId) {
+        public Novo(String email, String nome, String senha, String perfil, Long medicoId) { this(email,nome,senha,perfil,medicoId,null); }
+    }
     public record Situacao(boolean ativo, @NotNull @PositiveOrZero Long versao) {}
     public record NovaSenha(@NotBlank String senha, @NotNull @PositiveOrZero Long versao) {}
     private final JdbcTemplate jdbc;
     private final PasswordEncoder encoder;
     private final MedicoCadastroService medicos;
-    public UsuarioService(JdbcTemplate jdbc, PasswordEncoder encoder, MedicoCadastroService medicos) {
-        this.jdbc = jdbc; this.encoder = encoder; this.medicos = medicos;
+    private final EmpresaClienteService empresas;
+    public UsuarioService(JdbcTemplate jdbc, PasswordEncoder encoder, MedicoCadastroService medicos, EmpresaClienteService empresas) {
+        this.jdbc = jdbc; this.encoder = encoder; this.medicos = medicos; this.empresas = empresas;
     }
     public static String email(String value) { return value == null ? "" : value.trim().toLowerCase(Locale.ROOT); }
     public static void validarSenha(String senha) {
@@ -33,27 +39,32 @@ public class UsuarioService implements UserDetailsService {
     }
     @Override public UsuarioAutenticado loadUserByUsername(String email) {
         var users = jdbc.query("""
-                select u.*, (u.ativo and coalesce(m.ativo,true)) as habilitado,
+                select u.*, (u.ativo and coalesce(m.ativo,true) and coalesce(e.ativo,true)) as habilitado,
                 (u.bloqueado_ate > now()) as bloqueado
-                from usuario_acesso u left join medico_cadastro m on m.id=u.medico_id where u.email=?
+                from usuario_acesso u left join medico_cadastro m on m.id=u.medico_id
+                left join empresa_cliente e on e.id=u.empresa_id where u.email=?
                 """, (r,n) -> new UsuarioAutenticado(r.getLong("id"),r.getString("email"),r.getString("nome"),r.getString("senha_hash"),
-                r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("habilitado"),r.getBoolean("bloqueado"),r.getLong("versao")), email(email));
+                r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("habilitado"),r.getBoolean("bloqueado"),r.getLong("versao"),
+                r.getObject("empresa_id",Long.class)), email(email));
         return users.stream().findFirst().orElseThrow(() -> new UsernameNotFoundException("Credenciais invalidas"));
     }
     public List<Usuario> listar() {
         return jdbc.query("select * from usuario_acesso order by nome,id", (r,n) -> new Usuario(r.getLong("id"),r.getString("email"),r.getString("nome"),
-                r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("ativo"),r.getLong("versao")));
+                r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("ativo"),r.getLong("versao"),r.getObject("empresa_id",Long.class)));
     }
     @Transactional public Usuario criar(Novo dados) { return criar(dados, null); }
     @Transactional public Usuario criar(Novo dados, Long operador) {
         validarSenha(dados.senha());
-        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV", "OPERADOR").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
+        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV", "OPERADOR", "EMPRESA").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
         if (dados.perfil().equals("MEDICO")) {
             if (dados.medicoId()==null || !medicos.buscar(dados.medicoId()).ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
         } else if (dados.medicoId()!=null) throw new IllegalArgumentException("Somente o perfil Medico pode ser vinculado a um medico");
+        if (dados.perfil().equals("EMPRESA")) {
+            if (dados.empresaId()==null || !empresas.buscar(dados.empresaId()).ativo()) throw new IllegalArgumentException("Selecione uma empresa ativa");
+        } else if (dados.empresaId()!=null) throw new IllegalArgumentException("Somente o perfil Empresa pode ser vinculado a uma empresa");
         try {
-            long id=jdbc.queryForObject("insert into usuario_acesso(email,nome,senha_hash,perfil,medico_id) values(?,?,?,?,?) returning id",
-                    Long.class,email(dados.email()),dados.nome().trim(),encoder.encode(dados.senha()),dados.perfil(),dados.medicoId());
+            long id=jdbc.queryForObject("insert into usuario_acesso(email,nome,senha_hash,perfil,medico_id,empresa_id) values(?,?,?,?,?,?) returning id",
+                    Long.class,email(dados.email()),dados.nome().trim(),encoder.encode(dados.senha()),dados.perfil(),dados.medicoId(),dados.empresaId());
             auditar(id, operador, "CRIACAO");
             return buscar(id);
         } catch(DuplicateKeyException e) { throw new ConflitoRevisaoException("Email ou medico ja possui acesso cadastrado"); }
@@ -67,6 +78,7 @@ public class UsuarioService implements UserDetailsService {
         if (!dados.ativo() && user.perfil().equals("ADMIN") && jdbc.queryForObject("select count(*) from usuario_acesso where perfil='ADMIN' and ativo",Long.class)<=1)
             throw new IllegalArgumentException("Mantenha pelo menos um administrador ativo");
         if (dados.ativo() && user.medicoId()!=null && !medicos.buscar(user.medicoId()).ativo()) throw new IllegalArgumentException("Medico inativo");
+        if (dados.ativo() && user.empresaId()!=null && !empresas.buscar(user.empresaId()).ativo()) throw new IllegalArgumentException("Empresa inativa");
         if(jdbc.update("update usuario_acesso set ativo=?,versao=versao+1 where id=? and versao=?",dados.ativo(),id,dados.versao())!=1)
             throw new ConflitoRevisaoException("Acesso alterado. Recarregue a lista");
         auditar(id, operador, dados.ativo() ? "ATIVACAO" : "DESATIVACAO");

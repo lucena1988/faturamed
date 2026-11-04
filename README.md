@@ -162,6 +162,10 @@ Depois de uma CI verde em push para `main` ou `develop`, o workflow
 bloqueia vulnerabilidades criticas com Trivy e publica em
 `ghcr.io/lucena1988/faturamed` com as tags do commit, da branch e `latest` (so `main`).
 
+Na mesma condicao, [.github/workflows/deploy.yml](.github/workflows/deploy.yml) entrega no
+Railway: `develop` vai para homologacao automaticamente e `main` vai para producao apos
+aprovacao. Configuracao em [docs/deploy-railway.md](docs/deploy-railway.md).
+
 O runner Ubuntu prepara Python 3.12 e usa Docker para os ambientes exclusivos de QA.
 Nao precisa de `.env`, banco externo ou secrets de producao. Uma nova atualizacao do
 mesmo PR cancela a execucao anterior. O limite de cada job e 40 minutos.

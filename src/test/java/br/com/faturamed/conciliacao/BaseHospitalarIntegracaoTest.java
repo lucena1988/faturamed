@@ -6,6 +6,7 @@ import br.com.faturamed.seguranca.LiberacaoRelatorioService;
 import br.com.faturamed.seguranca.PortalMedicoController;
 import br.com.faturamed.seguranca.ExtratoMedicoService;
 import br.com.faturamed.seguranca.ExportadorDemonstrativoPdf;
+import br.com.faturamed.seguranca.PainelEmpresaService;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,6 +33,9 @@ class BaseHospitalarIntegracaoTest {
     @Autowired PortalMedicoController portal;
     @Autowired ExtratoMedicoService extratos;
     @Autowired ExportadorDemonstrativoPdf pdf;
+    @Autowired EmpresaClienteService empresas;
+    @Autowired ExclusaoRelatorioService exclusoes;
+    @Autowired PainelEmpresaService painel;
     long hospital, ana, bruno;
     UsuarioAutenticado usuario;
 
@@ -92,6 +96,71 @@ class BaseHospitalarIntegracaoTest {
         assertThatThrownBy(()->service.importarProducao(hospital,null,"VARIOS","2026-09",
                 planilha(List.of(List.of("Atendimento","Dt.","Medico"),List.of("","2026-09-15",""))),usuario))
             .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Informe Atendimento ou o Medico");
+    }
+
+    @Test void producaoPorEmpresaAlimentaSomenteODashboardDaEmpresaAtribuida() throws Exception {
+        long clinica=empresas.salvar(null,new EmpresaClienteService.Dados("Clinica "+UUID.randomUUID(),null,true,0L)).id();
+        long grupo=empresas.salvar(null,new EmpresaClienteService.Dados("Grupo "+UUID.randomUUID(),null,true,0L)).id();
+        jdbc.update("insert into medico_empresa(medico_id,empresa_id) values(?,?),(?,?),(?,?)",ana,clinica,ana,grupo,bruno,grupo);
+        service.importarHospital(hospital,"2026-09",hospital(nome(ana),nome(bruno)),usuario);
+        assertThatThrownBy(()->service.importarProducao(hospital,ana,null,"UNICO","2026-09",producao(),usuario))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("mais de uma empresa");
+        assertThatThrownBy(()->service.importarProducao(hospital,bruno,clinica,"UNICO","2026-09",producao(),usuario))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("nao pertence");
+        var daAna=service.importarProducao(hospital,ana,clinica,"UNICO","2026-09",producao(),usuario);
+        var doBruno=service.importarProducao(hospital,bruno,null,"UNICO","2026-09",producao(),usuario);
+        assertThat(jdbc.queryForObject("select empresa_id from conciliacao_visitas where id=?",Long.class,doBruno.relatorioId())).isEqualTo(grupo);
+        liberacoes.liberar(daAna.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        liberacoes.liberar(doBruno.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        recebimentos.registrar(daAna.relatorioId(),2,new RecebimentoService.Dados(new BigDecimal("40"),LocalDate.of(2026,9,2),"Parcial",0L),usuario);
+
+        var daClinica=painel.consultar(clinica,null,null,null,null);
+        assertThat(daClinica.visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(ana);
+        assertThat(daClinica.resumo().faturado()).isEqualByComparingTo("100");
+        assertThat(daClinica.resumo().recebido()).isEqualByComparingTo("40");
+        assertThat(daClinica.medicos()).extracting(PainelEmpresaService.MedicoResumo::id).containsExactly(ana);
+        var doGrupo=painel.consultar(grupo,null,null,null,null);
+        assertThat(doGrupo.visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(bruno);
+        assertThat(painel.consultar(grupo,ana,null,null,null).visitas()).isEmpty();
+        assertThat(painel.consultar(grupo,bruno,LocalDate.of(2026,10,1),null,null).visitas()).isEmpty();
+        assertThatThrownBy(()->painel.consultar(clinica,bruno,null,null,null)).isInstanceOf(IllegalArgumentException.class);
+
+        empresas.atribuir(daAna.relatorioId(),grupo);
+        assertThat(painel.consultar(clinica,null,null,null,null).visitas()).isEmpty();
+        assertThat(painel.consultar(grupo,null,null,null,null).visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(ana,bruno);
+    }
+
+    @Test void exclusaoApagaCadeiaPublicacoesEFinanceiroMantendoVisitasDoHospital() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Faturado","100","100"),usuario);
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        long primeira=producao.relatorioId();
+        var publicada=liberacoes.liberar(primeira,new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        jdbc.update("insert into ciencia_relatorio(liberacao_id,medico_id,usuario_id) values(?,?,?)",publicada.publicado().id(),ana,usuario.id());
+        recebimentos.registrar(primeira,2,new RecebimentoService.Dados(new BigDecimal("40"),LocalDate.of(2026,9,2),"Parcial",0L),usuario);
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","150","150"),usuario);
+        long nova=service.atualizar(primeira,0);
+        long visitasHospital=jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospital);
+
+        var resultado=exclusoes.excluir(nova,usuario);
+
+        assertThat(resultado.relatorios()).containsExactly(primeira,nova);
+        assertThat(resultado.publicacoes()).isEqualTo(1);
+        assertThat(resultado.recebimentos()).isEqualTo(1);
+        String cadeia="{"+primeira+","+nova+"}";
+        for(String sql:List.of("select count(*) from conciliacao_visitas where id=any(?::bigint[])",
+                "select count(*) from liberacao_relatorio where relatorio_raiz_id=any(?::bigint[])",
+                "select count(*) from recebimento_visita where relatorio_raiz_id=any(?::bigint[])",
+                "select count(*) from vinculo_base_hospitalar where relatorio_id=any(?::bigint[])",
+                "select count(*) from reserva_base_hospitalar where relatorio_raiz_id=any(?::bigint[])",
+                "select count(*) from arquivo_base_hospitalar where relatorio_id=any(?::bigint[])"))
+            assertThat(jdbc.queryForObject(sql,Long.class,cadeia)).as(sql).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospital)).isEqualTo(visitasHospital);
+        assertThat(jdbc.queryForObject("select count(*) from relatorio_exclusao_auditoria where relatorio_raiz_id=? and publicacoes=1 and recebimentos=1",Long.class,primeira)).isEqualTo(1);
+        // A mesma planilha pode ser importada de novo e volta a conciliar as visitas liberadas.
+        var reimportada=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        assertThat(reimportada.repetido()).isFalse();
+        assertThat(revisoes.carregar(reimportada.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThatThrownBy(()->exclusoes.excluir(nova,usuario)).isInstanceOf(br.com.faturamed.shared.RecursoNaoEncontradoException.class);
     }
 
     @Test void arredondaPorVisitaAntesDeSomarEReceberPreservandoArquivo() throws Exception {

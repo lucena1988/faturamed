@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Faturamed</title>
-  <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="./styles.css?v=20261029-ui">
-  <link rel="stylesheet" href="./conciliacao.css?v=20261029-ui">
-  <link rel="stylesheet" href="./medicos.css?v=20261009-2">
-  <link rel="stylesheet" href="./identidade.css?v=20261029-barra">
+  <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="./styles.css?v=20261103-intervalo">
+  <link rel="stylesheet" href="./conciliacao.css?v=20261103-tema">
+  <link rel="stylesheet" href="./medicos.css?v=20261103-empresas">
+  <link rel="stylesheet" href="./identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="./painel-medico.css?v=20261029-ui">
   <link rel="stylesheet" href="./login.css?v=20261029-ui">
-<link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
+<link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação principal"></aside>
@@ -33,6 +33,14 @@
           <label class="select-field">
             <span>Período</span>
             <select id="period-filter" disabled></select>
+          </label>
+          <label class="select-field date-range-field" hidden>
+            <span>De</span>
+            <input id="period-from" type="date">
+          </label>
+          <label class="select-field date-range-field" hidden>
+            <span>Até</span>
+            <input id="period-to" type="date">
           </label>
           <button class="icon-button" type="button" title="Atualizar indicadores" aria-label="Atualizar indicadores" id="refresh-button">
             <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v6h-6"/></svg>
@@ -257,12 +265,13 @@
           <label>CRM<input id="crm" required pattern="[0-9]{1,20}" maxlength="20" inputmode="numeric"></label>
           <label>UF<select id="uf" required><option value="">Selecione</option></select></label>
           <label class="aliases-field">Aliases (um nome por linha)<textarea id="aliases" rows="4"></textarea></label>
+          <fieldset class="empresas-field"><legend>Empresas em que atua</legend><div id="medico-empresas" class="empresas-options"><span>Nenhuma empresa cadastrada.</span></div></fieldset>
           <label class="active-field"><input id="ativo" type="checkbox" checked>Ativo</label>
           <div class="medico-actions"><button id="save" type="submit">Salvar médico</button><button id="new" type="button">Novo cadastro</button></div>
         </form>
         <p id="message" role="status" aria-live="polite"></p>
-        <div class="conciliation-filters"><label>Buscar médico<input id="medico-search" type="search"></label><label>Situação<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
-        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Aliases</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
+        <div class="conciliation-filters"><label>Buscar médico<input id="medico-search" type="search"></label><label>Empresa<select id="medico-empresa"><option value="">Todas</option><option value="sem">Sem empresa</option></select></label><label>Situação<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Empresas</th><th>Aliases</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
       </section>
       <section class="view" data-view="painel-medico" aria-label="Painel do médico">
         <div class="doctor-toolbar"><label class="select-field">Médico<select id="panel-doctor" disabled><option value="">Selecione um médico</option></select></label><span id="doctor-scope"></span></div>
@@ -292,16 +301,30 @@
         <div class="conciliation-filters"><label>Buscar hospital<input id="h-search" type="search"></label><label>Situação<select id="h-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="h-count"></span><button id="h-reload" type="button">Atualizar</button></div>
         <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>Documento</th><th>Cidade</th><th>UF</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="h-rows"></tbody></table></div>
       </section>
+      <section class="view conciliation-workspace medicos-module" id="empresas-view" data-view="empresas" data-empresas>
+        <form id="empresa-form" class="medico-form">
+          <h2 id="e-form-title">Nova empresa</h2>
+          <label>Razão social / nome<input id="e-nome" required maxlength="180"></label>
+          <label>CNPJ (opcional)<input id="e-documento" maxlength="30"></label>
+          <label class="active-field"><input id="e-ativo" type="checkbox" checked>Ativa</label>
+          <p class="empresas-hint">Vincule os médicos à empresa no cadastro de Médicos. O acesso da empresa é criado em Acessos, com o perfil Empresa.</p>
+          <div class="medico-actions"><button id="e-save" type="submit">Salvar empresa</button><button id="e-new" type="button">Novo cadastro</button></div>
+        </form>
+        <p id="e-message" role="status" aria-live="polite"></p>
+        <div class="conciliation-filters"><label>Buscar empresa<input id="e-search" type="search"></label><label>Situação<select id="e-status"><option value="">Todas</option><option value="true">Ativas</option><option value="false">Inativas</option></select></label><span id="e-count"></span><button id="e-reload" type="button">Atualizar</button></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CNPJ</th><th>Médicos</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="e-rows"></tbody></table></div>
+      </section>
     </main>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./auth.js?v=20261027-avisos"></script>
-  <script src="./painel-medico.js?v=20261014-financeiro"></script>
-  <script src="./sidebar.js?v=20261029-1"></script>
+  <script src="./auth.js?v=20261103-empresas"></script>
+  <script src="./painel-medico.js?v=20261103-todos"></script>
+  <script src="./sidebar.js?v=20261103-empresas"></script>
   <script src="./menu.js?v=20261029-3"></script>
-  <script src="./app.js?v=20261029-ciclo"></script>
-  <script src="./medicos.js?v=20261009-2"></script>
+  <script src="./app.js?v=20261103-produzido"></script>
+  <script src="./medicos.js?v=20261103-empresas"></script>
   <script src="./hospitais.js?v=20261009-hospitais"></script>
+  <script src="./empresas.js?v=20261103-empresas"></script>
 </body>
 </html>

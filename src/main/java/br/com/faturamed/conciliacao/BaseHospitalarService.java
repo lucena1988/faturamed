@@ -29,14 +29,17 @@ public class BaseHospitalarService {
     private final VinculoBaseHospitalar vinculos;
     private final RevisaoVisitasService revisoes;
     private final AtualizacaoHospitalarService atualizacoes;
+    private final EmpresaClienteService empresas;
 
     public BaseHospitalarService(JdbcTemplate jdbc, ObjectMapper json, LeitorPlanilhaVisitas leitor,
             ConciliadorVisitas motor, HospitalCadastroService hospitais, MedicoCadastroService medicos,
-            IdentificacaoProducaoService identificacao, VinculoBaseHospitalar vinculos, RevisaoVisitasService revisoes, AtualizacaoHospitalarService atualizacoes) {
+            IdentificacaoProducaoService identificacao, VinculoBaseHospitalar vinculos, RevisaoVisitasService revisoes, AtualizacaoHospitalarService atualizacoes,
+            EmpresaClienteService empresas) {
         this.jdbc=jdbc; this.json=json; this.leitor=leitor; this.motor=motor; this.hospitais=hospitais;
         this.medicos=medicos; this.identificacao=identificacao; this.vinculos=vinculos;
         this.revisoes=revisoes;
         this.atualizacoes=atualizacoes;
+        this.empresas=empresas;
     }
 
     @Transactional(rollbackFor=Exception.class)
@@ -85,11 +88,17 @@ public class BaseHospitalarService {
 
     @Transactional(rollbackFor=Exception.class)
     public Resultado importarProducao(long hospitalId, Long medicoId, String modoProducao, String competencia, MultipartFile arquivo, UsuarioAutenticado usuario) throws Exception {
+        return importarProducao(hospitalId,medicoId,null,modoProducao,competencia,arquivo,usuario);
+    }
+
+    @Transactional(rollbackFor=Exception.class)
+    public Resultado importarProducao(long hospitalId, Long medicoId, Long empresaId, String modoProducao, String competencia, MultipartFile arquivo, UsuarioAutenticado usuario) throws Exception {
         validarHospital(hospitalId); competencia = normalizarCompetencia(competencia);
         if(!List.of("UNICO","VARIOS").contains(Objects.toString(modoProducao,""))) throw new IllegalArgumentException("Modo de producao invalido");
         if(modoProducao.equals("UNICO") && medicoId==null) throw new IllegalArgumentException("Selecione o medico da producao individual");
         if(modoProducao.equals("VARIOS") && medicoId!=null) throw new IllegalArgumentException("Producao coletiva identifica o medico por linha; nao selecione um medico unico");
         if(medicoId!=null && !medicos.buscar(medicoId).ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
+        Long empresa=empresas.resolverProducao(empresaId,medicoId);
         vinculos.bloquear(hospitalId);
         var producao=leitor.ler(arquivo,false);
         for(var linha:producao) {
@@ -105,7 +114,7 @@ public class BaseHospitalarService {
             return new Resultado(numero(anterior,"id"),anterior.get("relatorio_id")==null?null:numero(anterior,"relatorio_id"),0,0,true);
         }
         var relatorio=calcular(hospitalId,medicoId,arquivo.getOriginalFilename(),producao,null);
-        long relatorioId=inserirComId("insert into conciliacao_visitas(relatorio,hash_producao,medico_producao_id,base_hospitalar) values(?::jsonb,?,?,true) returning id",json.writeValueAsString(relatorio),hash,medicoId);
+        long relatorioId=inserirComId("insert into conciliacao_visitas(relatorio,hash_producao,medico_producao_id,base_hospitalar,empresa_id) values(?::jsonb,?,?,true,?) returning id",json.writeValueAsString(relatorio),hash,medicoId,empresa);
         long arquivoId=salvarArquivo(hospitalId,"PRODUCAO",medicoId,competencia,arquivo,hash,usuario.id());
         jdbc.update("update arquivo_base_hospitalar set relatorio_id=? where id=?",relatorioId,arquivoId);
         vinculos.sincronizar(relatorioId,relatorio);
@@ -231,7 +240,7 @@ public class BaseHospitalarService {
             porLinha.put(atualizada.linhaMedico(),atualizada);
         }
         var relatorio=new AplicadorRevisaoVisita().recalcular(calculado,visitas);
-        long novoId=inserirComId("insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,medico_producao_id,base_hospitalar) values(?::jsonb,?,?,?,?,true) returning id",json.writeValueAsString(relatorio),relatorioId,(int)numero(linhas.getFirst(),"numero_versao")+1,arquivo.get("hash"),medicoId);
+        long novoId=inserirComId("insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,medico_producao_id,base_hospitalar,empresa_id) select ?::jsonb,?,?,?,?,true,empresa_id from conciliacao_visitas where id=? returning id",json.writeValueAsString(relatorio),relatorioId,(int)numero(linhas.getFirst(),"numero_versao")+1,arquivo.get("hash"),medicoId,relatorioId);
         var revisoesAnteriores=jdbc.queryForList("select id,linha_medico,acao,responsavel,justificativa,antes::text as antes,depois::text as depois,criado_em from revisao_visita where conciliacao_id=? order by id",relatorioId);
         for(var rev:revisoesAnteriores) {
             int linhaMedico=(int)numero(rev,"linha_medico");
