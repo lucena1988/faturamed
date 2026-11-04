@@ -27,7 +27,8 @@ public class SegurancaConfig {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/tokens.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error",
-                        "/convite.html", "/cadastro-medico.js", "/cadastro-medico.css", "/api/convites/**").permitAll()
+                        "/convite.html", "/cadastro-medico.js", "/cadastro-medico.css", "/api/convites/**",
+                        "/esqueci-senha.html", "/esqueci-senha.js", "/api/auth/recuperacao", "/api/auth/recuperacao/confirmar").permitAll()
                 .requestMatchers("/api/usuarios/**", "/api/usuarios", "/usuarios.html", "/usuarios.js").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .requestMatchers("/api/chamados", "/api/chamados/**", "/chamados-widget.js", "/chamados-widget.css").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()

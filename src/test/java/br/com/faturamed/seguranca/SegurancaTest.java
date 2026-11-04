@@ -37,6 +37,13 @@ class SegurancaTest {
         // A propria API de cadastro continua liberada para o medico completar.
         mvc.perform(get("/api/medico/cadastro").with(user(medico))).andExpect(status().isNotFound());
     }
+    @Test void recuperacaoDeSenhaEPublicaMasExigeCsrf() throws Exception {
+        // Controller nao carregado neste teste: 404 prova que a seguranca deixou passar sem login.
+        mvc.perform(post("/api/auth/recuperacao").with(csrf()).contentType("application/json").content("{}")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/auth/recuperacao/confirmar").with(csrf()).contentType("application/json").content("{}")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/auth/recuperacao").contentType("application/json").content("{}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    }
     @Test void conviteEPublicoMasGerarConviteExigeFaturaMed() throws Exception {
         mvc.perform(get("/api/convites/token-inexistente-123456789")).andExpect(status().isNotFound());
         mvc.perform(post("/api/medicos/1/convite").with(user(medico)).with(csrf())).andExpect(status().isForbidden());

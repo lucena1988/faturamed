@@ -166,7 +166,7 @@ def prepare():
         if result.returncode == 0:
             break
         time.sleep(1)
-    docker('run', '-d', '--name', APPLICATION, '--network', NETWORK, '-p', '127.0.0.1:18081:8080', '-e', 'DB_URL=jdbc:postgresql://' + DATABASE + ':5432/faturamed_qa', '-e', 'DB_USER=qa', '-e', 'DB_PASSWORD=' + PASSWORD, '-e', 'ADMIN_INITIAL_EMAIL=' + ADMIN, '-e', 'ADMIN_INITIAL_PASSWORD=' + PASSWORD, os.environ.get('QA_APP_IMAGE', 'faturamed-app'))
+    docker('run', '-d', '--name', APPLICATION, '--network', NETWORK, '-p', '127.0.0.1:18081:8080', '-e', 'DB_URL=jdbc:postgresql://' + DATABASE + ':5432/faturamed_qa', '-e', 'DB_USER=qa', '-e', 'DB_PASSWORD=' + PASSWORD, '-e', 'ADMIN_INITIAL_EMAIL=' + ADMIN, '-e', 'ADMIN_INITIAL_PASSWORD=' + PASSWORD, '-e', 'RECUPERACAO_CODIGO_NO_LOG=true', os.environ.get('QA_APP_IMAGE', 'faturamed-app'))
     for attempt in range(60):
         try:
             if urllib.request.urlopen(BASE + '/api/health', timeout=2).status == 200:
@@ -343,6 +343,8 @@ def run():
     executar_exclusao(globals(), admin)
     from homologacao_cadastro_medico import executar as executar_cadastro_medico
     executar_cadastro_medico(globals(), admin)
+    from homologacao_recuperacao_senha import executar as executar_recuperacao
+    executar_recuperacao(globals(), admin)
     persistence_before = admin.call('GET', f'/api/base-hospitalar/acompanhamento?hospitalId={hospital}')
 
     def persistence():

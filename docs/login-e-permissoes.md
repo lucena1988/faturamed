@@ -45,3 +45,20 @@ docker run --rm faturamed-verificacao mvn -B test
 ```
 
 Os testes cobrem permissoes ADMIN/MEDICO, API anonima, CSRF, sessao revogada, senha ausente nas respostas, sanitizacao do portal e restricao ao ID do medico autenticado.
+
+## Recuperação de senha por e-mail
+
+Na tela de login, **Esqueci minha senha** envia um código de 6 dígitos ao e-mail de login (qualquer perfil).
+O código vale 15 minutos, só pode ser usado uma vez e é invalidado após 5 tentativas erradas; cada conta
+pode pedir até 3 códigos a cada 15 minutos. A resposta é a mesma exista ou não o e-mail. Ao redefinir,
+as sessões abertas são encerradas e a troca é registrada em `usuario_acesso_auditoria` (`REDEFINICAO_SENHA`).
+
+O envio usa SMTP configurado por variáveis de ambiente (ex.: Gmail com senha de app: `smtp.gmail.com`, porta `587`):
+
+| Variável | Uso |
+|---|---|
+| `MAIL_HOST`, `MAIL_PORT` | Servidor SMTP. Sem `MAIL_HOST`, nenhum e-mail é enviado. |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Credenciais do SMTP (guardar como segredo no Railway/CI, nunca no repositório). |
+| `MAIL_FROM` | Remetente exibido (ex.: `nao-responda@seudominio.com.br`). |
+| `MAIL_SMTP_AUTH`, `MAIL_STARTTLS` | Padrão `true`; ajuste só se o provedor exigir. |
+| `RECUPERACAO_CODIGO_NO_LOG` | **Apenas local, sem SMTP**: escreve o código no log. Mantenha `false` em HML e produção. |

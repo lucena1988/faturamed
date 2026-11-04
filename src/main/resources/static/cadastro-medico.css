@@ -12,3 +12,8 @@
 #cadastro-message[data-type=error] { color: var(--danger-fg); }
 #cadastro-message[data-type=success] { color: var(--success-fg); }
 @media (max-width: 600px) { .cadastro-medico fieldset { grid-template-columns: 1fr; } }
+.recuperacao-senha { max-width: 520px; }
+.recuperacao-senha fieldset { grid-template-columns: 1fr 1fr; }
+#recuperacao-message[data-type=error] { color: var(--danger-fg); }
+#recuperacao-message[data-type=success] { color: var(--success-fg); }
+@media (max-width: 600px) { .recuperacao-senha fieldset { grid-template-columns: 1fr; } }
