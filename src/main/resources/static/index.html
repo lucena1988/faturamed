@@ -6,7 +6,7 @@
   <title>Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="./styles.css?v=20261103-intervalo">
   <link rel="stylesheet" href="./conciliacao.css?v=20261103-tema">
-  <link rel="stylesheet" href="./medicos.css?v=20261103-empresas">
+  <link rel="stylesheet" href="./medicos.css?v=20261104-convite">
   <link rel="stylesheet" href="./identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="./painel-medico.css?v=20261029-ui">
   <link rel="stylesheet" href="./login.css?v=20261029-ui">
@@ -262,16 +262,18 @@
         <form id="medico-form" class="medico-form">
           <h2 id="form-title">Novo médico</h2>
           <label>Nome completo<input id="nome" required maxlength="180" autocomplete="name"></label>
-          <label>CRM<input id="crm" required pattern="[0-9]{1,20}" maxlength="20" inputmode="numeric"></label>
-          <label>UF<select id="uf" required><option value="">Selecione</option></select></label>
+          <label>CRM <small>(opcional; o médico completa)</small><input id="crm" pattern="[0-9]{1,20}" maxlength="20" inputmode="numeric"></label>
+          <label>UF <small>(opcional; o médico completa)</small><select id="uf"><option value="">A preencher pelo médico</option></select></label>
+          <label class="email-field">E-mail do médico <small>(mais de um: separe com ;)</small><input id="email" required maxlength="500" autocomplete="off" placeholder="medico@exemplo.com.br; outro@exemplo.com.br"></label>
           <label class="aliases-field">Aliases (um nome por linha)<textarea id="aliases" rows="4"></textarea></label>
           <fieldset class="empresas-field"><legend>Empresas em que atua</legend><div id="medico-empresas" class="empresas-options"><span>Nenhuma empresa cadastrada.</span></div></fieldset>
           <label class="active-field"><input id="ativo" type="checkbox" checked>Ativo</label>
           <div class="medico-actions"><button id="save" type="submit">Salvar médico</button><button id="new" type="button">Novo cadastro</button></div>
         </form>
         <p id="message" role="status" aria-live="polite"></p>
+        <dialog id="convite-dialog" aria-labelledby="convite-title"><form method="dialog" class="convite-form"><h2 id="convite-title">Convite para o médico</h2><p id="convite-medico"></p><p>Envie este link ao médico por e-mail ou WhatsApp. Ele completa o cadastro e cria a própria senha. O link vale por 7 dias e só pode ser usado uma vez; gerar outro invalida este.</p><input id="convite-link" readonly aria-label="Link do convite"><p id="convite-status" role="status"></p><div class="medico-actions"><button type="button" id="convite-copiar">Copiar link</button><button type="submit">Fechar</button></div></form></dialog>
         <div class="conciliation-filters"><label>Buscar médico<input id="medico-search" type="search"></label><label>Empresa<select id="medico-empresa"><option value="">Todas</option><option value="sem">Sem empresa</option></select></label><label>Situação<select id="medico-status"><option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option></select></label><span id="count"></span><button id="reload" type="button">Atualizar</button></div>
-        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>Empresas</th><th>Aliases</th><th>Situação</th><th>Cadastro</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
+        <div class="conciliation-table"><table><thead><tr><th>Nome</th><th>CRM</th><th>UF</th><th>E-mail</th><th>Empresas</th><th>Aliases</th><th>Situação</th><th>Cadastro do médico</th><th>Ações</th></tr></thead><tbody id="medicos-rows"></tbody></table></div>
       </section>
       <section class="view" data-view="painel-medico" aria-label="Painel do médico">
         <div class="doctor-toolbar"><label class="select-field">Médico<select id="panel-doctor" disabled><option value="">Selecione um médico</option></select></label><span id="doctor-scope"></span></div>
@@ -323,7 +325,7 @@
   <script src="./sidebar.js?v=20261103-empresas"></script>
   <script src="./menu.js?v=20261029-3"></script>
   <script src="./app.js?v=20261103-produzido"></script>
-  <script src="./medicos.js?v=20261103-empresas"></script>
+  <script src="./medicos.js?v=20261104-uf"></script>
   <script src="./hospitais.js?v=20261009-hospitais"></script>
   <script src="./empresas.js?v=20261103-empresas"></script>
 </body>

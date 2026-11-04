@@ -57,7 +57,7 @@
   }
   function fillFilters() {
     const doctor = $('company-doctor'), hospital = $('company-hospital');
-    doctor.replaceChildren(new Option('Todos os médicos', ''), ...painel.medicos.map(m => new Option(`${m.nome} · CRM ${m.crm}/${m.uf}`, m.id)));
+    doctor.replaceChildren(new Option('Todos os médicos', ''), ...painel.medicos.map(m => new Option(`${m.nome} · CRM ${m.crm||"a preencher"}/${m.uf||"--"}`, m.id)));
     hospital.replaceChildren(new Option('Todos os hospitais', ''), ...painel.hospitais.map(h => new Option(h, h)));
     doctor.disabled = !painel.medicos.length; hospital.disabled = !painel.hospitais.length;
   }

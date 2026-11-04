@@ -143,6 +143,21 @@ def hospital_row(attendance, doctor, value=100, visit_date='2026-06-10'):
     return [attendance, visit_date, doctor, '10102019', 'Visita Hospitalar (Paciente Internado)', value, 1, value, 'Faturado']
 
 
+def cpf_valido(indice):
+    """CPF ficticio com digitos verificadores validos, diferente para cada indice."""
+    base = [int(d) for d in f'{123456000 + indice:09d}']
+    for tamanho in (9, 10):
+        resto = sum(d * (tamanho + 1 - i) for i, d in enumerate(base)) * 10 % 11
+        base.append(0 if resto == 10 else resto)
+    return ''.join(map(str, base))
+
+
+def completar_cadastro(cliente, medico, email, indice):
+    # Desde o CH-2026-0002 o medico so usa o portal depois de completar o proprio cadastro.
+    return cliente.call('PUT', '/api/medico/cadastro', {'nome': medico['nome'], 'crm': medico['crm'], 'uf': medico['uf'],
+        'cpf': cpf_valido(indice), 'empresaNome': 'QA Consultorio Medico', 'empresaCnpj': '11444777000161', 'emails': email})
+
+
 def prepare():
     docker('network', 'create', NETWORK)
     docker('run', '-d', '--name', DATABASE, '--network', NETWORK, '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_DB=faturamed_qa', '-e', 'POSTGRES_USER=qa', '-e', 'POSTGRES_PASSWORD=' + PASSWORD, 'postgres:16')
@@ -168,7 +183,7 @@ def run():
     hospital = admin.call('POST', '/api/hospitais', {'nome': 'Hospital QA automatico ficticio', 'documento': '', 'cidade': 'Teste', 'uf': 'SP', 'ativo': True, 'versao': 0}, 201)['id']
     doctors = []
     for name, crm, active in [('Medica QA Alfa', '900001', True), ('Medico QA Beta', '900002', True), ('Medico QA Inativo', '900003', False)]:
-        doctors.append(admin.call('POST', '/api/medicos', {'nome': name, 'crm': crm, 'uf': 'SP', 'ativo': active, 'aliases': [], 'versao': 0}, 201))
+        doctors.append(admin.call('POST', '/api/medicos', {'nome': name, 'crm': crm, 'uf': 'SP', 'ativo': active, 'aliases': [], 'versao': 0, 'email': f'crm{crm}@example.com'}, 201))
     alfa, beta, inactive = doctors
     params = {'hospitalId': hospital, 'competencia': '2026/06'}
     hospital_file = fixture('hospital-inicial.xlsx', [HEADERS, hospital_row('88000001', alfa['nome']), hospital_row('88000002', beta['nome'])])
@@ -248,6 +263,8 @@ def run():
     physician.login('alfa.qa@example.com')
     other_physician = Client()
     other_physician.login('beta.qa@example.com')
+    completar_cadastro(physician, alfa, 'alfa.qa@example.com', 1)
+    completar_cadastro(other_physician, beta, 'beta.qa@example.com', 2)
     publication = {}
 
     def publish_cycle():
@@ -324,6 +341,8 @@ def run():
     executar_empresas(globals(), admin)
     from homologacao_exclusao import executar as executar_exclusao
     executar_exclusao(globals(), admin)
+    from homologacao_cadastro_medico import executar as executar_cadastro_medico
+    executar_cadastro_medico(globals(), admin)
     persistence_before = admin.call('GET', f'/api/base-hospitalar/acompanhamento?hospitalId={hospital}')
 
     def persistence():

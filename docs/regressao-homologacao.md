@@ -86,6 +86,7 @@ As linhas agrupam variações do mesmo fluxo. HTTP significa requisições reais
 | Atribuição de empresa a conciliações antigas | AUTO43 | Move toda a cadeia de versões e publicações; remoção oculta dos painéis |
 | Desvínculo e revínculo de médico | AUTO44 | Histórico do médico desvinculado deixa de aparecer na empresa |
 | Exclusão de relatório com senha | AUTO45; BaseHospitalarIntegracaoTest | Senha errada, vazia, sem CSRF, médico e anônimo recusados sem apagar; cascata em publicações e financeiro; visitas do hospital preservadas; reimportação e bloqueio após 5 erros |
+| Cadastro médico em duas etapas (convite) | AUTO46; ConviteMedicoIntegracaoTest, ValidacaoCadastroMedicoTest, SegurancaTest | E-mail obrigatório e CRM opcional na FaturaMed; convite público, de uso único e com CSRF; nome completo, CPF, CNPJ e e-mails validados; médico antigo bloqueado até completar |
 
 ## Pontos que continuam visuais ou fora desta regressão
 

@@ -73,7 +73,7 @@ function showReport(id, data, tracking) {
   for (const visit of data.visitas) {
     const name = visit.medico ?? visit.hospital?.medico ?? visit.original.medico ?? '';
     const cadastro=medicosCadastro.find(m=>m.id===doctorId(visit));
-    if (name.trim()) doctors.set(doctorKey(visit), cadastro?`${cadastro.nome} - CRM ${cadastro.crm}/${cadastro.uf}${cadastro.ativo?'':' (inativo)'}`:name.trim());
+    if (name.trim()) doctors.set(doctorKey(visit), cadastro?`${cadastro.nome} - CRM ${cadastro.crm||"a preencher"}/${cadastro.uf||"--"}${cadastro.ativo?'':' (inativo)'}`:name.trim());
   }
   const select = document.querySelector('#doctor-filter'); const previous = select.value;
   select.replaceChildren(new Option('Todos os médicos', ''), new Option('Médico não identificado', '__SEM_MEDICO__'),
@@ -310,7 +310,7 @@ async function openReview(line) {
     const current = detail.atual;
     const doctorSelect=document.querySelector('#edit-doctor-id');
     doctorSelect.replaceChildren(new Option('Sem vinculo ao cadastro',''),...medicosCadastro.filter(m=>m.ativo||m.id===current.medicoCadastroId).map(m=>{
-      const option=new Option(`${m.nome} - CRM ${m.crm}/${m.uf}${m.ativo?'':' (inativo)'}`,m.id);option.disabled=!m.ativo;return option;
+      const option=new Option(`${m.nome} - CRM ${m.crm||"a preencher"}/${m.uf||"--"}${m.ativo?'':' (inativo)'}`,m.id);option.disabled=!m.ativo;return option;
     }));
     doctorSelect.value=doctorId(current)??'';
     const group = report.visitas.filter(v => v.atendimento === current.atendimento);

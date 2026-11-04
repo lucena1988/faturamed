@@ -1,0 +1,14 @@
+.cadastro-medico { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+.cadastro-medico h1 { margin: 8px 0 4px; }
+.cadastro-medico .intro { color: var(--muted); margin: 0 0 20px; }
+.cadastro-medico fieldset { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cadastro-medico fieldset > h2 { grid-column: 1 / -1; margin: 12px 0 0; font-size: 17px; border-top: 1px solid var(--line); padding-top: 16px; }
+.cadastro-medico label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.cadastro-medico label small { font-weight: normal; color: var(--muted); }
+.cadastro-medico .largo { grid-column: 1 / -1; }
+.cadastro-medico input, .cadastro-medico select { padding: 10px; font: inherit; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); }
+.cadastro-medico button[type=submit] { grid-column: 1 / -1; justify-self: start; margin-top: 8px; }
+#cadastro-message { margin-top: 16px; }
+#cadastro-message[data-type=error] { color: var(--danger-fg); }
+#cadastro-message[data-type=success] { color: var(--success-fg); }
+@media (max-width: 600px) { .cadastro-medico fieldset { grid-template-columns: 1fr; } }
