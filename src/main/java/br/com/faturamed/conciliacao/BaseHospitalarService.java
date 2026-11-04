@@ -92,7 +92,12 @@ public class BaseHospitalarService {
         if(medicoId!=null && !medicos.buscar(medicoId).ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
         vinculos.bloquear(hospitalId);
         var producao=leitor.ler(arquivo,false);
-        for(var linha:producao) if(linha.campo("Dt.").isBlank()) throw new IllegalArgumentException("Informe Dt. na producao, linha "+linha.numero());
+        for(var linha:producao) {
+            if(linha.campo("Dt.").isBlank()) throw new IllegalArgumentException("Informe Dt. na producao, linha "+linha.numero());
+            // Sem atendimento, a visita so e localizada pela data e pelo medico.
+            if(linha.campo("Atendimento").isBlank() && medicoId==null && linha.campo("Medico").isBlank())
+                throw new IllegalArgumentException("Informe Atendimento ou o Medico na producao coletiva, linha "+linha.numero());
+        }
         String hash=hash(arquivo);
         var repetidos=jdbc.queryForList("select id,relatorio_id,medico_id from arquivo_base_hospitalar where hospital_id=? and tipo='PRODUCAO' and competencia=? and hash=? and medico_id is not distinct from ?",hospitalId,competencia,hash,medicoId);
         if(!repetidos.isEmpty()) {
@@ -138,7 +143,7 @@ public class BaseHospitalarService {
         if(medicoId==null) {
             var registrosCompletos=motor.conciliar(hospital.nome(),nome,"Base hospitalar",List.of(),hospitalLinhas).hospitalSemProducao();
             visitas=visitas.stream().map(visita->new ConciliadorVisitas.Visita(visita.linhaMedico(),visita.atendimento(),visita.data(),visita.status(),visita.motivo(),
-                    visita.original(),visita.hospital(),registrosCompletos.stream().filter(registro->registro.atendimento().equals(visita.atendimento()) && registro.data().equals(visita.data())).toList(),
+                    visita.original(),visita.hospital(),visita.atendimento().isBlank()?visita.candidatos():registrosCompletos.stream().filter(registro->registro.atendimento().equals(visita.atendimento()) && registro.data().equals(visita.data())).toList(),
                     visita.camposRevisados(),visita.medicoProducao())).toList();
         }
         return new AplicadorRevisaoVisita().recalcular(new ConciliadorVisitas.Relatorio(base.hospital(),base.arquivoMedico(),base.arquivoHospital(),base.regraStatus(),visitas,base.hospitalSemProducao(),base.resumo(),base.repasseCorrespondente(),hospitalId),visitas);

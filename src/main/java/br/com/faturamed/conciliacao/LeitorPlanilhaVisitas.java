@@ -36,7 +36,9 @@ public class LeitorPlanilhaVisitas {
                     Map<Integer, String> cabecalho = aba.linhas().get(i);
                     Set<String> campos = new HashSet<>();
                     cabecalho.values().forEach(v -> campos.add(normalizar(v)));
-                    if (!campos.contains("atendimento") || (hospital && !campos.contains("data consumo"))) continue;
+                    // A producao pode vir sem a coluna Atendimento; a data (Dt.) passa a identificar a visita.
+                    boolean cabecalhoProducao = !hospital && (campos.contains("atendimento") || campos.contains("dt."));
+                    if (!cabecalhoProducao && (!campos.contains("atendimento") || !hospital || !campos.contains("data consumo"))) continue;
                     if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "vl. a repassar", "setor"))) {
                         throw new IllegalArgumentException("Cabecalho do hospital incompleto");
                     }
@@ -48,9 +50,11 @@ public class LeitorPlanilhaVisitas {
                         cabecalho.forEach((col, label) -> {
                             if (!label.isBlank()) linha.put(normalizar(label), valores.getOrDefault(col, ""));
                         });
-                        if (linha.getOrDefault("atendimento", "").isBlank()) {
+                        // Visita da producao sem atendimento aguarda o hospital e concilia por data e medico.
+                        if (hospital && linha.getOrDefault("atendimento", "").isBlank()) {
                             throw new IllegalArgumentException("Atendimento ausente na linha " + (j + 1));
                         }
+                        linha.putIfAbsent("atendimento", "");
                         resultado.add(new Linha(j + 1, linha));
                     }
                     if (resultado.isEmpty()) throw new IllegalArgumentException("Planilha sem registros");

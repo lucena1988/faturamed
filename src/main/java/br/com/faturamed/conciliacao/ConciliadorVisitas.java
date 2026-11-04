@@ -81,8 +81,18 @@ public class ConciliadorVisitas {
         var registros = porChave.values().stream().flatMap(List::stream).toList();
         Map<Integer, List<RegistroHospital>> porLinha = new HashMap<>();
         Map<Integer, Long> disputas = new HashMap<>();
+        // Primeiro as linhas com atendimento; as visitas do hospital que elas encontram ficam
+        // fora da busca por data e medico das linhas sem atendimento.
+        Set<Integer> reivindicadas = new HashSet<>();
         for (var linha : medico) {
+            if (semAtendimento(linha)) continue;
             var candidatos = refinar(candidatos(registros, chaveMedico(linha)), linha.campos());
+            porLinha.put(linha.numero(), candidatos);
+            for (var h : candidatos) { disputas.merge(h.linha(), 1L, Long::sum); reivindicadas.add(h.linha()); }
+        }
+        for (var linha : medico) {
+            if (!semAtendimento(linha)) continue;
+            var candidatos = refinar(porDataEMedico(registros, chaveMedico(linha).data(), linha.campo("Medico"), reivindicadas), linha.campos());
             porLinha.put(linha.numero(), candidatos);
             for (var h : candidatos) disputas.merge(h.linha(), 1L, Long::sum);
         }
@@ -120,7 +130,14 @@ public class ConciliadorVisitas {
                 status = Status.PENDENTE;
                 motivo = "Correspondencia encontrada, mas setor do hospital nao indica Faturado";
             }
-            visitas.add(new Visita(linha.numero(), chave.atendimento(), unico == null ? chave.data() : unico.data(), status, motivo,
+            String atendimento = chave.atendimento();
+            if (semAtendimento(linha)) {
+                if (candidatos.isEmpty()) motivo = "Producao sem numero de atendimento; aguardando registro do hospital para a data e o medico";
+                else motivo += ". Correspondencia por data e medico (producao sem numero de atendimento)";
+                // A visita passa a usar o atendimento do hospital quando a correspondencia e unica.
+                if (unico != null) atendimento = unico.atendimento();
+            }
+            visitas.add(new Visita(linha.numero(), atendimento, unico == null ? chave.data() : unico.data(), status, motivo,
                     linha.campos(), unico, List.copyOf(candidatos)));
         }
         var semProducao = registros.stream().filter(h -> !disputas.containsKey(h.linha())).toList();
@@ -136,6 +153,19 @@ public class ConciliadorVisitas {
     private Chave chaveMedico(LeitorPlanilhaVisitas.Linha linha) {
         return new Chave(LeitorPlanilhaVisitas.identificador(linha.campo("Atendimento")),
                 linha.campo("Dt.").isBlank() ? null : LeitorPlanilhaVisitas.data(linha.campo("Dt."), linha.numero()));
+    }
+
+    static boolean semAtendimento(LeitorPlanilhaVisitas.Linha linha) {
+        return LeitorPlanilhaVisitas.identificador(linha.campo("Atendimento")).isBlank();
+    }
+
+    // Sem atendimento, so e seguro procurar com data e medico informados (o nome ja chega
+    // normalizado pelo cadastro quando a producao e de um medico identificado).
+    private List<RegistroHospital> porDataEMedico(List<RegistroHospital> registros, LocalDate data, String medico, Set<Integer> reivindicadas) {
+        String nome = LeitorPlanilhaVisitas.normalizar(medico);
+        if (data == null || nome.isBlank()) return List.of();
+        return registros.stream().filter(h -> !reivindicadas.contains(h.linha()) && data.equals(h.data())
+                && LeitorPlanilhaVisitas.normalizar(h.medico()).equals(nome)).toList();
     }
 
     private List<RegistroHospital> candidatos(List<RegistroHospital> registros, Chave chave) {
