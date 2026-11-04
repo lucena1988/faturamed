@@ -4,6 +4,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.util.Objects;
+import org.jspecify.annotations.NonNull;
+import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
 import org.springframework.context.annotation.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -32,7 +35,7 @@ public class SegurancaConfig {
                 .requestMatchers("/api/empresa/**", "/empresa.html", "/empresa.js", "/empresa.css").hasRole("EMPRESA")
                 .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
-            .requestCache(cache -> cache.disable())
+            .requestCache(RequestCacheConfigurer::disable)
             .headers(headers -> headers.contentSecurityPolicy(policy -> policy.policyDirectives(
                     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")))
             .exceptionHandling(errors -> errors
@@ -53,7 +56,7 @@ public class SegurancaConfig {
                 }))
             .formLogin(login -> login.loginPage("/login.html").loginProcessingUrl("/api/auth/login")
                 .successHandler((request,response,authentication) -> {
-                    var user=(UsuarioAutenticado)authentication.getPrincipal(); users.sucesso(user.id());
+                    var user=(UsuarioAutenticado)Objects.requireNonNull(authentication.getPrincipal()); users.sucesso(user.id());
                     String destino = switch (user.perfil()) {
                         case "ADMIN", "OPERADOR" -> "/";
                         case "DEV" -> "/chamados.html";
@@ -67,7 +70,7 @@ public class SegurancaConfig {
                 .permitAll())
             .logout(logout -> logout.logoutUrl("/api/auth/logout").logoutSuccessHandler((request,response,auth) -> response.setStatus(204)).deleteCookies("JSESSIONID"))
             .addFilterBefore(new OncePerRequestFilter() {
-                @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
+                @Override protected void doFilterInternal(@NonNull HttpServletRequest request,@NonNull HttpServletResponse response,@NonNull FilterChain chain) throws ServletException,IOException {
                     var auth=SecurityContextHolder.getContext().getAuthentication();
                     if(auth!=null && auth.getPrincipal() instanceof UsuarioAutenticado user && !users.sessaoValida(user)) {
                         if(request.getSession(false)!=null) request.getSession(false).invalidate();

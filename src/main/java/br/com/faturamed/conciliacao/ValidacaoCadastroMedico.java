@@ -39,31 +39,31 @@ public final class ValidacaoCadastroMedico {
 
     public static String cpf(String valor) {
         String cpf=Objects.toString(valor,"").replaceAll("\\D","");
-        if(cpf.length()!=11 || cpf.chars().distinct().count()==1 || !digitosConferem(cpf,9,10) || !digitosConferem(cpf,10,11))
+        if(cpf.length()!=11 || cpf.chars().distinct().count()==1 || digitoCpfInvalido(cpf,9,10) || digitoCpfInvalido(cpf,10,11))
             throw new IllegalArgumentException("CPF invalido");
         return cpf;
     }
 
     public static String cnpj(String valor) {
         String cnpj=Objects.toString(valor,"").replaceAll("\\D","");
-        if(cnpj.length()!=14 || cnpj.chars().distinct().count()==1 || !digitoCnpj(cnpj,12) || !digitoCnpj(cnpj,13))
+        if(cnpj.length()!=14 || cnpj.chars().distinct().count()==1 || digitoCnpjInvalido(cnpj,12) || digitoCnpjInvalido(cnpj,13))
             throw new IllegalArgumentException("CNPJ invalido");
         return cnpj;
     }
 
     // CPF: pesos decrescentes a partir de (posicao+1).
-    private static boolean digitosConferem(String cpf,int posicao,int peso) {
+    private static boolean digitoCpfInvalido(String cpf,int posicao,int peso) {
         int soma=0;
         for(int i=0;i<posicao;i++) soma+=(cpf.charAt(i)-'0')*(peso-i);
         int resto=(soma*10)%11;
-        return (resto==10?0:resto)==cpf.charAt(posicao)-'0';
+        return (resto==10?0:resto)!=cpf.charAt(posicao)-'0';
     }
 
     // CNPJ: pesos 5..2,9..2 (12 digitos) e 6..2,9..2 (13 digitos).
-    private static boolean digitoCnpj(String cnpj,int posicao) {
+    private static boolean digitoCnpjInvalido(String cnpj,int posicao) {
         int soma=0,peso=posicao-7;
         for(int i=0;i<posicao;i++) { soma+=(cnpj.charAt(i)-'0')*peso; peso=peso==2?9:peso-1; }
         int resto=soma%11;
-        return (resto<2?0:11-resto)==cnpj.charAt(posicao)-'0';
+        return (resto<2?0:11-resto)!=cnpj.charAt(posicao)-'0';
     }
 }

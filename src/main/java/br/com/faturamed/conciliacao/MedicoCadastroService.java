@@ -32,9 +32,9 @@ public class MedicoCadastroService {
     public List<Medico> listar() {
         var aliases=jdbc.queryForList("select medico_id, nome from medico_alias order by nome");
         Map<Long,List<String>> porMedico=new HashMap<>();
-        aliases.forEach(a -> porMedico.computeIfAbsent(((Number)a.get("medico_id")).longValue(),k->new ArrayList<>()).add(a.get("nome").toString()));
+        aliases.forEach(a -> porMedico.computeIfAbsent(numero(a,"medico_id"),k->new ArrayList<>()).add(String.valueOf(a.get("nome"))));
         Map<Long,List<Long>> empresas=new HashMap<>();
-        jdbc.queryForList("select medico_id, empresa_id from medico_empresa order by empresa_id").forEach(e -> empresas.computeIfAbsent(((Number)e.get("medico_id")).longValue(),k->new ArrayList<>()).add(((Number)e.get("empresa_id")).longValue()));
+        jdbc.queryForList("select medico_id, empresa_id from medico_empresa order by empresa_id").forEach(e -> empresas.computeIfAbsent(numero(e,"medico_id"),k->new ArrayList<>()).add(numero(e,"empresa_id")));
         return jdbc.query("select * from medico_cadastro order by nome, uf, crm",(r,n)->new Medico(r.getLong("id"),r.getString("nome"),r.getString("crm"),r.getString("uf"),r.getBoolean("ativo"),r.getLong("versao"),List.copyOf(porMedico.getOrDefault(r.getLong("id"),List.of())),List.copyOf(empresas.getOrDefault(r.getLong("id"),List.of())),
                 r.getString("email"),r.getString("cpf"),r.getString("empresa_nome"),r.getString("empresa_cnpj"),r.getObject("cadastro_completo_em")!=null));
     }
@@ -60,7 +60,7 @@ public class MedicoCadastroService {
         try {
             if(id==null) {
                 if(dados.versao()!=0) throw new IllegalArgumentException("Versao inicial invalida");
-                id=jdbc.queryForObject("insert into medico_cadastro(nome,crm,uf,ativo,email) values(?,?,?,?,?) returning id",Long.class,nome,crm,uf,dados.ativo(),email);
+                id=Objects.requireNonNull(jdbc.queryForObject("insert into medico_cadastro(nome,crm,uf,ativo,email) values(?,?,?,?,?) returning id",Long.class,nome,crm,uf,dados.ativo(),email));
             } else {
                 buscar(id);
                 if(jdbc.update("update medico_cadastro set nome=?,crm=?,uf=?,ativo=?,email=coalesce(?,email),versao=versao+1 where id=? and versao=?",nome,crm,uf,dados.ativo(),email,id,dados.versao())==0)
@@ -105,7 +105,7 @@ public class MedicoCadastroService {
         var empresas=jdbc.queryForList("select id from empresa_cliente where documento_normalizado=?",Long.class,cnpj);
         long empresa=empresas.isEmpty()
                 ? Objects.requireNonNull(jdbc.queryForObject("insert into empresa_cliente(nome,documento,documento_normalizado) values(?,?,?) returning id",Long.class,empresaNome,cnpj,cnpj))
-                : empresas.getFirst();
+                : Objects.requireNonNull(empresas.getFirst());
         jdbc.update("insert into medico_empresa(medico_id,empresa_id) values(?,?) on conflict do nothing",id,empresa);
         return buscar(id);
     }
@@ -129,5 +129,9 @@ public class MedicoCadastroService {
         String chave=LeitorPlanilhaVisitas.normalizar(nome);
         return listar().stream().filter(Medico::ativo).filter(m->LeitorPlanilhaVisitas.normalizar(m.nome()).equals(chave)
                 || m.aliases().stream().anyMatch(a->LeitorPlanilhaVisitas.normalizar(a).equals(chave))).count()>1;
+    }
+    // Colunas NOT NULL: se faltarem, a falha cita a coluna em vez de um NullPointerException sem contexto.
+    private static long numero(Map<String,Object> linha,String coluna) {
+        return ((Number)Objects.requireNonNull(linha.get(coluna),()->"Coluna obrigatoria ausente: "+coluna)).longValue();
     }
 }

@@ -84,7 +84,7 @@ public class ConviteMedicoService {
         var linha = linhas.getFirst();
         if (linha.get("usado_em") != null) throw new ConflitoRevisaoException("Este convite ja foi usado. Entre com seu e-mail e senha");
         if (!Boolean.TRUE.equals(linha.get("valido"))) throw new ConflitoRevisaoException("Convite expirado. Peca um novo convite a FaturaMed");
-        return ((Number) linha.get("medico_id")).longValue();
+        return ((Number) Objects.requireNonNull(linha.get("medico_id"), "Convite sem medico")).longValue();
     }
 
     static String hash(String token) {

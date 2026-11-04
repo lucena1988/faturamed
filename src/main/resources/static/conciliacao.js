@@ -69,7 +69,6 @@ function showReport(id, data, tracking) {
   download.href = `/api/conciliacoes/visitas/${id}/relatorio.xlsx`;
   download.hidden = false;
   const doctors = new Map();
-  const normalize = value => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
   for (const visit of data.visitas) {
     const name = visit.medico ?? visit.hospital?.medico ?? visit.original.medico ?? '';
     const cadastro=medicosCadastro.find(m=>m.id===doctorId(visit));
@@ -96,7 +95,6 @@ function renderRows() {
   const status = document.querySelector('#status').value;
   const search = document.querySelector('#search').value.trim();
   const doctor = document.querySelector('#doctor-filter');
-  const normalize = value => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
   const selectedDoctor = report.visitas.filter(v => {
     const key = doctorKey(v);
     return !doctor.value || (doctor.value === '__SEM_MEDICO__' ? !key : key === doctor.value);
