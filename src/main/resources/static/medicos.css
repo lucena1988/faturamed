@@ -15,3 +15,10 @@
 .empresas-options label { flex-direction:row; align-items:center; gap:6px; font-weight:normal; }
 .empresas-options input { width:18px; height:18px; }
 .empresas-hint { grid-column:1/-1; margin:0; color:var(--muted, #666); font-size:.9em; }
+.email-field { grid-column: span 2; }
+.medico-form label small { font-weight: normal; color: var(--muted); }
+#convite-dialog { width: min(640px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: var(--surface); }
+#convite-dialog::backdrop { background: var(--backdrop); }
+#convite-dialog h2 { margin: 0 0 8px; font-size: 20px; }
+#convite-link { width: 100%; padding: 10px; font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 4px; color: var(--text); background: var(--surface-soft); }
+@media(max-width:550px) { .email-field { grid-column: 1/-1; } }

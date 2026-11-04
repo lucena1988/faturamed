@@ -10,7 +10,7 @@ def executar(env, admin):
         return admin.call('POST', '/api/empresas-clientes', {'nome': nome, 'documento': documento, 'ativo': ativo, 'versao': 0}, 201)
 
     def medico(nome, crm, empresas=None):
-        payload = {'nome': nome, 'crm': crm, 'uf': 'SP', 'ativo': True, 'aliases': [], 'versao': 0}
+        payload = {'nome': nome, 'crm': crm, 'uf': 'SP', 'ativo': True, 'aliases': [], 'versao': 0, 'email': f'crm{crm}@example.com'}
         if empresas is not None:
             payload['empresas'] = empresas
         return admin.call('POST', '/api/medicos', payload, 201)

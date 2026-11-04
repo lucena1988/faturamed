@@ -26,10 +26,11 @@ def executar(env, admin):
         return rel, params, producao
 
     def exclusao():
-        medico = admin.call('POST', '/api/medicos', {'nome': 'QA Medico Exclusao', 'crm': '920001', 'uf': 'SP', 'ativo': True, 'aliases': [], 'versao': 0}, 201)
+        medico = admin.call('POST', '/api/medicos', {'nome': 'QA Medico Exclusao', 'crm': '920001', 'uf': 'SP', 'ativo': True, 'aliases': [], 'versao': 0, 'email': 'medico.exclusao@example.com'}, 201)
         rel_admin, params, producao = relatorio('QA Exclusao Admin ' + RUN_ID, medico, '64000001', 100)
         rel_operador, _, _ = relatorio('QA Exclusao Operador ' + RUN_ID, medico, '64000002', 80)
         portal = conta('MEDICO', 'medico', medicoId=medico['id'])
+        env['completar_cadastro'](portal, medico, 'medico.exclusao@example.com', 3)
         operador = conta('OPERADOR', 'operador')
         assert portal.call('GET', f'/api/medico/relatorios/{rel_admin}')['id'] == rel_admin
 

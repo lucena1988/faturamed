@@ -20,12 +20,35 @@ class SegurancaTest {
     @Autowired MockMvc mvc;
     @Autowired PasswordEncoder encoder;
     @MockitoBean UsuarioService users;
+    @MockitoBean br.com.faturamed.conciliacao.MedicoCadastroService medicos;
     private UsuarioAutenticado admin, medico;
     @BeforeEach void configurar() {
         admin=new UsuarioAutenticado(1,"admin@test.local","Admin",encoder.encode("SenhaTesteSegura12"),"ADMIN",null,true,false,0);
         medico=new UsuarioAutenticado(2,"medico@test.local","Medico","hash","MEDICO",10L,true,false,0);
         when(users.sessaoValida(any())).thenReturn(true);
         when(users.loadUserByUsername("admin@test.local")).thenReturn(admin);
+        when(medicos.cadastroCompleto(anyLong())).thenReturn(true);
+    }
+    @Test void medicoComCadastroIncompletoSoAcessaATelaDeCompletar() throws Exception {
+        when(medicos.cadastroCompleto(10L)).thenReturn(false);
+        mvc.perform(get("/api/medico/relatorios").with(user(medico))).andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.erro").value("Complete seu cadastro para acessar o portal"));
+        mvc.perform(get("/portal.html").with(user(medico))).andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/completar-cadastro.html"));
+        // A propria API de cadastro continua liberada para o medico completar.
+        mvc.perform(get("/api/medico/cadastro").with(user(medico))).andExpect(status().isNotFound());
+    }
+    @Test void recuperacaoDeSenhaEPublicaMasExigeCsrf() throws Exception {
+        // Controller nao carregado neste teste: 404 prova que a seguranca deixou passar sem login.
+        mvc.perform(post("/api/auth/recuperacao").with(csrf()).contentType("application/json").content("{}")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/auth/recuperacao/confirmar").with(csrf()).contentType("application/json").content("{}")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/auth/recuperacao").contentType("application/json").content("{}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    }
+    @Test void conviteEPublicoMasGerarConviteExigeFaturaMed() throws Exception {
+        mvc.perform(get("/api/convites/token-inexistente-123456789")).andExpect(status().isNotFound());
+        mvc.perform(post("/api/medicos/1/convite").with(user(medico)).with(csrf())).andExpect(status().isForbidden());
+        mvc.perform(post("/api/convites/token-inexistente-123456789").with(csrf()).contentType("application/json").content("{}"))
+            .andExpect(status().isNotFound());
     }
     @Test void apiSemLoginRetorna401SemRedirecionar() throws Exception {
         mvc.perform(get("/api/usuarios")).andExpect(status().isUnauthorized()).andExpect(content().contentTypeCompatibleWith("application/json"));
