@@ -31,6 +31,30 @@ class LeitorPlanilhaVisitasTest {
         }
     }
 
+    @Test
+    void producaoAceitaAtendimentoVazioOuColunaAusenteMasHospitalNao() throws Exception {
+        assertThat(ler(false, new String[][] {{"Dt.", "Medico"}, {"2026-01-05", "Medico A"}}).getFirst().campo("Atendimento")).isEmpty();
+        var vazio = ler(false, new String[][] {{"Atendimento", "Dt."}, {"", "2026-01-05"}, {"00123", "2026-01-06"}});
+        assertThat(vazio).hasSize(2);
+        assertThat(vazio.getFirst().campo("Atendimento")).isEmpty();
+        assertThatThrownBy(() -> ler(true, new String[][] {
+                {"Atendimento", "Data Consumo", "Medico", "Cod Produto", "Valor Tot", "Vl. A Repassar", "Setor"},
+                {"", "2026-01-05", "Medico A", "10102019", "100", "100", "Faturado"}}))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Atendimento ausente");
+    }
+
+    private java.util.List<LeitorPlanilhaVisitas.Linha> ler(boolean hospital, String[][] linhas) throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Planilha2");
+            for (int i = 0; i < linhas.length; i++) {
+                var row = sheet.createRow(i);
+                for (int j = 0; j < linhas[i].length; j++) row.createCell(j).setCellValue(linhas[i][j]);
+            }
+            workbook.write(output);
+            return new LeitorPlanilhaVisitas().ler(new MockMultipartFile("arquivo", "planilha.xlsx", "application/octet-stream", output.toByteArray()), hospital);
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             "2026-10-30",

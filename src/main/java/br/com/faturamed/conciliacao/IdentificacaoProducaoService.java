@@ -44,7 +44,9 @@ public class IdentificacaoProducaoService {
                     identidade.conflito()?"Medico informado na linha difere do medico selecionado na importacao; conferir identificacao":
                         hospitalIncompativel?"Identificacao do medico hospitalar nao confirma o cadastro selecionado; conferir identificacao":v.motivo(),
                     originais.get(v.linhaMedico()).campos(),identidade.conflito()||hospitalIncompativel?null:h,
-                    registros.values().stream().filter(c->c.atendimento().equals(v.atendimento()) && (v.data()==null || v.data().equals(c.data())))
+                    // Sem atendimento os candidatos vieram por data e medico; mantem os encontrados com os dados originais.
+                    (v.atendimento().isBlank()?v.candidatos().stream().map(c->registros.getOrDefault(c.linha(),c))
+                        :registros.values().stream().filter(c->c.atendimento().equals(v.atendimento()) && (v.data()==null || v.data().equals(c.data()))))
                         .sorted(Comparator.comparingInt(ConciliadorVisitas.RegistroHospital::linha)).toList(),null,identidade);
         }).toList();
         var resultado=new ConciliadorVisitas.Relatorio(hospital,arquivoMedico,arquivoHospital,calculado.regraStatus(),visitas,

@@ -138,6 +138,62 @@ class ConciliadorVisitasTest {
         var resultado=conferir(List.of(new LeitorPlanilhaVisitas.Linha(2,m)),List.of(hospital(2,"Medico A","1","2026-01-01")));
         assertThat(resultado.visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
     }
+    @Test
+    void producaoSemAtendimentoConciliaPorDataEMedicoEHerdaAtendimento() {
+        var resultado = conferir(List.of(semAtendimento(2, "2026-01-05", "Medico A")),
+                List.of(hospitalComAtendimento(7, "445566", "Medico A", "2026-01-05"), hospitalComAtendimento(8, "445567", "Medico B", "2026-01-05")));
+        var visita = resultado.visitas().getFirst();
+        assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visita.atendimento()).isEqualTo("445566");
+        assertThat(visita.hospital().linha()).isEqualTo(7);
+        assertThat(visita.motivo()).contains("data e medico");
+    }
+
+    @Test
+    void producaoSemAtendimentoAguardaHospitalQuandoNaoHaDataOuMedicoCorrespondente() {
+        var resultado = conferir(List.of(semAtendimento(2, "2026-01-05", "Medico A"), semAtendimento(3, "2026-01-06", "")),
+                List.of(hospitalComAtendimento(7, "445566", "Medico A", "2026-01-06"), hospitalComAtendimento(8, "445567", "Medico B", "2026-01-05")));
+        for (var visita : resultado.visitas()) {
+            assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+            assertThat(visita.atendimento()).isEmpty();
+            assertThat(visita.motivo()).contains("aguardando registro do hospital");
+        }
+        assertThat(resultado.hospitalSemProducao()).hasSize(2);
+    }
+
+    @Test
+    void duasVisitasNoMesmoDiaSemAtendimentoNaoSaoEmparelhadasPorPalpite() {
+        var resultado = conferir(List.of(semAtendimento(2, "2026-01-05", "Medico A"), semAtendimento(3, "2026-01-05", "Medico A")),
+                List.of(hospitalComAtendimento(7, "445566", "Medico A", "2026-01-05"), hospitalComAtendimento(8, "445567", "Medico A", "2026-01-05")));
+        assertThat(resultado.visitas()).allSatisfy(visita -> {
+            assertThat(visita.status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
+            assertThat(visita.hospital()).isNull();
+            assertThat(visita.candidatos()).hasSize(2);
+        });
+        assertThat(resultado.repasseCorrespondente()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void visitaJaEncontradaPeloAtendimentoNaoEDisputadaPelaLinhaSemAtendimento() {
+        var comAtendimento = new LeitorPlanilhaVisitas.Linha(2, Map.of("atendimento", "445566", "dt.", "2026-01-05", "medico", "Medico A"));
+        var resultado = conferir(List.of(comAtendimento, semAtendimento(3, "2026-01-05", "Medico A")),
+                List.of(hospitalComAtendimento(7, "445566", "Medico A", "2026-01-05"), hospitalComAtendimento(8, "445567", "Medico A", "2026-01-05")));
+        assertThat(resultado.visitas().get(0).status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(resultado.visitas().get(0).hospital().linha()).isEqualTo(7);
+        assertThat(resultado.visitas().get(1).status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(resultado.visitas().get(1).atendimento()).isEqualTo("445567");
+    }
+
+    private LeitorPlanilhaVisitas.Linha semAtendimento(int linha, String data, String medico) {
+        return new LeitorPlanilhaVisitas.Linha(linha, Map.of("atendimento", "", "dt.", data, "medico", medico));
+    }
+
+    private LeitorPlanilhaVisitas.Linha hospitalComAtendimento(int linha, String atendimento, String medico, String data) {
+        return new LeitorPlanilhaVisitas.Linha(linha, Map.of("atendimento", atendimento, "data consumo", data,
+                "medico", medico, "conta paciente", "Conta" + linha, "cod produto", "10102019", "produto", "Visita hospitalar",
+                "valor tot", "103.84", "regra", "0.85", "vl. a repassar", "88.264", "setor", "Faturado"));
+    }
+
     private LeitorPlanilhaVisitas.Linha medico(int linha, String data) {
         return new LeitorPlanilhaVisitas.Linha(linha, Map.of("atendimento", "00123", "dt.", data));
     }
