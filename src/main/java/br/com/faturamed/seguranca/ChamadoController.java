@@ -100,6 +100,14 @@ public class ChamadoController {
         return service.atualizarStatus(id, dados, user);
     }
 
+    @PostMapping("/{id}/cancelar")
+    public ChamadoService.DetalheChamado cancelar(
+            @PathVariable long id,
+            @Valid @RequestBody ChamadoService.CancelarChamado dados,
+            @AuthenticationPrincipal UsuarioAutenticado user) {
+        return service.cancelar(id, dados, user);
+    }
+
     @PostMapping("/{id}/avaliacao")
     public ChamadoService.DetalheChamado avaliar(
             @PathVariable long id,
