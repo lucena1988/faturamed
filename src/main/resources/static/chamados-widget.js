@@ -1,4 +1,5 @@
 (() => {
+  if (document.getElementById('hd-fab-button') || location.pathname === '/login.html') return;
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -197,7 +198,6 @@
     viewNovo.replaceChildren();
     const form = el('form', 'hd-form-grid');
 
-    const origemAtual = location.pathname + (location.hash || '');
     const lblTipo = el('label', '', 'Qual é o problema?');
     const selTipo = el('select');
     selTipo.name = 'tipoCodigo';
@@ -214,11 +214,12 @@
     preview.setAttribute('aria-live', 'polite');
     const updatePreview = () => {
       const t = tiposSla.find(x => x.codigo === selTipo.value);
+      preview.hidden = !t;
       if (!t) {
         preview.textContent = 'Dica: escolha a categoria para direcionarmos sua solicitacao com o prazo adequado.';
         return;
       }
-      preview.textContent = `${t.descricao} • Fila: ${t.filaPadrao} • Prazo alvo: ate ${t.slaHoras} horas uteis.`;
+      preview.replaceChildren(el('span', '', t.descricao), el('span', '', `Prazo previsto: ${t.slaHoras} horas`));
     };
     selTipo.addEventListener('change', updatePreview);
     updatePreview();
@@ -248,10 +249,14 @@
     inpFiles.multiple = true;
     inpFiles.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
     const helpFiles = el('small', '', 'Envie ate 5 arquivos (PNG, JPG, WEBP, PDF) de ate 5 MB cada.');
-    lblFiles.append(inpFiles, helpFiles);
+    const selectedFiles = el('small', 'hd-upload-files', '');
+    inpFiles.addEventListener('change', () => {
+      selectedFiles.textContent = Array.from(inpFiles.files || []).map(file => file.name).join(', ');
+    });
+    lblFiles.append(inpFiles, helpFiles, selectedFiles);
 
     const actions = el('div', 'hd-form-actions');
-    const btnSubmit = el('button', 'primary-button', 'Enviar Chamado');
+    const btnSubmit = el('button', 'primary-button', 'Enviar chamado');
     btnSubmit.type = 'submit';
     actions.append(btnSubmit);
 
@@ -262,14 +267,19 @@
       btnSubmit.disabled = true;
       showFeedback('');
       try {
-        const fd = new FormData(form);
-        fd.append('paginaOrigem', origemAtual);
+        const fd = new FormData();
+        fd.append('tipoCodigo', selTipo.value);
+        fd.append('titulo', inpTitulo.value.trim());
+        fd.append('descricao', txtDesc.value.trim());
+        for (const file of inpFiles.files || []) fd.append('arquivos', file);
+        fd.append('paginaOrigem', location.pathname + location.hash);
         const resp = await FaturamedAuth.request('/api/chamados', {
           method: 'POST',
           body: fd
         });
         showFeedback(`Chamado registrado com sucesso! Protocolo: ${resp.chamado.protocolo}`);
         form.reset();
+        selectedFiles.textContent = '';
         updatePreview();
         await carregarResumoELista();
         abrirDetalheChamado(resp.chamado.id);
@@ -603,6 +613,7 @@
         currentUser = await FaturamedAuth.request('/api/auth/me');
         const isSuporte = currentUser.perfil === 'ADMIN' || currentUser.perfil === 'DEV';
         kanbanLink.hidden = !isSuporte && currentUser.perfil !== 'OPERADOR';
+        kanbanLink.textContent = isSuporte ? 'Painel de atendimento ↗' : 'Acompanhar chamados';
       }
       if (!tiposSla.length) {
         tiposSla = await FaturamedAuth.request('/api/chamados/tipos');

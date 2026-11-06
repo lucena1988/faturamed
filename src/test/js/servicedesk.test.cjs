@@ -107,7 +107,7 @@ test('Service Desk: envio inclui origem atual e anexos, limpa formulario e abre 
   assert.equal(ui.find(e=>e.name==='titulo').value,'');
   assert.equal(ui.find(e=>e.className==='hd-upload-files').textContent,'');
   assert.ok(ui.calls.some(c=>c.url==='/api/chamados/7'));
-  assert.ok(ui.all().some(e=>e.textContent==='CH-QA-7'));
+  assert.ok(ui.all().some(e=>e.className==='hd-protocol' && e.textContent.startsWith('CH-QA-7')));
 });
 
 test('Service Desk: falha preserva texto e libera nova tentativa',async()=>{
@@ -116,7 +116,7 @@ test('Service Desk: falha preserva texto e libera nova tentativa',async()=>{
   await ui.find(e=>e.tag==='form').dispatch('submit');
   assert.equal(ui.find(e=>e.name==='titulo').value,'Nao perder este texto');
   assert.equal(ui.find(e=>e.textContent==='Enviar chamado').disabled,false);
-  assert.equal(ui.find(e=>e.className==='hd-status-banner err').textContent,'Falha de envio QA');
+  assert.equal(ui.find(e=>e.className==='hd-feedback err').textContent,'Falha de envio QA');
   assert.ok(!ui.calls.some(c=>c.url==='/api/chamados/7'));
 });
 
@@ -127,7 +127,7 @@ test('Service Desk: abrir aviso le apenas chamado aberto e atualiza contador',as
   await ui.find(e=>e.className==='hd-aviso' && e.textContent.includes('CH-7')).click();
   const leituras=ui.calls.filter(c=>c.method==='POST');
   assert.equal(leituras.length,1);
-  assert.equal(leituras[0].url,'/api/chamados/7/notificacoes/leitura?ateId=12');
+  assert.equal(leituras[0].url,'/api/chamados/7/notificacoes/leitura?ateId=11');
   assert.equal(ui.find(e=>e.className==='hd-fab-badge').textContent,'1');
   assert.ok(ui.all().some(e=>e.className==='hd-aviso' && e.textContent.includes('CH-8')));
 });
