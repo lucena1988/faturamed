@@ -221,7 +221,7 @@
     let hospitals;
     [hospitals, doctors, companies] = await Promise.all([request('/api/hospitais'), request('/api/medicos'), request('/api/empresas-clientes')]);
     find('hospital').replaceChildren(new Option('Selecione um hospital', ''), ...hospitals.filter(item => item.ativo).map(item => new Option(item.nome, item.id)));
-    find('medico').replaceChildren(new Option('Selecione o médico', ''), ...doctors.filter(item => item.ativo).map(item => new Option(`${item.nome} · CRM ${item.crm}/${item.uf}`, item.id)));
+    find('medico').replaceChildren(new Option('Selecione o médico', ''), ...doctors.filter(item => item.ativo).map(item => new Option(`${item.nome} · CRM ${item.crm||"a preencher"}/${item.uf||"--"}`, item.id)));
     const params = new URLSearchParams(location.search);
     if (hospitals.some(item => item.ativo && String(item.id) === params.get('hospitalId'))) find('hospital').value = params.get('hospitalId');
     await load(); updateDecision(); updateProduction();

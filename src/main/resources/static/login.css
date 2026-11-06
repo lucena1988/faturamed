@@ -82,3 +82,4 @@ dialog::backdrop { background: rgba(23, 50, 61, .3); }
   .login-pitch h2 { font-size: 22px; }
   .login-logo-dark { width: 200px; }
 }
+.login-esqueci { margin: 12px 0 0; text-align: right; font-size: 14px; }

@@ -1,6 +1,5 @@
 (() => {
   if (document.getElementById('hd-fab-button') || location.pathname === '/login.html') return;
-
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -8,15 +7,25 @@
     return node;
   };
 
-  // Vector icon: Customer Support & Service Desk (Headset + Speech Bubble in Faturamed Liquid Glass)
   const SUPPORT_GLASS_SVG = `
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" fill="none">
       <defs>
-        <linearGradient id="fm-headset-grad" x1="18" y1="16" x2="82" y2="86" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#FFFFFF"/>
-          <stop offset="35%" stop-color="#E5F3F6"/>
-          <stop offset="70%" stop-color="#95D3D5"/>
-          <stop offset="100%" stop-color="#66AFC7"/>
+        <radialGradient id="fm-disc-grad" cx="36%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+          <stop offset="35%" stop-color="#E2F2F5" stop-opacity="0.85"/>
+          <stop offset="70%" stop-color="#A5D7DC" stop-opacity="0.45"/>
+          <stop offset="100%" stop-color="#4B96A8" stop-opacity="0.75"/>
+        </radialGradient>
+        <linearGradient id="fm-ring-grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+          <stop offset="45%" stop-color="#B2E0E4" stop-opacity="0.5"/>
+          <stop offset="80%" stop-color="#24677D" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#0E3D4C" stop-opacity="0.75"/>
+        </linearGradient>
+        <linearGradient id="fm-headset-grad" x1="20" y1="20" x2="80" y2="85" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#0F4C5C"/>
+          <stop offset="50%" stop-color="#1A6174"/>
+          <stop offset="100%" stop-color="#2C7A8E"/>
         </linearGradient>
         <linearGradient id="fm-bubble-fill" x1="34" y1="34" x2="66" y2="64" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stop-color="#95D3D5" stop-opacity="0.95"/>
@@ -48,7 +57,8 @@
     EM_ATENDIMENTO: 'Em Atendimento',
     AGUARDANDO_USUARIO: 'Aguardando Retorno',
     RESOLVIDO: 'Resolvido',
-    FECHADO: 'Fechado'
+    FECHADO: 'Fechado',
+    CANCELADO: 'Cancelado'
   };
 
   const SLA_LABELS = {
@@ -56,7 +66,8 @@
     EM_ALERTA: 'SLA em alerta',
     VENCIDO: 'SLA vencido',
     CUMPRIDO: 'SLA cumprido',
-    FORA_DO_PRAZO: 'Concluido fora do SLA'
+    FORA_DO_PRAZO: 'Concluido fora do SLA',
+    CANCELADO: 'SLA cancelado'
   };
 
   let currentUser = null;
@@ -101,55 +112,58 @@
   headerLeft.append(title, subtitle);
   brandHead.append(brandLogo, headerLeft);
 
-  const headerActions = el('div', 'hd-header-actions');
-  const kanbanLink = el('a', 'hd-kanban-link', 'Painel de atendimento ↗');
-  kanbanLink.href = '/chamados.html';
-  kanbanLink.hidden = true;
-  const closeBtn = el('button', 'hd-close-btn', '×');
-  closeBtn.type = 'button';
-  closeBtn.title = 'Fechar';
-  closeBtn.setAttribute('aria-label', 'Fechar central de suporte');
-  headerActions.append(closeBtn);
-  header.append(brandHead, headerActions);
+  const headerRight = el('div');
+  headerRight.style.display = 'flex';
+  headerRight.style.alignItems = 'center';
+  headerRight.style.gap = '8px';
 
-  const tabs = el('div', 'hd-tabs');
-  const tabNovo = el('button', 'hd-tab active', 'Novo chamado');
+  const kanbanLink = el('a', 'hd-kanban-link', 'Abrir Kanban ↗');
+  kanbanLink.href = '/chamados.html';
+  kanbanLink.title = 'Ir para o painel de atendimento e gestao de SLA';
+
+  const btnClose = el('button', 'hd-close-btn', '×');
+  btnClose.type = 'button';
+  btnClose.title = 'Fechar central de suporte';
+  headerRight.append(kanbanLink, btnClose);
+  header.append(brandHead, headerRight);
+
+  const nav = el('nav', 'hd-tabs');
+  nav.setAttribute('aria-label', 'Navegacao do suporte');
+  const tabNovo = el('button', 'hd-tab-btn active', 'Novo chamado');
   tabNovo.type = 'button';
-  const tabMeus = el('button', 'hd-tab', 'Meus chamados');
+  const tabMeus = el('button', 'hd-tab-btn', 'Meus chamados (0)');
   tabMeus.type = 'button';
-  const tabDetalhe = el('button', 'hd-tab', 'Protocolo Selecionado');
+  const tabDetalhe = el('button', 'hd-tab-btn', 'Acompanhamento');
   tabDetalhe.type = 'button';
   tabDetalhe.hidden = true;
-  tabs.append(tabNovo, tabMeus, tabDetalhe);
+  nav.append(tabNovo, tabMeus, tabDetalhe);
 
   const body = el('div', 'hd-dialog-body');
-  const feedback = el('div', 'hd-status-banner');
+  const feedback = el('p', 'hd-feedback');
   feedback.hidden = true;
 
-  const viewNovo = el('div');
-  const viewMeus = el('div');
+  const avisosBox = el('div', 'hd-avisos-box');
+  avisosBox.hidden = true;
+
+  const viewNovo = el('section', 'hd-tab-view');
+  const viewMeus = el('section', 'hd-tab-view');
   viewMeus.hidden = true;
-  const viewDetalhe = el('div');
+  const viewDetalhe = el('section', 'hd-tab-view');
   viewDetalhe.hidden = true;
 
-  const avisosBox = el('section', 'hd-avisos');
-  avisosBox.setAttribute('aria-label','Avisos de chamados');
-  avisosBox.hidden = true;
   body.append(feedback, avisosBox, viewNovo, viewMeus, viewDetalhe);
-  const footer = el('footer', 'hd-dialog-footer');
-  footer.append(kanbanLink);
-  shell.append(header, tabs, body, footer);
+  shell.append(header, nav, body);
   dialog.append(shell);
   document.body.append(dialog);
 
-  function showFeedback(text, isError = false) {
-    if (!text) {
+  function showFeedback(msg, isErr = false) {
+    if (!msg) {
       feedback.hidden = true;
       return;
     }
     feedback.hidden = false;
-    feedback.className = 'hd-status-banner ' + (isError ? 'err' : 'ok');
-    feedback.textContent = text;
+    feedback.className = 'hd-feedback ' + (isErr ? 'err' : 'ok');
+    feedback.textContent = msg;
   }
 
   function switchTab(which) {
@@ -163,6 +177,9 @@
   }
 
   function formatSlaRestante(c) {
+    if (c.status === 'CANCELADO') {
+      return 'SLA cancelado';
+    }
     if (c.status === 'RESOLVIDO' || c.status === 'FECHADO') {
       return SLA_LABELS[c.slaStatus] || c.slaStatus;
     }
@@ -181,7 +198,6 @@
     viewNovo.replaceChildren();
     const form = el('form', 'hd-form-grid');
 
-    const origemAtual = location.pathname + (location.hash || '');
     const lblTipo = el('label', '', 'Qual é o problema?');
     const selTipo = el('select');
     selTipo.name = 'tipoCodigo';
@@ -198,78 +214,78 @@
     preview.setAttribute('aria-live', 'polite');
     const updatePreview = () => {
       const t = tiposSla.find(x => x.codigo === selTipo.value);
-      preview.replaceChildren();
       preview.hidden = !t;
-      if (!t) return;
-      preview.append(el('span', '', t.descricao),
-        el('span', 'hd-deadline', `Prazo previsto: ${t.slaHoras} horas`));
+      if (!t) {
+        preview.textContent = 'Dica: escolha a categoria para direcionarmos sua solicitacao com o prazo adequado.';
+        return;
+      }
+      preview.replaceChildren(el('span', '', t.descricao), el('span', '', `Prazo previsto: ${t.slaHoras} horas`));
     };
     selTipo.addEventListener('change', updatePreview);
     updatePreview();
-    lblTipo.append(preview);
 
-    const lblTitulo = el('label', '', 'Assunto');
+    const lblTitulo = el('label', '', 'Resumo em uma frase');
     const inpTitulo = el('input');
+    inpTitulo.type = 'text';
     inpTitulo.name = 'titulo';
     inpTitulo.required = true;
     inpTitulo.maxLength = 180;
-    inpTitulo.placeholder = 'Ex.: Não consigo importar uma planilha';
+    inpTitulo.placeholder = 'Ex.: Divergencia no valor da competencia 08/2026';
     lblTitulo.append(inpTitulo);
 
-    const lblDesc = el('label', '', 'Descrição');
+    const lblDesc = el('label', '', 'Detalhes do que aconteceu');
     const txtDesc = el('textarea');
     txtDesc.name = 'descricao';
     txtDesc.required = true;
     txtDesc.rows = 4;
     txtDesc.maxLength = 4000;
-    txtDesc.placeholder = 'O que você tentou fazer e o que aconteceu? Se apareceu uma mensagem de erro, inclua aqui.';
+    txtDesc.placeholder = 'Conte os passos para reproduzir, informando se possivel competencia, medico ou hospital envolvido.';
     lblDesc.append(txtDesc);
 
-    const anexos = el('div', 'hd-upload');
-    const inpAnexos = el('input');
-    inpAnexos.type = 'file';
-    inpAnexos.hidden = true;
-    inpAnexos.multiple = true;
-    inpAnexos.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
-    const anexarBtn = el('button', 'hd-upload-button', '+ Adicionar arquivos');
-    anexarBtn.type = 'button';
-    anexarBtn.addEventListener('click', () => inpAnexos.click());
-    const ajudaAnexos = el('span', 'hd-upload-help', 'Opcional · PNG, JPG, WEBP ou PDF. Até 5 arquivos de 5 MB cada.');
-    const arquivosSelecionados = el('div', 'hd-upload-files');
-    arquivosSelecionados.setAttribute('aria-live', 'polite');
-    const atualizarAnexos = () => {
-      arquivosSelecionados.textContent = Array.from(inpAnexos.files, f => f.name).join(', ');
-    };
-    inpAnexos.addEventListener('change', atualizarAnexos);
-    anexos.append(anexarBtn, ajudaAnexos, arquivosSelecionados, inpAnexos);
+    const lblFiles = el('label', '', 'Anexar prints ou planilhas (opcional)');
+    const inpFiles = el('input');
+    inpFiles.type = 'file';
+    inpFiles.name = 'arquivos';
+    inpFiles.multiple = true;
+    inpFiles.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
+    const helpFiles = el('small', '', 'Envie ate 5 arquivos (PNG, JPG, WEBP, PDF) de ate 5 MB cada.');
+    const selectedFiles = el('small', 'hd-upload-files', '');
+    inpFiles.addEventListener('change', () => {
+      selectedFiles.textContent = Array.from(inpFiles.files || []).map(file => file.name).join(', ');
+    });
+    lblFiles.append(inpFiles, helpFiles, selectedFiles);
 
-    const submitBtn = el('button', 'primary-button', 'Enviar chamado');
-    submitBtn.type = 'submit';
+    const actions = el('div', 'hd-form-actions');
+    const btnSubmit = el('button', 'primary-button', 'Enviar chamado');
+    btnSubmit.type = 'submit';
+    actions.append(btnSubmit);
 
-    form.append(lblTipo, lblTitulo, lblDesc, anexos, submitBtn);
+    form.append(lblTipo, preview, lblTitulo, lblDesc, lblFiles, actions);
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      submitBtn.disabled = true;
-      showFeedback('Registrando chamado...');
+      btnSubmit.disabled = true;
+      showFeedback('');
       try {
         const fd = new FormData();
         fd.append('tipoCodigo', selTipo.value);
         fd.append('titulo', inpTitulo.value.trim());
         fd.append('descricao', txtDesc.value.trim());
-        fd.append('paginaOrigem', location.pathname + (location.hash || ''));
-        for (const file of inpAnexos.files) {
-          fd.append('arquivos', file);
-        }
-        const detalhe = await FaturamedAuth.request('/api/chamados', { method: 'POST', body: fd });
+        for (const file of inpFiles.files || []) fd.append('arquivos', file);
+        fd.append('paginaOrigem', location.pathname + location.hash);
+        const resp = await FaturamedAuth.request('/api/chamados', {
+          method: 'POST',
+          body: fd
+        });
+        showFeedback(`Chamado registrado com sucesso! Protocolo: ${resp.chamado.protocolo}`);
         form.reset();
-        atualizarAnexos();
+        selectedFiles.textContent = '';
         updatePreview();
         await carregarResumoELista();
-        abrirDetalheChamado(detalhe.chamado.id, `Chamado registrado com sucesso! Protocolo: ${detalhe.chamado.protocolo}`);
+        abrirDetalheChamado(resp.chamado.id);
       } catch (err) {
         showFeedback(err.message, true);
-      } finally {
-        submitBtn.disabled = false;
+        btnSubmit.disabled = false;
       }
     });
 
@@ -279,64 +295,45 @@
   function renderListaMeus() {
     viewMeus.replaceChildren();
     if (!meusChamados.length) {
-      viewMeus.append(el('p', '', 'Você ainda não possui protocolos registrados.'));
+      const empty = el('div', 'hd-empty-state');
+      empty.append(
+        el('p', '', 'Você ainda não possui chamados abertos.'),
+        el('small', '', 'Clique na aba "Novo chamado" para registrar uma duvida ou incidente.')
+      );
+      viewMeus.append(empty);
       return;
     }
     const list = el('div', 'hd-ticket-list');
     for (const c of meusChamados) {
       const card = el('article', 'hd-ticket-card');
+      card.dataset.id = c.id;
       const top = el('div', 'hd-ticket-top');
-      const prot = el('span', 'hd-protocol', c.protocolo);
-      const badges = el('div');
-      badges.style.display = 'flex';
-      badges.style.gap = '6px';
-      const bFila = el('span', `hd-badge fila-${c.filaDestino.toLowerCase()}`, `Fila ${c.filaDestino}`);
-      const bStatus = el('span', `hd-badge st-${c.status.toLowerCase()}`, STATUS_LABELS[c.status] || c.status);
-      const bSla = el('span', `hd-badge sla-${c.slaStatus.toLowerCase()}`, formatSlaRestante(c));
-      badges.append(bFila, bStatus, bSla);
-      top.append(prot, badges);
-
-      const h3 = el('h3', 'hd-ticket-title', c.titulo);
+      top.append(
+        el('span', 'hd-protocol', c.protocolo),
+        el('span', `hd-badge st-${c.status.toLowerCase()}`, STATUS_LABELS[c.status] || c.status)
+      );
+      const title = el('h3', 'hd-ticket-title', c.titulo);
       const meta = el('div', 'hd-ticket-meta');
       meta.append(
-        el('span', '', c.tipoNome),
-        el('span', '', `• Atualizado em ${new Date(c.atualizadoEm).toLocaleString('pt-BR')}`),
-        el('span', '', `• ${c.totalMensagens} msg(s)`)
+        el('span', `hd-badge fila-${c.filaDestino.toLowerCase()}`, `Fila ${c.filaDestino}`),
+        el('span', `hd-badge sla-${c.slaStatus.toLowerCase()}`, formatSlaRestante(c)),
+        el('span', '', `${c.tipoNome} • ${new Date(c.atualizadoEm).toLocaleDateString('pt-BR')}`)
       );
-      if (c.notaAvaliacao) {
-        meta.append(el('span', '', `• Avaliacao: ${'★'.repeat(c.notaAvaliacao)}`));
-      } else if (c.status === 'RESOLVIDO') {
-        meta.append(el('strong', '', '• Aguardando sua avaliacao'));
-      }
-      card.append(top, h3, meta);
+      card.append(top, title, meta);
       card.addEventListener('click', () => abrirDetalheChamado(c.id));
       list.append(card);
     }
     viewMeus.append(list);
   }
 
-  async function abrirDetalheChamado(id, bannerMsg = '') {
-    activeTicketId = id;
-    tabDetalhe.hidden = false;
-    switchTab('detalhe');
-    if (bannerMsg) showFeedback(bannerMsg, false);
-    viewDetalhe.replaceChildren(el('p', '', 'Carregando protocolo...'));
-    const ateAvisoId = Math.max(0, ...avisosPendentes.map(a => a.id));
-    try {
-      const det = await FaturamedAuth.request(`/api/chamados/${id}`);
-      renderDetalhe(det);
-      if (ateAvisoId) await FaturamedAuth.request(`/api/chamados/${id}/notificacoes/leitura?ateId=${ateAvisoId}`, {method:'POST'});
-      await carregarAvisos();
-    } catch (err) {
-      showFeedback(err.message, true);
-    }
-  }
-
   function renderDetalhe(det) {
-    const c = det.chamado;
-    tabDetalhe.textContent = c.protocolo;
+    activeTicketId = det.chamado.id;
+    tabDetalhe.hidden = false;
+    tabDetalhe.textContent = `Protocolo ${det.chamado.protocolo}`;
     viewDetalhe.replaceChildren();
 
+    const c = det.chamado;
+    const isCancelado = c.status === 'CANCELADO';
     const headCard = el('div', 'hd-ticket-card');
     headCard.style.cursor = 'default';
     const top = el('div', 'hd-ticket-top');
@@ -360,7 +357,104 @@
     headCard.append(top, h3, desc, meta);
     viewDetalhe.append(headCard);
 
-    if (currentUser && c.solicitanteId === currentUser.id && (c.status === 'RESOLVIDO' || c.status === 'FECHADO')) {
+    if (isCancelado) {
+      const cancelBox = el('div', 'hd-rating-box');
+      cancelBox.append(
+        el('strong', '', `🚫 Chamado cancelado em ${new Date(c.canceladoEm || c.atualizadoEm).toLocaleString('pt-BR')}`),
+        el('p', '', `Motivo: ${c.motivoCancelamento || 'Não informado'}`),
+        c.justificativaCancelamento ? el('p', '', `Justificativa: "${c.justificativaCancelamento}"`) : el('span')
+      );
+      viewDetalhe.append(cancelBox);
+    }
+
+    // Cancelamento disponível para o próprio solicitante antes do atendimento
+    if (currentUser && c.solicitanteId === currentUser.id && ['ABERTO', 'AGUARDANDO_USUARIO'].includes(c.status)) {
+      const cancelWrap = el('div');
+      cancelWrap.style.margin = '8px 0';
+      const btnCancel = el('button', 'text-button', 'Cancelar este chamado');
+      btnCancel.type = 'button';
+      btnCancel.style.color = 'var(--rose, #e11d48)';
+      btnCancel.style.fontSize = '12px';
+
+      const cancelForm = el('div');
+      cancelForm.hidden = true;
+      cancelForm.style.padding = '12px';
+      cancelForm.style.borderRadius = '8px';
+      cancelForm.style.background = 'var(--surface)';
+      cancelForm.style.border = '1px solid var(--line)';
+      cancelForm.style.display = 'flex';
+      cancelForm.style.flexDirection = 'column';
+      cancelForm.style.gap = '8px';
+
+      const lblMotivo = el('label', '', 'Motivo:');
+      lblMotivo.style.fontSize = '12px';
+      const selMotivo = el('select');
+      selMotivo.style.padding = '8px';
+      selMotivo.style.borderRadius = '6px';
+      selMotivo.style.border = '1px solid var(--line)';
+      selMotivo.style.background = 'var(--surface)';
+      selMotivo.style.color = 'var(--text)';
+      const MOTIVOS = {
+        ABERTURA_INCORRETA: 'Abertura incorreta / Sem problema real',
+        DUPLICADO: 'Chamado duplicado',
+        CANCELADO_SOLICITANTE: 'Cancelado pelo solicitante',
+        NAO_REPRODUZIVEL: 'Não reproduzível / Sem retorno',
+        OUTRO: 'Outro motivo'
+      };
+      for (const [k, v] of Object.entries(MOTIVOS)) selMotivo.append(new Option(v, k));
+      lblMotivo.append(selMotivo);
+
+      const lblJust = el('label', '', 'Justificativa (obrigatória):');
+      lblJust.style.fontSize = '12px';
+      const txtJust = el('textarea');
+      txtJust.rows = 2;
+      txtJust.maxLength = 2000;
+      txtJust.style.padding = '8px';
+      txtJust.style.borderRadius = '6px';
+      txtJust.style.border = '1px solid var(--line)';
+      txtJust.style.background = 'var(--surface)';
+      txtJust.style.color = 'var(--text)';
+      txtJust.placeholder = 'Explique o motivo do cancelamento...';
+      lblJust.append(txtJust);
+
+      const rowBtn = el('div');
+      rowBtn.style.display = 'flex';
+      rowBtn.style.gap = '8px';
+      const btnConf = el('button', 'primary-button', 'Confirmar cancelamento');
+      btnConf.type = 'button';
+      btnConf.style.background = 'var(--rose, #e11d48)';
+      btnConf.style.borderColor = 'var(--rose, #e11d48)';
+      const btnVoltar = el('button', 'secondary-button', 'Voltar');
+      btnVoltar.type = 'button';
+      rowBtn.append(btnConf, btnVoltar);
+      cancelForm.append(lblMotivo, lblJust, rowBtn);
+
+      btnCancel.addEventListener('click', () => { btnCancel.hidden = true; cancelForm.hidden = false; });
+      btnVoltar.addEventListener('click', () => { cancelForm.hidden = true; btnCancel.hidden = false; });
+      btnConf.addEventListener('click', async () => {
+        const just = txtJust.value.trim();
+        if (!just) { showFeedback('Informe a justificativa do cancelamento.', true); return; }
+        btnConf.disabled = true;
+        try {
+          const atualizado = await FaturamedAuth.request(`/api/chamados/${c.id}/cancelar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ motivo: selMotivo.value, justificativa: just })
+          });
+          await carregarResumoELista();
+          renderDetalhe(atualizado);
+          showFeedback('Chamado cancelado com sucesso.');
+        } catch (err) {
+          showFeedback(err.message, true);
+          btnConf.disabled = false;
+        }
+      });
+
+      cancelWrap.append(btnCancel, cancelForm);
+      viewDetalhe.append(cancelWrap);
+    }
+
+    if (!isCancelado && currentUser && c.solicitanteId === currentUser.id && (c.status === 'RESOLVIDO' || c.status === 'FECHADO')) {
       const ratingBox = el('div', 'hd-rating-box');
       if (c.notaAvaliacao) {
         ratingBox.append(
@@ -443,7 +537,7 @@
     }
     viewDetalhe.append(thread);
 
-    if (c.status !== 'FECHADO') {
+    if (!isCancelado && c.status !== 'FECHADO') {
       const replyForm = el('form', 'hd-form-grid');
       replyForm.style.marginTop = '10px';
       const lblMsg = el('label', '', 'Responder no protocolo');
@@ -491,7 +585,8 @@
   const rotulosAviso = {
     RETORNO_SOLICITADO: 'Suporte aguarda sua resposta',
     RESPOSTA_SOLICITANTE: 'Nova resposta do solicitante',
-    MENSAGEM_SUPORTE: 'Nova mensagem do suporte'
+    MENSAGEM_SUPORTE: 'Nova mensagem do suporte',
+    CHAMADO_CANCELADO: 'Chamado cancelado / descartado'
   };
   async function carregarAvisos() {
     const caixa = await FaturamedAuth.request('/api/chamados/notificacoes');
@@ -518,7 +613,7 @@
         currentUser = await FaturamedAuth.request('/api/auth/me');
         const isSuporte = currentUser.perfil === 'ADMIN' || currentUser.perfil === 'DEV';
         kanbanLink.hidden = !isSuporte && currentUser.perfil !== 'OPERADOR';
-        if (currentUser.perfil === 'OPERADOR') kanbanLink.textContent = 'Acompanhar chamados';
+        kanbanLink.textContent = isSuporte ? 'Painel de atendimento ↗' : 'Acompanhar chamados';
       }
       if (!tiposSla.length) {
         tiposSla = await FaturamedAuth.request('/api/chamados/tipos');
@@ -527,33 +622,47 @@
       const painel = await FaturamedAuth.request('/api/chamados?meus=true');
       meusChamados = painel.chamados || [];
       tabMeus.textContent = `Meus chamados (${meusChamados.length})`;
-
-      await carregarAvisos();
-
       renderListaMeus();
-    } catch (_) {
-      // Silencioso caso a sessao ainda nao esteja autenticada
+      await carregarAvisos();
+    } catch (err) {
+      showFeedback(err.message, true);
     }
   }
 
-  tabNovo.addEventListener('click', () => switchTab('novo'));
-  tabMeus.addEventListener('click', () => {
-    carregarResumoELista();
-    switchTab('meus');
-  });
-  tabDetalhe.addEventListener('click', () => {
-    if (activeTicketId) switchTab('detalhe');
-  });
+  async function abrirDetalheChamado(id) {
+    showFeedback('');
+    try {
+      const det = await FaturamedAuth.request(`/api/chamados/${id}`);
+      renderDetalhe(det);
+      switchTab('detalhe');
+      const avisosDeste = avisosPendentes.filter(a => a.chamadoId === id);
+      if (avisosDeste.length) {
+        const maior = Math.max(...avisosDeste.map(a => a.id));
+        await FaturamedAuth.request(`/api/chamados/${id}/notificacoes/leitura?ateId=${maior}`, { method: 'POST' });
+        await carregarAvisos();
+      }
+    } catch (err) {
+      showFeedback(err.message, true);
+    }
+  }
 
   fab.addEventListener('click', async () => {
+    dialog.showModal();
     await carregarResumoELista();
-    if (!dialog.open) dialog.showModal();
   });
 
-  closeBtn.addEventListener('click', () => dialog.close());
-  setInterval(() => {
-    if (!document.hidden) carregarAvisos().catch(() => {});
-  }, 30000);
+  btnClose.addEventListener('click', () => {
+    dialog.close();
+  });
 
-  carregarResumoELista();
+  tabNovo.addEventListener('click', () => switchTab('novo'));
+  tabMeus.addEventListener('click', () => switchTab('meus'));
+  tabDetalhe.addEventListener('click', () => switchTab('detalhe'));
+
+  // Carrega contadores em background se logado
+  setTimeout(async () => {
+    try {
+      await carregarResumoELista();
+    } catch (_) {}
+  }, 1200);
 })();

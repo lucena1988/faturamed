@@ -55,7 +55,7 @@ public class BaseHospitalarService {
         var registros=motor.conciliar("Base", "", arquivo.getOriginalFilename(), List.of(), linhas).hospitalSemProducao();
         String hash=hash(arquivo);
         var repetidos=jdbc.queryForList("select id from arquivo_base_hospitalar where hospital_id=? and tipo='HOSPITAL' and competencia=? and hash=?",hospitalId,competencia,hash);
-        if(!repetidos.isEmpty()) return new Resultado(((Number)repetidos.getFirst().get("id")).longValue(),null,0,0,true);
+        if(!repetidos.isEmpty()) return new Resultado(numero(repetidos.getFirst(),"id"),null,0,0,true);
         long arquivoId=salvarArquivo(hospitalId,"HOSPITAL",null,competencia,arquivo,hash,usuario.id());
         jdbc.update("update arquivo_base_hospitalar set modo_hospital=? where id=?",modoHospital,arquivoId);
         int divergencias=0,atualizadas=0;
@@ -70,8 +70,8 @@ public class BaseHospitalarService {
                 continue;
             }
             var anteriores=jdbc.queryForList("select id,medico_nome from visita_base_hospitalar where hospital_id=? and atendimento=? and data_visita=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId,registro.atendimento(),registro.data());
-            var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),anterior.get("medico_nome").toString(),cadastros)).toList();
-            Integer anteriorId=semelhantes.isEmpty()?null:((Number)semelhantes.getFirst().get("id")).intValue();
+            var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),texto(anterior,"medico_nome"),cadastros)).toList();
+            Integer anteriorId=semelhantes.isEmpty()?null:(int)numero(semelhantes.getFirst(),"id");
             if(anteriorId!=null) divergencias++;
             jdbc.update("""
                     insert into visita_base_hospitalar(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_nome,campos,anterior_id,decisao,arquivo_atual_id,linha_atual)
@@ -101,15 +101,20 @@ public class BaseHospitalarService {
         Long empresa=empresas.resolverProducao(empresaId,medicoId);
         vinculos.bloquear(hospitalId);
         var producao=leitor.ler(arquivo,false);
-        for(var linha:producao) if(linha.campo("Dt.").isBlank()) throw new IllegalArgumentException("Informe Dt. na producao, linha "+linha.numero());
+        for(var linha:producao) {
+            if(linha.campo("Dt.").isBlank()) throw new IllegalArgumentException("Informe Dt. na producao, linha "+linha.numero());
+            // Sem atendimento, a visita so e localizada pela data e pelo medico.
+            if(linha.campo("Atendimento").isBlank() && medicoId==null && linha.campo("Medico").isBlank())
+                throw new IllegalArgumentException("Informe Atendimento ou o Medico na producao coletiva, linha "+linha.numero());
+        }
         String hash=hash(arquivo);
         var repetidos=jdbc.queryForList("select id,relatorio_id,medico_id from arquivo_base_hospitalar where hospital_id=? and tipo='PRODUCAO' and competencia=? and hash=? and medico_id is not distinct from ?",hospitalId,competencia,hash,medicoId);
         if(!repetidos.isEmpty()) {
             var anterior=repetidos.getFirst();
-            return new Resultado(((Number)anterior.get("id")).longValue(),((Number)anterior.get("relatorio_id")).longValue(),0,0,true);
+            return new Resultado(numero(anterior,"id"),anterior.get("relatorio_id")==null?null:numero(anterior,"relatorio_id"),0,0,true);
         }
         var relatorio=calcular(hospitalId,medicoId,arquivo.getOriginalFilename(),producao,null);
-        long relatorioId=jdbc.queryForObject("insert into conciliacao_visitas(relatorio,hash_producao,medico_producao_id,base_hospitalar,empresa_id) values(?::jsonb,?,?,true,?) returning id",Long.class,json.writeValueAsString(relatorio),hash,medicoId,empresa);
+        long relatorioId=inserirComId("insert into conciliacao_visitas(relatorio,hash_producao,medico_producao_id,base_hospitalar,empresa_id) values(?::jsonb,?,?,true,?) returning id",json.writeValueAsString(relatorio),hash,medicoId,empresa);
         long arquivoId=salvarArquivo(hospitalId,"PRODUCAO",medicoId,competencia,arquivo,hash,usuario.id());
         jdbc.update("update arquivo_base_hospitalar set relatorio_id=? where id=?",relatorioId,arquivoId);
         vinculos.sincronizar(relatorioId,relatorio);
@@ -122,10 +127,10 @@ public class BaseHospitalarService {
         var registros=jdbc.queryForList("select id,campos::text,medico_nome from visita_base_hospitalar where hospital_id=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId);
         List<LeitorPlanilhaVisitas.Linha> hospitalLinhas=new ArrayList<>();
         for(var registro:registros) {
-            if(medicoId!=null && !Objects.equals(identificar(registro.get("medico_nome").toString(),cadastros),medicoId)) continue;
-            hospitalLinhas.add(new LeitorPlanilhaVisitas.Linha(((Number)registro.get("id")).intValue(),json.readValue(registro.get("campos").toString(),new TypeReference<Map<String,String>>(){})));
+            if(medicoId!=null && !Objects.equals(identificar(texto(registro,"medico_nome"),cadastros),medicoId)) continue;
+            hospitalLinhas.add(new LeitorPlanilhaVisitas.Linha((int)numero(registro,"id"),json.readValue(texto(registro,"campos"),new TypeReference<>(){})));
         }
-        if(jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospitalId)==0)
+        if(Objects.equals(jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospitalId),0L))
             throw new IllegalArgumentException("Importe primeiro a planilha do hospital");
         var base=medicoId==null?conciliarColetiva(hospital.nome(),nome,producao,hospitalLinhas,cadastros)
                 :identificacao.conciliar(hospital.nome(),nome,"Base hospitalar",producao,hospitalLinhas,medicoId);
@@ -147,7 +152,7 @@ public class BaseHospitalarService {
         if(medicoId==null) {
             var registrosCompletos=motor.conciliar(hospital.nome(),nome,"Base hospitalar",List.of(),hospitalLinhas).hospitalSemProducao();
             visitas=visitas.stream().map(visita->new ConciliadorVisitas.Visita(visita.linhaMedico(),visita.atendimento(),visita.data(),visita.status(),visita.motivo(),
-                    visita.original(),visita.hospital(),registrosCompletos.stream().filter(registro->registro.atendimento().equals(visita.atendimento()) && registro.data().equals(visita.data())).toList(),
+                    visita.original(),visita.hospital(),visita.atendimento().isBlank()?visita.candidatos():registrosCompletos.stream().filter(registro->registro.atendimento().equals(visita.atendimento()) && registro.data().equals(visita.data())).toList(),
                     visita.camposRevisados(),visita.medicoProducao())).toList();
         }
         return new AplicadorRevisaoVisita().recalcular(new ConciliadorVisitas.Relatorio(base.hospital(),base.arquivoMedico(),base.arquivoHospital(),base.regraStatus(),visitas,base.hospitalSemProducao(),base.resumo(),base.repasseCorrespondente(),hospitalId),visitas);
@@ -207,13 +212,13 @@ public class BaseHospitalarService {
         var arquivos=jdbc.queryForList("select * from arquivo_base_hospitalar where relatorio_id=?",relatorioId);
         if(arquivos.isEmpty()) throw new IllegalArgumentException("Relatorio anterior ao novo fluxo. Consulte seu historico pela conciliacao");
         var arquivo=arquivos.getFirst();
-        long hospitalId=((Number)arquivo.get("hospital_id")).longValue();
-        Long medicoId=arquivo.get("medico_id")==null?null:((Number)arquivo.get("medico_id")).longValue();
+        long hospitalId=numero(arquivo,"hospital_id");
+        Long medicoId=arquivo.get("medico_id")==null?null:numero(arquivo,"medico_id");
         vinculos.bloquear(hospitalId);
         var estado=revisoes.carregar(relatorioId);
         if(estado.versao()!=versao) throw new ConflitoRevisaoException("Relatorio alterado. Atualize antes de tentar novamente");
         var producao=estado.original().visitas().stream().map(visita->new LeitorPlanilhaVisitas.Linha(visita.linhaMedico(),visita.original())).toList();
-        var calculado=calcular(hospitalId,medicoId,arquivo.get("nome").toString(),producao,relatorioId);
+        var calculado=calcular(hospitalId,medicoId,texto(arquivo,"nome"),producao,relatorioId);
         Map<Integer,RevisaoVisitasService.Revisao> ultimasRevisoes=new HashMap<>();
         estado.historico().forEach(revisao->ultimasRevisoes.put(revisao.linhaMedico(),revisao));
         Map<Integer,ConciliadorVisitas.Visita> anteriores=new HashMap<>();
@@ -235,15 +240,15 @@ public class BaseHospitalarService {
             porLinha.put(atualizada.linhaMedico(),atualizada);
         }
         var relatorio=new AplicadorRevisaoVisita().recalcular(calculado,visitas);
-        long novoId=jdbc.queryForObject("insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,medico_producao_id,base_hospitalar,empresa_id) select ?::jsonb,?,?,?,?,true,empresa_id from conciliacao_visitas where id=? returning id",Long.class,json.writeValueAsString(relatorio),relatorioId,((Number)linhas.getFirst().get("numero_versao")).intValue()+1,arquivo.get("hash"),medicoId,relatorioId);
+        long novoId=inserirComId("insert into conciliacao_visitas(relatorio,anterior_id,numero_versao,hash_producao,medico_producao_id,base_hospitalar,empresa_id) select ?::jsonb,?,?,?,?,true,empresa_id from conciliacao_visitas where id=? returning id",json.writeValueAsString(relatorio),relatorioId,(int)numero(linhas.getFirst(),"numero_versao")+1,arquivo.get("hash"),medicoId,relatorioId);
         var revisoesAnteriores=jdbc.queryForList("select id,linha_medico,acao,responsavel,justificativa,antes::text as antes,depois::text as depois,criado_em from revisao_visita where conciliacao_id=? order by id",relatorioId);
         for(var rev:revisoesAnteriores) {
-            int linhaMedico=((Number)rev.get("linha_medico")).intValue();
-            long revId=((Number)rev.get("id")).longValue();
+            int linhaMedico=(int)numero(rev,"linha_medico");
+            long revId=numero(rev,"id");
             var ultima=ultimasRevisoes.get(linhaMedico);
             String depois=ultima!=null && ultima.id()==revId
                     ? json.writeValueAsString(porLinha.get(linhaMedico))
-                    : rev.get("depois").toString();
+                    : texto(rev,"depois");
             jdbc.update("insert into revisao_visita(conciliacao_id,linha_medico,acao,responsavel,justificativa,antes,depois,criado_em) values(?,?,?,?,?,?::jsonb,?::jsonb,?)",
                     novoId,linhaMedico,rev.get("acao"),rev.get("responsavel"),rev.get("justificativa"),rev.get("antes"),depois,rev.get("criado_em"));
         }
@@ -280,14 +285,14 @@ public class BaseHospitalarService {
 
     private ConciliadorVisitas.RegistroHospital registroHospital(int id) throws Exception {
         String campos=jdbc.queryForObject("select campos::text from visita_base_hospitalar where id=?",String.class,id);
-        var linha=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<Map<String,String>>(){}));
+        var linha=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<>(){}));
         return motor.conciliar("Base","","",List.of(),List.of(linha)).hospitalSemProducao().getFirst();
     }
 
     private ConciliadorVisitas.Visita atualizarVinculada(ConciliadorVisitas.Relatorio relatorio,ConciliadorVisitas.Visita anterior) throws Exception {
         int id=anterior.hospital().linha();
         String campos=jdbc.queryForObject("select campos::text from visita_base_hospitalar where id=?",String.class,id);
-        var hospital=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<Map<String,String>>(){}));
+        var hospital=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<>(){}));
         Long medico=medicos.identificar(anterior,medicos.listar());
         return identificacao.conciliar(relatorio.hospital(),relatorio.arquivoMedico(),"Base hospitalar",
                 List.of(new LeitorPlanilhaVisitas.Linha(anterior.linhaMedico(),anterior.original())),List.of(hospital),medico).visitas().getFirst();
@@ -338,10 +343,10 @@ public class BaseHospitalarService {
         validarTexto(dados.justificativa(),"Justificativa");
         var registros=jdbc.queryForList("select * from visita_base_hospitalar where id=?",visitaId);
         if(registros.isEmpty()) throw new RecursoNaoEncontradoException("Visita nao encontrada");
-        long hospitalId=((Number)registros.getFirst().get("hospital_id")).longValue();
+        long hospitalId=numero(registros.getFirst(),"hospital_id");
         vinculos.bloquear(hospitalId);
         var visita=jdbc.queryForMap("select * from visita_base_hospitalar where id=? for update",visitaId);
-        if(!visita.get("decisao").equals("EM_ANALISE")) throw new ConflitoRevisaoException("Esta ocorrencia ja foi analisada. Atualize a base");
+        if(!"EM_ANALISE".equals(visita.get("decisao"))) throw new ConflitoRevisaoException("Esta ocorrencia ja foi analisada. Atualize a base");
         String evidencia=Objects.toString(dados.evidencia(),"").trim();
         Integer anteriorId=dados.anteriorId();
         boolean mesmoMes=dados.acao().equals("DUPLICADO_MESMA_COMPETENCIA");
@@ -352,12 +357,12 @@ public class BaseHospitalarService {
             var anteriores=jdbc.queryForList("select v.*,a.competencia from visita_base_hospitalar v join arquivo_base_hospitalar a on a.id=v.arquivo_id where v.id=? and v.hospital_id=? and v.decisao in ('ORIGINAL','VISITA_DISTINTA')",anteriorId,hospitalId);
             if(anteriores.isEmpty()) throw new IllegalArgumentException("Visita original invalida ou de outro hospital");
             var anterior=anteriores.getFirst();
-            if(!anterior.get("atendimento").equals(visita.get("atendimento")) || !anterior.get("data_visita").equals(visita.get("data_visita"))
-                    || !mesmoMedico(anterior.get("medico_nome").toString(),visita.get("medico_nome").toString(),medicos.listar()))
+            if(!Objects.equals(anterior.get("atendimento"),visita.get("atendimento")) || !Objects.equals(anterior.get("data_visita"),visita.get("data_visita"))
+                    || !mesmoMedico(texto(anterior,"medico_nome"),texto(visita,"medico_nome"),medicos.listar()))
                 throw new IllegalArgumentException("Confira atendimento, data e medico da visita original");
             String competencia=jdbc.queryForObject("select competencia from arquivo_base_hospitalar where id=?",String.class,visita.get("arquivo_id"));
-            if(mesmoMes && !competencia.equals(anterior.get("competencia"))) throw new IllegalArgumentException("Duplicidade na mesma competencia exige competencias iguais");
-            if(!mesmoMes && competencia.equals(anterior.get("competencia"))) throw new IllegalArgumentException("Pago em outro mes exige competencias diferentes");
+            if(mesmoMes && !Objects.equals(competencia,anterior.get("competencia"))) throw new IllegalArgumentException("Duplicidade na mesma competencia exige competencias iguais");
+            if(!mesmoMes && Objects.equals(competencia,anterior.get("competencia"))) throw new IllegalArgumentException("Pago em outro mes exige competencias diferentes");
         } else anteriorId=null;
         jdbc.update("insert into revisao_base_hospitalar(visita_id,anterior_id,decisao,justificativa,evidencia,usuario_id) values(?,?,?,?,?,?)",visitaId,anteriorId,dados.acao(),dados.justificativa().trim(),evidencia,usuario.id());
         jdbc.update("update visita_base_hospitalar set decisao=?,anterior_id=? where id=?",dados.acao(),anteriorId,visitaId);
@@ -369,16 +374,14 @@ public class BaseHospitalarService {
         return registros.getFirst();
     }
 
-    private HospitalCadastroService.Hospital validarHospital(long id) {
-        var hospital=hospitais.buscar(id);
-        if(!hospital.ativo()) throw new IllegalArgumentException("Selecione um hospital ativo");
-        return hospital;
+    private void validarHospital(long id) {
+        if(!hospitais.buscar(id).ativo()) throw new IllegalArgumentException("Selecione um hospital ativo");
     }
     private long salvarArquivo(long hospitalId,String tipo,Long medicoId,String competencia,MultipartFile arquivo,String hash,long usuarioId) throws Exception {
         String nome=Objects.toString(arquivo.getOriginalFilename(),"planilha.xlsx").replace('\\','/');
         nome=nome.substring(nome.lastIndexOf('/')+1);
         if(nome.length()>255) throw new IllegalArgumentException("Nome de arquivo muito longo");
-        return jdbc.queryForObject("insert into arquivo_base_hospitalar(hospital_id,tipo,medico_id,competencia,nome,hash,conteudo,usuario_id) values(?,?,?,?,?,?,?,?) returning id",Long.class,hospitalId,tipo,medicoId,competencia,nome,hash,arquivo.getBytes(),usuarioId);
+        return inserirComId("insert into arquivo_base_hospitalar(hospital_id,tipo,medico_id,competencia,nome,hash,conteudo,usuario_id) values(?,?,?,?,?,?,?,?) returning id",hospitalId,tipo,medicoId,competencia,nome,hash,arquivo.getBytes(),usuarioId);
     }
     static String normalizarCompetencia(String competencia) {
         if (competencia == null || competencia.isBlank()) {
@@ -437,9 +440,6 @@ public class BaseHospitalarService {
         throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
     }
 
-    static void validarCompetencia(String competencia) {
-        normalizarCompetencia(competencia);
-    }
     static void validarTexto(String texto,String campo) {
         if(texto==null || texto.trim().length()<5 || texto.length()>2000) throw new IllegalArgumentException(campo+" deve ter entre 5 e 2000 caracteres");
     }
@@ -454,5 +454,14 @@ public class BaseHospitalarService {
         Long primeiroId=identificar(primeiro,cadastros),segundoId=identificar(segundo,cadastros);
         return primeiroId!=null && segundoId!=null ? primeiroId.equals(segundoId)
                 : LeitorPlanilhaVisitas.normalizar(primeiro).equals(LeitorPlanilhaVisitas.normalizar(segundo));
+    }
+    // Colunas NOT NULL no banco: se faltarem, a falha cita a coluna em vez de um NullPointerException sem contexto.
+    private static Object obrigatorio(Map<String,Object> linha,String coluna) {
+        return Objects.requireNonNull(linha.get(coluna),()->"Coluna obrigatoria ausente: "+coluna);
+    }
+    private static long numero(Map<String,Object> linha,String coluna) { return ((Number)obrigatorio(linha,coluna)).longValue(); }
+    private static String texto(Map<String,Object> linha,String coluna) { return obrigatorio(linha,coluna).toString(); }
+    private long inserirComId(String sql,Object... argumentos) {
+        return Objects.requireNonNull(jdbc.queryForObject(sql,Long.class,argumentos),"O banco nao retornou o id gerado");
     }
 }

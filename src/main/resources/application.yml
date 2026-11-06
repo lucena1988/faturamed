@@ -17,6 +17,18 @@ spring:
         format_sql: true
   flyway:
     enabled: true
+  # Envio de e-mail (recuperacao de senha). Sem MAIL_HOST o envio fica desligado.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:true}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   servlet:
     multipart:
       max-file-size: 20MB
@@ -32,3 +44,9 @@ server:
         http-only: true
         same-site: lax
         secure: ${SESSION_COOKIE_SECURE:false}
+
+faturamed:
+  recuperacao-senha:
+    remetente: ${MAIL_FROM:}
+    # Somente para ambiente local sem SMTP: escreve o codigo no log. Nunca ligar em HML/producao.
+    codigo-no-log: ${RECUPERACAO_CODIGO_NO_LOG:false}

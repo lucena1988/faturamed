@@ -50,4 +50,34 @@ class ChamadoPermissoesTest {
         chamado("MEDICO",8,"ABERTO");
         assertThrows(AccessDeniedException.class,()->service.detalhar(10,usuario("MEDICO",7)));
     }
+    @Test void solicitanteNaoCancelaChamadoEmAtendimentoNemResolvido() {
+        chamado("MEDICO",8,"EM_ATENDIMENTO");
+        assertThrows(AccessDeniedException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("ABERTURA_INCORRETA", "Engano meu"), usuario("MEDICO", 8)));
+
+        chamado("MEDICO",8,"RESOLVIDO");
+        assertThrows(AccessDeniedException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("ABERTURA_INCORRETA", "Engano meu"), usuario("MEDICO", 8)));
+    }
+    @Test void solicitanteNaoCancelaChamadoDeOutroUsuario() {
+        chamado("MEDICO",8,"ABERTO");
+        assertThrows(AccessDeniedException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("ABERTURA_INCORRETA", "Engano meu"), usuario("MEDICO", 9)));
+    }
+    @Test void cancelamentoValidaMotivoEJustificativa() {
+        chamado("MEDICO",8,"ABERTO");
+        assertThrows(IllegalArgumentException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("MOTIVO_INEXISTENTE", "Justificativa"), usuario("MEDICO", 8)));
+        assertThrows(IllegalArgumentException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("ABERTURA_INCORRETA", "   "), usuario("MEDICO", 8)));
+    }
+    @Test void chamadoEncerradoNaoPodeSerCanceladoNovamente() {
+        chamado("ADMIN",1,"CANCELADO");
+        assertThrows(IllegalArgumentException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("ABERTURA_INCORRETA", "Novo teste"), usuario("ADMIN", 1)));
+
+        chamado("ADMIN",1,"FECHADO");
+        assertThrows(IllegalArgumentException.class, () -> service.cancelar(10,
+                new ChamadoService.CancelarChamado("ABERTURA_INCORRETA", "Novo teste"), usuario("ADMIN", 1)));
+    }
 }

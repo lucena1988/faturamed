@@ -41,12 +41,13 @@ class BaseHospitalarIntegracaoTest {
 
     @BeforeEach void preparar() {
         String sufixo=UUID.randomUUID().toString();
-        hospital=jdbc.queryForObject("insert into hospital_cadastro(nome,nome_normalizado) values(?,?) returning id",Long.class,"Hospital "+sufixo,sufixo);
-        ana=jdbc.queryForObject("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id",Long.class,"Ana "+sufixo,Long.toString(System.nanoTime()));
-        bruno=jdbc.queryForObject("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id",Long.class,"Bruno "+sufixo,Long.toString(System.nanoTime()));
-        long usuarioId=jdbc.queryForObject("select id from usuario_acesso where perfil='ADMIN' limit 1",Long.class);
+        hospital=idGerado("insert into hospital_cadastro(nome,nome_normalizado) values(?,?) returning id","Hospital "+sufixo,sufixo);
+        ana=idGerado("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id","Ana "+sufixo,Long.toString(System.nanoTime()));
+        bruno=idGerado("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id","Bruno "+sufixo,Long.toString(System.nanoTime()));
+        long usuarioId=idGerado("select id from usuario_acesso where perfil='ADMIN' limit 1");
         usuario=new UsuarioAutenticado(usuarioId,"teste@local","Teste","","ADMIN",null,true,false,0);
     }
+    long idGerado(String sql,Object... argumentos) { return Objects.requireNonNull(jdbc.queryForObject(sql,Long.class,argumentos)); }
     String nome(long medico) { return jdbc.queryForObject("select nome from medico_cadastro where id=?",String.class,medico); }
     MockMultipartFile hospital(String... medicos) throws Exception {
         List<List<String>> linhas=new ArrayList<>();
@@ -71,6 +72,31 @@ class BaseHospitalarIntegracaoTest {
         }
     }
     int id(Map<String,Object> visita) { return ((Number)visita.get("id")).intValue(); }
+
+    @Test void producaoSemAtendimentoAguardaHospitalEConciliaPorDataEMedicoNaAtualizacao() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        service.importarHospital(hospital,"2026-08",planilha(List.of(cabecalho,List.of("500","2026-08-10",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
+        var producao=planilha(List.of(List.of("Atendimento","Dt."),List.of("","2026-09-15"),List.of("","2026-09-16")));
+        long relatorio=service.importarProducao(hospital,ana,"2026-09",producao,usuario).relatorioId();
+        assertThat(revisoes.carregar(relatorio).atual().visitas()).allSatisfy(v->{
+            assertThat(v.status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+            assertThat(v.atendimento()).isEmpty();
+            assertThat(v.motivo()).contains("sem numero de atendimento");
+        });
+        // Chega a planilha de setembro: uma visita da Ana em 15/09 e uma do Bruno em 16/09.
+        service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,
+                List.of("777","2026-09-15",nome(ana),"101","Visita","120","1","120","Faturado"),
+                List.of("778","2026-09-16",nome(bruno),"101","Visita","90","1","90","Faturado"))),usuario);
+        long nova=service.atualizar(relatorio,revisoes.carregar(relatorio).versao());
+        var visitas=revisoes.carregar(nova).atual().visitas();
+        assertThat(visitas.getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visitas.getFirst().atendimento()).isEqualTo("777");
+        assertThat(visitas.getFirst().repasseEfetivo()).isEqualByComparingTo("120");
+        assertThat(visitas.get(1).status()).as("visita do outro medico na mesma data nao serve").isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThatThrownBy(()->service.importarProducao(hospital,null,"VARIOS","2026-09",
+                planilha(List.of(List.of("Atendimento","Dt.","Medico"),List.of("","2026-09-15",""))),usuario))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Informe Atendimento ou o Medico");
+    }
 
     @Test void producaoPorEmpresaAlimentaSomenteODashboardDaEmpresaAtribuida() throws Exception {
         long clinica=empresas.salvar(null,new EmpresaClienteService.Dados("Clinica "+UUID.randomUUID(),null,true,0L)).id();

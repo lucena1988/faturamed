@@ -17,9 +17,10 @@ class NotificacaoControllerTest {
     @Autowired MockMvc mvc;
     @MockitoBean NotificacaoService service;
     @MockitoBean UsuarioService users;
+    @MockitoBean br.com.faturamed.conciliacao.MedicoCadastroService medicos;
     private final UsuarioAutenticado medico=new UsuarioAutenticado(7,"m@test.local","Ana","hash","MEDICO",10L,true,false,0);
     private final UsuarioAutenticado admin=new UsuarioAutenticado(8,"a@test.local","Admin","hash","ADMIN",null,true,false,0);
-    @BeforeEach void configurar(){when(users.sessaoValida(any())).thenReturn(true);}
+    @BeforeEach void configurar(){when(users.sessaoValida(any())).thenReturn(true);when(medicos.cadastroCompleto(anyLong())).thenReturn(true);}
     @Test void exigeLogin() throws Exception {mvc.perform(get("/api/auth/notificacoes")).andExpect(status().isUnauthorized());}
     @Test void consultaUsaSessaoMesmoComParametroDeOutroUsuario() throws Exception {
         mvc.perform(get("/api/auth/notificacoes?usuario=99&medicoId=88&naoLidas=true&pagina=2").with(user(medico))).andExpect(status().isOk());

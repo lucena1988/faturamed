@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
   <link rel="stylesheet" href="identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="tema.css?v=20261103-sino">
-  <link rel="stylesheet" href="chamados.css?v=20261029-ui">
+  <link rel="stylesheet" href="chamados.css?v=20261105-kpi-filtros">
   <script src="tema.js?v=20261009-1"></script>
 </head>
 <body class="sd-liquid-body">
@@ -35,21 +35,26 @@
     <p id="sd-banner" class="sd-banner" role="status" aria-live="polite" hidden></p>
 
     <section class="sd-kpi-grid" aria-label="Indicadores de SLA e Atendimento">
-      <article class="sd-kpi-card">
+      <article class="sd-kpi-card" id="card-kpi-ativos" data-filtro="ATIVOS" role="button" tabindex="0" title="Clique para ver o Kanban de chamados ativos">
         <span>Chamados ativos</span>
         <strong id="kpi-abertos">0</strong>
         <small id="kpi-filas-detalhe">Fila DEV: 0 | Fila ADMIN: 0</small>
       </article>
-      <article class="sd-kpi-card ok">
+      <article class="sd-kpi-card ok" id="card-kpi-atendimento" data-filtro="EM_ATENDIMENTO" role="button" tabindex="0" title="Clique para filtrar chamados em atendimento">
         <span>Em atendimento</span><strong id="kpi-atendimento">0</strong><small>Em atuação pela equipe de suporte</small>
       </article>
-      <article class="sd-kpi-card warn">
+      <article class="sd-kpi-card warn" id="card-kpi-retorno" data-filtro="AGUARDANDO_USUARIO" role="button" tabindex="0" title="Clique para filtrar chamados aguardando retorno">
         <span>Aguardando retorno</span><strong id="kpi-retorno">0</strong><small>Pendente de resposta do solicitante</small>
       </article>
-      <article class="sd-kpi-card danger">
+      <article class="sd-kpi-card danger" id="card-kpi-vencidos" data-filtro="SLA_VENCIDO" role="button" tabindex="0" title="Clique para filtrar chamados com SLA vencido">
         <span>SLA Vencido</span>
         <strong id="kpi-vencidos">0</strong>
         <small>Acima do tempo limite</small>
+      </article>
+      <article class="sd-kpi-card muted" id="card-kpi-cancelados" data-filtro="CANCELADO" role="button" tabindex="0" title="Clique para ver os chamados cancelados">
+        <span>Cancelados</span>
+        <strong id="kpi-cancelados">0</strong>
+        <small>Encerrados sem pendência</small>
       </article>
       <div hidden><span id="kpi-no-prazo"></span><span id="kpi-alerta"></span><span id="kpi-resolvidos"></span><span id="kpi-avaliacao"></span><span id="kpi-avaliacao-detalhe"></span></div>
     </section>
@@ -69,6 +74,17 @@
           <option value="TODOS">Todas as categorias</option>
         </select>
       </label>
+      <label>
+        <span>Visão / Status</span>
+        <select id="filtro-status">
+          <option value="ATIVOS">Fluxo Ativo (Kanban)</option>
+          <option value="EM_ATENDIMENTO">Em atendimento</option>
+          <option value="AGUARDANDO_USUARIO">Aguardando retorno</option>
+          <option value="SLA_VENCIDO">SLA vencido</option>
+          <option value="CANCELADO">Cancelados / Descartados</option>
+          <option value="TODOS">Todos os chamados</option>
+        </select>
+      </label>
       <label class="sd-search-field">
         <span>Buscar protocolo, titulo ou solicitante</span>
         <input type="search" id="filtro-busca" placeholder="Ex.: CH-2026-0001, importacao, nome...">
@@ -77,7 +93,7 @@
         <input type="checkbox" id="filtro-meus">
         <span>Apenas minhas demandas</span>
       </label>
-      <button type="button" class="secondary-button" id="btn-atualizar">Atualizar Kanban</button>
+      <button type="button" class="secondary-button" id="btn-atualizar">Atualizar</button>
     </section>
 
     <section class="sd-kanban-board" id="kanban-board" aria-label="Quadro Kanban de Chamados">
@@ -136,6 +152,22 @@
         <div class="sd-col-cards" id="col-FECHADO"></div>
       </div>
     </section>
+
+    <section class="sd-cancelados-view sd-filtered-view" id="filtered-view" hidden aria-label="Visão Detalhada de Chamados">
+      <header class="sd-cancelados-header sd-filtered-header">
+        <div>
+          <h2 id="filtered-title">Chamados</h2>
+          <small id="filtered-desc">Visão detalhada de chamados</small>
+        </div>
+        <button type="button" class="secondary-button" id="btn-voltar-kanban">← Voltar ao Kanban Ativo</button>
+      </header>
+      <div class="sd-cancelados-table-wrap sd-filtered-table-wrap">
+        <table class="sd-sla-table" id="tabela-filtrados">
+          <thead id="thead-filtrados"></thead>
+          <tbody id="tbody-filtrados"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <dialog id="chamado-modal" class="sd-modal">
@@ -168,6 +200,6 @@
   </dialog>
 
   <script src="sidebar.js?v=20261103-empresas"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script>
-  <script src="chamados.js?v=20261027-layout"></script>
+  <script src="chamados.js?v=20261105-kpi-filtros"></script>
 </body>
 </html>
