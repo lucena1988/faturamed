@@ -52,6 +52,9 @@ async function carregar({perfil='OPERADOR', fail=false, avisos=[], detalheFalha=
   const location = {pathname: login ? '/login.html' : '/', hash:'#dashboard'};
   const document = {body, hidden:false, getElementById:id=>walk(body).find(e=>e.id===id), createElement:tag=>new Element(tag)};
   const context = {document, location, FaturamedAuth:auth, FormData, console, setInterval() {},
+    // Executa atrasos na proxima volta do event loop, aguardada por flush().
+    setTimeout(callback, delay, ...args) { return setImmediate(callback, ...args); },
+    clearTimeout: clearImmediate,
     Option:function(text,value){const e=new Element('option'); e.textContent=text; e.value=value; return e;}};
   vm.runInNewContext(readFileSync(path.join(__dirname,'../../main/resources/static/chamados-widget.js'),'utf8'),context);
   await flush();
