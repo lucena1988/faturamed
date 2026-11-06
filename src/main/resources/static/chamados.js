@@ -13,7 +13,16 @@
     EM_ATENDIMENTO: 'Em Atendimento',
     AGUARDANDO_USUARIO: 'Aguardando Retorno',
     RESOLVIDO: 'Resolvido',
-    FECHADO: 'Concluido / Avaliado'
+    FECHADO: 'Concluido / Avaliado',
+    CANCELADO: 'Cancelado / Descartado'
+  };
+
+  const MOTIVOS_CANCELAMENTO = {
+    ABERTURA_INCORRETA: 'Abertura incorreta / Sem problema real',
+    DUPLICADO: 'Chamado duplicado',
+    CANCELADO_SOLICITANTE: 'Cancelado pelo solicitante',
+    NAO_REPRODUZIVEL: 'Não reproduzível / Sem retorno',
+    OUTRO: 'Outro motivo'
   };
 
   let currentUser = null;
@@ -25,11 +34,20 @@
   const banner = document.querySelector('#sd-banner');
   const filtroFila = document.querySelector('#filtro-fila');
   const filtroTipo = document.querySelector('#filtro-tipo');
+  const filtroStatus = document.querySelector('#filtro-status');
   const filtroBusca = document.querySelector('#filtro-busca');
   const filtroMeus = document.querySelector('#filtro-meus');
   const modal = document.querySelector('#chamado-modal');
   const modalBody = document.querySelector('#modal-body');
   const slaModal = document.querySelector('#sla-modal');
+  const kanbanBoard = document.querySelector('#kanban-board');
+  const filteredView = document.querySelector('#filtered-view') || document.querySelector('#cancelados-view');
+  const filteredTitle = document.querySelector('#filtered-title');
+  const filteredDesc = document.querySelector('#filtered-desc');
+  const theadFiltrados = document.querySelector('#thead-filtrados');
+  const tbodyFiltrados = document.querySelector('#tbody-filtrados') || document.querySelector('#tbody-cancelados');
+  const btnVoltarKanban = document.querySelector('#btn-voltar-kanban');
+  const kpiCards = document.querySelectorAll('.sd-kpi-card[data-filtro]');
 
   function showBanner(msg, isErr = false) {
     if (!msg) {
@@ -42,6 +60,9 @@
   }
 
   function formatSlaText(c) {
+    if (c.status === 'CANCELADO') {
+      return 'SLA cancelado';
+    }
     if (c.status === 'RESOLVIDO' || c.status === 'FECHADO') {
       return c.slaStatus === 'FORA_DO_PRAZO' ? 'Concluido fora do SLA' : 'SLA cumprido';
     }
@@ -55,13 +76,29 @@
     return `${h}h${m > 0 ? m + 'm' : ''} restantes (SLA ${c.slaHoras}h)`;
   }
 
+  function destacarCardKpi(filtro) {
+    kpiCards.forEach(card => {
+      const f = card.dataset.filtro;
+      if (f === filtro) {
+        card.classList.add('selected');
+        card.setAttribute('aria-pressed', 'true');
+      } else {
+        card.classList.remove('selected');
+        card.setAttribute('aria-pressed', 'false');
+      }
+    });
+  }
+
   function atualizarKpis(resumo) {
     if (!resumo) return;
     document.querySelector('#kpi-abertos').textContent = resumo.totalAbertos;
     document.querySelector('#kpi-filas-detalhe').textContent = `Fila DEV: ${resumo.filaDevAbertos} | Fila ADMIN: ${resumo.filaAdminAbertos}`;
+    document.querySelector('#kpi-atendimento').textContent = resumo.emAtendimento != null ? resumo.emAtendimento : chamados.filter(c => c.status === 'EM_ATENDIMENTO').length;
+    document.querySelector('#kpi-retorno').textContent = resumo.aguardandoRetorno != null ? resumo.aguardandoRetorno : chamados.filter(c => c.status === 'AGUARDANDO_USUARIO').length;
     document.querySelector('#kpi-no-prazo').textContent = resumo.noPrazo;
     document.querySelector('#kpi-alerta').textContent = resumo.emAlerta;
     document.querySelector('#kpi-vencidos').textContent = resumo.vencidos;
+    document.querySelector('#kpi-cancelados').textContent = resumo.cancelados || 0;
     document.querySelector('#kpi-resolvidos').textContent = resumo.resolvidos;
     document.querySelector('#kpi-avaliacao').textContent = resumo.mediaAvaliacao != null ? `${resumo.mediaAvaliacao} ★` : '-';
     document.querySelector('#kpi-avaliacao-detalhe').textContent = resumo.totalAvaliacoes
@@ -70,8 +107,6 @@
   }
 
   function renderKanban() {
-    document.querySelector('#kpi-atendimento').textContent = chamados.filter(c => c.status === 'EM_ATENDIMENTO').length;
-    document.querySelector('#kpi-retorno').textContent = chamados.filter(c => c.status === 'AGUARDANDO_USUARIO').length;
     for (const st of STATUS_LIST) {
       const col = document.querySelector(`#col-${st}`);
       const cnt = document.querySelector(`#count-${st}`);
@@ -177,6 +212,107 @@
     }
   }
 
+  const FILTRO_CONFIGS = {
+    EM_ATENDIMENTO: {
+      titulo: 'Chamados em Atendimento',
+      desc: 'Protocolos atualmente em execução e atuação técnica pelas equipes de suporte'
+    },
+    AGUARDANDO_USUARIO: {
+      titulo: 'Chamados Aguardando Retorno',
+      desc: 'Demandas que aguardam retorno, informações ou validação do solicitante'
+    },
+    SLA_VENCIDO: {
+      titulo: 'Chamados com SLA Vencido',
+      desc: 'Protocolos que ultrapassaram o tempo limite de atendimento e requerem priorização urgente'
+    },
+    CANCELADO: {
+      titulo: 'Chamados Cancelados / Descartados',
+      desc: 'Histórico de protocolos encerrados por abertura incorreta, duplicidade ou cancelamento'
+    },
+    TODOS: {
+      titulo: 'Todos os Chamados',
+      desc: 'Visão completa de todos os protocolos cadastrados'
+    }
+  };
+
+  function renderFilteredTable(statusFiltro, itens) {
+    const config = FILTRO_CONFIGS[statusFiltro] || {
+      titulo: `Chamados (${STATUS_LABELS[statusFiltro] || statusFiltro})`,
+      desc: 'Listagem detalhada dos chamados selecionados'
+    };
+
+    if (filteredTitle) filteredTitle.textContent = config.titulo;
+    if (filteredDesc) filteredDesc.textContent = `${config.desc} • ${itens.length} protocolo(s) encontrado(s)`;
+
+    if (theadFiltrados) {
+      theadFiltrados.replaceChildren();
+      const trHead = el('tr');
+      if (statusFiltro === 'CANCELADO') {
+        const cols = ['Protocolo', 'Título / Categoria', 'Solicitante', 'Motivo do Cancelamento', 'Justificativa', 'Data Cancelamento', 'Ação'];
+        cols.forEach(c => trHead.append(el('th', '', c)));
+      } else {
+        const cols = ['Protocolo', 'Título / Categoria', 'Solicitante', 'Fila / Prioridade', 'Status', 'SLA / Prazo', 'Ação'];
+        cols.forEach(c => trHead.append(el('th', '', c)));
+      }
+      theadFiltrados.append(trHead);
+    }
+
+    tbodyFiltrados.replaceChildren();
+    if (!itens.length) {
+      const tr = el('tr');
+      const td = el('td', '', 'Nenhum chamado encontrado nesta visão com os filtros selecionados.');
+      td.colSpan = 7;
+      td.style.textAlign = 'center';
+      td.style.color = 'var(--muted)';
+      td.style.padding = '28px';
+      tr.append(td);
+      tbodyFiltrados.append(tr);
+      return;
+    }
+
+    for (const c of itens) {
+      const tr = el('tr');
+      const tdProto = el('td');
+      tdProto.append(el('span', 'sd-protocol-tag', c.protocolo));
+
+      const tdTitulo = el('td');
+      tdTitulo.append(el('strong', '', c.titulo), el('div', 'sd-eyebrow', c.tipoNome));
+
+      const tdSolic = el('td', '', `${c.solicitanteNome} (${c.solicitantePerfil})`);
+
+      const tdAcao = el('td');
+      const btnVer = el('button', 'sd-mini-btn', 'Ver detalhes');
+      btnVer.type = 'button';
+      btnVer.addEventListener('click', () => abrirModalChamado(c.id));
+      tdAcao.append(btnVer);
+
+      if (statusFiltro === 'CANCELADO') {
+        const tdMotivo = el('td', '', MOTIVOS_CANCELAMENTO[c.motivoCancelamento] || c.motivoCancelamento || '-');
+        const tdJust = el('td', '', c.justificativaCancelamento || '-');
+        const tdData = el('td', '', c.canceladoEm ? new Date(c.canceladoEm).toLocaleString('pt-BR') : '-');
+        tr.append(tdProto, tdTitulo, tdSolic, tdMotivo, tdJust, tdData, tdAcao);
+      } else {
+        const tdFilaPrio = el('td');
+        const badges = el('div', 'sd-card-badges');
+        badges.append(
+          el('span', `sd-pill fila-${c.filaDestino.toLowerCase()}`, `Fila ${c.filaDestino}`),
+          el('span', `sd-pill prio-${c.prioridade.toLowerCase()}`, c.prioridade)
+        );
+        tdFilaPrio.append(badges);
+
+        const tdStatus = el('td');
+        tdStatus.append(el('span', 'sd-pill', STATUS_LABELS[c.status] || c.status));
+
+        const tdSla = el('td');
+        tdSla.append(el('span', `sd-pill sla-${c.slaStatus.toLowerCase()}`, formatSlaText(c)));
+
+        tr.append(tdProto, tdTitulo, tdSolic, tdFilaPrio, tdStatus, tdSla, tdAcao);
+      }
+
+      tbodyFiltrados.append(tr);
+    }
+  }
+
   async function moverRapido(id, novoStatus, assumir = false) {
     if (!tecnico()) return;
     try {
@@ -202,8 +338,81 @@
     }
   }
 
+  function criarPainelCancelamento(c, onCancelado) {
+    const wrap = el('div');
+    wrap.style.marginTop = '10px';
+    const btnCancelar = el('button', 'sd-danger-button', 'Cancelar / Descartar Chamado');
+    btnCancelar.type = 'button';
+
+    const formCancel = el('div', 'sd-cancel-form');
+    formCancel.hidden = true;
+
+    const lblMotivo = el('label', '', 'Motivo do cancelamento:');
+    const selMotivo = el('select');
+    for (const [k, v] of Object.entries(MOTIVOS_CANCELAMENTO)) {
+      selMotivo.append(new Option(v, k));
+    }
+    lblMotivo.append(selMotivo);
+
+    const lblJust = el('label', '', 'Justificativa do encerramento (obrigatório):');
+    const txtJust = el('textarea');
+    txtJust.rows = 3;
+    txtJust.maxLength = 2000;
+    txtJust.placeholder = 'Explique com clareza o motivo do cancelamento deste protocolo...';
+    lblJust.append(txtJust);
+
+    const btnsRow = el('div');
+    btnsRow.style.display = 'flex';
+    btnsRow.style.gap = '8px';
+
+    const btnConfirm = el('button', 'sd-danger-button-solid', 'Confirmar Cancelamento');
+    btnConfirm.type = 'button';
+
+    const btnVoltar = el('button', 'secondary-button', 'Voltar');
+    btnVoltar.type = 'button';
+
+    btnsRow.append(btnConfirm, btnVoltar);
+    formCancel.append(lblMotivo, lblJust, btnsRow);
+
+    btnCancelar.addEventListener('click', () => {
+      btnCancelar.hidden = true;
+      formCancel.hidden = false;
+    });
+
+    btnVoltar.addEventListener('click', () => {
+      formCancel.hidden = true;
+      btnCancelar.hidden = false;
+    });
+
+    btnConfirm.addEventListener('click', async () => {
+      const just = txtJust.value.trim();
+      if (!just) {
+        showBanner('Informe uma justificativa para o cancelamento.', true);
+        return;
+      }
+      btnConfirm.disabled = true;
+      try {
+        const atualizado = await api(`/api/chamados/${c.id}/cancelar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ motivo: selMotivo.value, justificativa: just })
+        });
+        await carregarChamados();
+        onCancelado(atualizado);
+        showBanner('Chamado cancelado com sucesso.');
+      } catch (err) {
+        showBanner(err.message, true);
+        btnConfirm.disabled = false;
+      }
+    });
+
+    wrap.append(btnCancelar, formCancel);
+    return wrap;
+  }
+
   function renderModalDetalhe(det) {
     const c = det.chamado;
+    const isCancelado = c.status === 'CANCELADO';
     document.querySelector('#modal-protocolo').textContent = `${c.protocolo} • ${c.tipoNome} • ${formatSlaText(c)}`;
     document.querySelector('#modal-titulo').textContent = c.titulo;
     modalBody.replaceChildren();
@@ -213,6 +422,16 @@
     leftCol.style.display = 'flex';
     leftCol.style.flexDirection = 'column';
     leftCol.style.gap = '12px';
+
+    if (isCancelado) {
+      const canceledBanner = el('div', 'sd-canceled-banner');
+      canceledBanner.append(
+        el('strong', '', `🚫 Chamado Cancelado em ${new Date(c.canceladoEm || c.atualizadoEm).toLocaleString('pt-BR')}`),
+        el('div', '', `Motivo: ${MOTIVOS_CANCELAMENTO[c.motivoCancelamento] || c.motivoCancelamento || 'Não informado'}`),
+        el('div', '', `Justificativa: "${c.justificativaCancelamento || 'Sem justificativa informada'}"`)
+      );
+      leftCol.append(canceledBanner);
+    }
 
     const infoCard = el('div', 'sd-control-panel');
     const descTitle = el('strong', '', `Solicitante: ${c.solicitanteNome} (${c.solicitanteEmail} - Perfil ${c.solicitantePerfil})`);
@@ -257,52 +476,72 @@
     }
     leftCol.append(thread);
 
-    const replyForm = el('form', 'sd-control-panel');
-    const lblReply = el('label', '', 'Enviar mensagem / orientacao no protocolo');
-    const txtReply = el('textarea');
-    txtReply.rows = 3;
-    txtReply.maxLength = 4000;
-    txtReply.placeholder = 'Responda ao usuário ou registre evidencias da solucao...';
-    lblReply.append(txtReply);
+    if (!isCancelado && c.status !== 'FECHADO') {
+      const replyForm = el('form', 'sd-control-panel');
+      const lblReply = el('label', '', 'Enviar mensagem / orientacao no protocolo');
+      const txtReply = el('textarea');
+      txtReply.rows = 3;
+      txtReply.maxLength = 4000;
+      txtReply.placeholder = 'Responda ao usuário ou registre evidencias da solucao...';
+      lblReply.append(txtReply);
 
-    const lblFiles = el('label', '', 'Anexar prints / arquivos (PNG, JPG, WEBP, PDF)');
-    const inpFiles = el('input');
-    inpFiles.type = 'file';
-    inpFiles.multiple = true;
-    inpFiles.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
-    lblFiles.append(inpFiles);
+      const lblFiles = el('label', '', 'Anexar prints / arquivos (PNG, JPG, WEBP, PDF)');
+      const inpFiles = el('input');
+      inpFiles.type = 'file';
+      inpFiles.multiple = true;
+      inpFiles.accept = '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf';
+      lblFiles.append(inpFiles);
 
-    const btnSend = el('button', 'primary-button', 'Enviar Mensagem no Protocolo');
-    btnSend.type = 'submit';
-    replyForm.append(lblReply, lblFiles, btnSend);
-    replyForm.addEventListener('submit', async e => {
-      e.preventDefault();
-      btnSend.disabled = true;
-      try {
-        const fd = new FormData();
-        fd.append('conteudo', txtReply.value.trim());
-        for (const f of inpFiles.files) fd.append('arquivos', f);
-        const atualizado = await api(`/api/chamados/${c.id}/mensagens`, { method: 'POST', body: fd });
-        await carregarChamados();
-        renderModalDetalhe(atualizado);
-        showBanner('Mensagem registrada no chamado.');
-      } catch (err) {
-        showBanner(err.message, true);
-      } finally {
-        btnSend.disabled = false;
-      }
-    });
-    leftCol.append(replyForm);
+      const btnSend = el('button', 'primary-button', 'Enviar Mensagem no Protocolo');
+      btnSend.type = 'submit';
+      replyForm.append(lblReply, lblFiles, btnSend);
+      replyForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        btnSend.disabled = true;
+        try {
+          const fd = new FormData();
+          fd.append('conteudo', txtReply.value.trim());
+          for (const f of inpFiles.files) fd.append('arquivos', f);
+          const atualizado = await api(`/api/chamados/${c.id}/mensagens`, { method: 'POST', body: fd });
+          await carregarChamados();
+          renderModalDetalhe(atualizado);
+          showBanner('Mensagem registrada no chamado.');
+        } catch (err) {
+          showBanner(err.message, true);
+        } finally {
+          btnSend.disabled = false;
+        }
+      });
+      leftCol.append(replyForm);
+    }
+
+    if (isCancelado) {
+      const cancelPanel = el('div', 'sd-control-panel');
+      cancelPanel.append(
+        el('strong', '', 'Chamado Cancelado'),
+        el('p', '', `Este protocolo foi encerrado por cancelamento. Não há ações pendentes.`),
+        el('small', '', `Data de encerramento: ${new Date(c.canceladoEm || c.atualizadoEm).toLocaleString('pt-BR')}`)
+      );
+      grid.append(leftCol, cancelPanel);
+      modalBody.append(grid);
+      return;
+    }
 
     if (!tecnico()) {
       const acompanhamento = el('div', 'sd-control-panel');
-      acompanhamento.append(el('strong', '', `Etapa: ${STATUS_LABELS[c.status]}`),
+      acompanhamento.append(el('strong', '', `Etapa: ${STATUS_LABELS[c.status] || c.status}`),
         el('p', '', `Responsável: ${c.responsavelNome || 'Não atribuído'} • ${formatSlaText(c)}`),
         el('small', '', 'A equipe técnica gerencia as etapas e o encerramento. Você pode acompanhar e enviar informações.'));
+
+      if (currentUser && currentUser.id === c.solicitanteId && ['ABERTO', 'AGUARDANDO_USUARIO'].includes(c.status)) {
+        acompanhamento.append(criarPainelCancelamento(c, atualizado => renderModalDetalhe(atualizado)));
+      }
+
       grid.append(leftCol, acompanhamento);
       modalBody.append(grid);
       return;
     }
+
     const rightCol = el('form', 'sd-control-panel');
     rightCol.append(el('strong', '', 'Gerenciamento e Distribuição do Chamado'));
 
@@ -368,6 +607,12 @@
     });
 
     rightCol.append(lblStatus, lblFila, lblPrio, lblResp, lblObs, btnSaveStatus, btnAssumir);
+
+    // Cancelamento para administradores/técnicos
+    if (c.status !== 'FECHADO') {
+      rightCol.append(criarPainelCancelamento(c, atualizado => renderModalDetalhe(atualizado)));
+    }
+
     if (c.notaAvaliacao) {
       const evalInfo = el('div', 'hd-rating-box');
       evalInfo.append(
@@ -482,13 +727,25 @@
     const params = new URLSearchParams();
     if (filtroFila.value && filtroFila.value !== 'TODAS') params.set('fila', filtroFila.value);
     if (filtroTipo.value && filtroTipo.value !== 'TODOS') params.set('tipo', filtroTipo.value);
+    if (filtroStatus.value && filtroStatus.value !== 'TODOS') params.set('status', filtroStatus.value);
     if (filtroBusca.value.trim()) params.set('busca', filtroBusca.value.trim());
     if (filtroMeus.checked) params.set('meus', 'true');
 
     const painel = await api('/api/chamados?' + params.toString());
     chamados = painel.chamados || [];
     atualizarKpis(painel.resumo);
-    renderKanban();
+
+    destacarCardKpi(filtroStatus.value);
+
+    if (filtroStatus.value === 'ATIVOS') {
+      kanbanBoard.hidden = false;
+      filteredView.hidden = true;
+      renderKanban();
+    } else {
+      kanbanBoard.hidden = true;
+      filteredView.hidden = false;
+      renderFilteredTable(filtroStatus.value, chamados);
+    }
   }
 
   document.querySelectorAll('.sd-kanban-col').forEach(col => {
@@ -512,9 +769,31 @@
 
   filtroFila.addEventListener('change', carregarChamados);
   filtroTipo.addEventListener('change', carregarChamados);
+  filtroStatus.addEventListener('change', carregarChamados);
   filtroMeus.addEventListener('change', carregarChamados);
   filtroBusca.addEventListener('input', () => carregarChamados());
   document.querySelector('#btn-atualizar').addEventListener('click', carregarChamados);
+
+  btnVoltarKanban.addEventListener('click', () => {
+    filtroStatus.value = 'ATIVOS';
+    carregarChamados();
+  });
+
+  kpiCards.forEach(card => {
+    const filtro = card.dataset.filtro;
+    if (!filtro) return;
+    const acao = () => {
+      filtroStatus.value = filtro;
+      carregarChamados();
+    };
+    card.addEventListener('click', acao);
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        acao();
+      }
+    });
+  });
 
   document.querySelector('#btn-novo-chamado').addEventListener('click', () => {
     const fab = document.querySelector('#hd-fab-button');

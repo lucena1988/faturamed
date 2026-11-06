@@ -2,7 +2,7 @@
 
 O **Service Desk** do FaturaMed foi desenvolvido para centralizar a comunicação de incidentes técnicos, dúvidas operacionais e solicitações de melhorias entre médicos, equipe administrativa/faturamento e desenvolvedores.
 
-O módulo inclui painel Kanban em tempo real, controle rigoroso de SLA por criticidade, widget flutuante global em estilo *Liquid Glass* e suporte ao perfil de acesso `DEV`.
+O módulo inclui painel Kanban em tempo real, controle rigoroso de SLA por criticidade, widget flutuante global em estilo *Liquid Glass*, suporte ao perfil de acesso `DEV` e fluxo estruturado de cancelamento/descarte com justificativa obrigatória.
 
 ---
 
@@ -12,6 +12,8 @@ O módulo inclui painel Kanban em tempo real, controle rigoroso de SLA por criti
 - **Widget de atendimento rápido:** Presente no canto inferior das telas principais (`index.html`, etc.), permitindo envio de chamados sem sair da página de trabalho, capturando automaticamente a URL de origem (`paginaOrigem`).
 - **Anexos:** Suporte a arquivos de até 5MB (prints de telas, planilhas `.xlsx`/`.csv`, documentos).
 - **Avaliação de Satisfação:** Avaliação de 1 a 5 estrelas e comentário após a resolução do ticket.
+- **Cancelamento com Justificativa:** Encerramento limpo para aberturas indevidas, duplicidades ou solicitações de cancelamento sem poluir o fluxo ativo do Kanban.
+- **KPI Cards Interativos como Filtros Rápidos:** Todos os cards superiores (*Chamados ativos*, *Em atendimento*, *Aguardando retorno*, *SLA vencido* e *Cancelados*) são clicáveis. Ao clicar em qualquer um deles, o painel aplica o filtro imediato com destaque visual e exibe a visão detalhada correspondente, sempre mantendo o botão proeminente **← Voltar ao Kanban Ativo** para retornar rapidamente ao quadro Kanban principal.
 
 ---
 
@@ -34,19 +36,22 @@ O sistema divide automaticamente as demandas em duas filas principais:
 
 ## 3. Perfis de Usuário & Permissões
 
-A migration `V21__service_desk_chamados.sql` adicionou o perfil `DEV` ao controle de acesso:
+A migration `V21__service_desk_chamados.sql` adicionou o perfil `DEV` ao controle de acesso, e a migration `V28__cancelamento_chamados.sql` estruturou os cancelamentos:
 
 - **`MEDICO`:**
   - Abre chamados através do widget ou da tela de chamados.
   - Acompanha seus próprios chamados e timeline de respostas.
+  - Pode cancelar seu chamado enquanto ele estiver na triagem (`ABERTO`) ou aguardando resposta (`AGUARDANDO_USUARIO`).
   - Avalia o atendimento (1 a 5 estrelas) quando o ticket é resolvido.
 - **`ADMIN`:**
   - Visualiza e atende chamados da fila `ADMIN` (dúvidas financeiras, cadastros).
   - Pode assumir chamados, transferir para a fila `DEV`, alterar status e adicionar respostas com anexos.
+  - Pode cancelar/descartar chamados ativos informando motivo e justificativa.
   - Acesso à gestão de usuários e vínculos.
 - **`DEV`:**
   - Perfil técnico focado na fila `DEV` (erros bloqueantes, bugs e melhorias).
   - Assume chamados, atualiza prazos, diagnostica inconsistências e fecha incidentes resolvidos.
+  - Pode cancelar/descartar chamados ativos informando motivo e justificativa.
 
 ---
 
@@ -56,18 +61,31 @@ A migration `V21__service_desk_chamados.sql` adicionou o perfil `DEV` ao control
 stateDiagram-v2
     [*] --> ABERTO: Usuário registra chamado
     ABERTO --> EM_ATENDIMENTO: Atendente assume o chamado
+    ABERTO --> CANCELADO: Abertura incorreta / cancelado pelo solicitante
     EM_ATENDIMENTO --> AGUARDANDO_USUARIO: Solicitação de mais informações/prints
     AGUARDANDO_USUARIO --> EM_ATENDIMENTO: Usuário responde
+    AGUARDANDO_USUARIO --> CANCELADO: Sem retorno / cancelado
+    EM_ATENDIMENTO --> CANCELADO: Duplicado / não reproduzível
     EM_ATENDIMENTO --> RESOLVIDO: Solução aplicada pelo atendente
     RESOLVIDO --> FECHADO: Usuário avalia ou confirma resolução
     FECHADO --> [*]
+    CANCELADO --> [*]
 ```
+
+### Motivos de Cancelamento
+Quando um chamado é cancelado, ele sai do quadro ativo do Kanban e é catalogado em um painel histórico dedicado:
+- `ABERTURA_INCORRETA`: Abertura indevida ou quando não havia problema real no sistema.
+- `DUPLICADO`: Já existe outro protocolo tratando da mesma demanda.
+- `CANCELADO_SOLICITANTE`: Solicitante informou que não precisa mais de suporte.
+- `NAO_REPRODUZIVEL`: Impossível reproduzir o incidente e sem dados adicionais.
+- `OUTRO`: Demais motivos detalhados na justificativa obrigatória.
 
 ### Indicadores de SLA
 O Kanban calcula dinamicamente o status do SLA com base no tempo decorrido:
 - 🟢 **No Prazo (`NO_PRAZO`):** Chamado dentro da janela acordada.
 - 🟡 **Alerta (`ALERTA`):** Menos de 25% do tempo restante antes do vencimento.
 - 🔴 **Vencido (`VENCIDO`):** Prazo estourado.
+- ⚪ **Cancelado (`CANCELADO`):** Prazo e contagem de SLA congelados/encerrados.
 
 ---
 
@@ -83,5 +101,6 @@ O Kanban calcula dinamicamente o status do SLA com base no tempo decorrido:
 | `GET` | `/api/chamados/{id}` | Autenticado | Detalha chamado, histórico de mensagens e anexos. |
 | `POST` | `/api/chamados/{id}/mensagens` | Autenticado | Envia nova mensagem na timeline com anexos opcionais. |
 | `POST` | `/api/chamados/{id}/status` | `ADMIN`, `DEV` | Altera status, assume chamado ou transfere fila. |
+| `POST` | `/api/chamados/{id}/cancelar` | Autenticado | Cancela/descarta chamado informando motivo e justificativa. |
 | `POST` | `/api/chamados/{id}/avaliacao` | Solicitante | Registra nota (1 a 5) e comentário de satisfação. |
 | `GET` | `/api/chamados/{id}/anexos/{anexoId}` | Autenticado | Download/visualização segura do anexo. |
