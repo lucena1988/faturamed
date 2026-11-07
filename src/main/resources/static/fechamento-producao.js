@@ -169,7 +169,8 @@
     renderCards(lista);
     $('#fechamentos').innerHTML = lista.map(f => `<tr data-id="${f.id}"><td>${f.id}</td><td>${esc(f.hospital)}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td>
       <td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td>${fmUi.etapas(ETAPAS, f.status)}</td>
-      <td>${f.aprovadoPor ? `${esc(f.aprovadoPor)} em ${data(f.aprovadoEm)}` : '—'}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})` : '—'}</td>
+      <td>${f.aprovadoPor ? `${esc(f.aprovadoPor)} em ${data(f.aprovadoEm)}` : f.vistoHospitalEm ? `<small>Aberto pelo hospital em ${new Date(f.vistoHospitalEm).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</small>` : '<small>Ainda não aberto pelo hospital</small>'}
+        ${f.contestadas ? `<br>${fmUi.status(`${f.contestadas} contestada(s)`, 'ambar')}` : ''}${f.valorEnviado != null && Number(f.valorEnviado) !== Number(f.total) ? `<br><small>enviado: ${brl(f.valorEnviado)}</small>` : ''}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})` : '—'}</td>
       <td><div class="fm-celula-acoes">
         ${f.status === 'AGUARDANDO' ? `<button type="button" class="secondary-button" data-aprovar="${f.id}">Registrar ok</button>` : ''}
         ${f.status === 'APROVADO' ? `<button type="button" class="secondary-button" data-nf="${f.id}">Registrar NF</button>` : ''}
@@ -180,6 +181,28 @@
       </div></td></tr>`).join('')
       || fmUi.vazio(9, {titulo: 'Nenhum fechamento ainda', texto: 'Escolha o hospital e o período acima e clique em "Calcular prévia".', icone: 'fechamento'});
   }
+
+  async function listarContestacoes() {
+    const lista = await api('/api/producao/contestacoes');
+    $('#contestacoes-box').hidden = !lista.length;
+    $('#contestacoes-qtd').textContent = lista.length;
+    $('#contestacoes').innerHTML = lista.map(c => `<tr><td>${esc(c.hospital)}</td><td>nº ${c.fechamentoId}</td><td>${data(c.data)}</td>
+      <td>${esc(c.medico)}<br><small>${esc(c.exame)}</small></td><td>${esc(c.nrAtendimento)}<br><small>${esc(c.paciente)}</small></td>
+      <td>${esc(c.motivo)}<br><small>${esc(c.por || '')}</small></td>
+      <td><div class="fm-celula-acoes"><button type="button" class="secondary-button" data-reincluir="${c.itemId}">Reincluir</button>
+        <button type="button" class="text-button prod-perigo" data-aceitar="${c.itemId}">Aceitar</button></div></td></tr>`).join('');
+  }
+  $('#contestacoes').addEventListener('click', proteger(async e => {
+    const b = e.target.closest('[data-reincluir], [data-aceitar]'); if (!b) return;
+    const reincluir = !!b.dataset.reincluir;
+    const r = await fmUi.perguntar({titulo: reincluir ? 'Reincluir etiqueta' : 'Aceitar contestação',
+      texto: reincluir ? 'A etiqueta volta a ficar disponível e entra no próximo fechamento deste hospital.' : 'A etiqueta não será faturada.',
+      campos: [{nome: 'resposta', rotulo: 'Resposta ao hospital (opcional)'}], confirmar: reincluir ? 'Reincluir' : 'Aceitar contestação'});
+    if (!r) return;
+    await api(`/api/producao/contestacoes/${b.dataset.reincluir || b.dataset.aceitar}`, json('POST', {decisao: reincluir ? 'REINCLUIR' : 'ACEITA', resposta: r.resposta}));
+    msg(reincluir ? 'Etiqueta reincluída para o próximo fechamento.' : 'Contestação aceita.');
+    await listarContestacoes();
+  }));
 
   function renderCards(lista) {
     const soma = st => lista.filter(f => f.status === st).reduce((t, f) => t + Number(f.total), 0);
@@ -253,7 +276,7 @@
     f.fim.value = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0, 10);
     const params = new URLSearchParams(location.search);
     if (params.get('hospitalId')) { $('#regras-hospital').value = params.get('hospitalId'); $('#form-previa').elements.hospitalId.value = params.get('hospitalId'); }
-    await Promise.all([listarFechamentos(), listarRegras()]);
+    await Promise.all([listarFechamentos(), listarRegras(), listarContestacoes()]);
     if (params.get('aba') === 'regras') document.querySelector('.fp-aba[data-aba=regras]').click();
   })();
 })();

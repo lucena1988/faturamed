@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fechamento e envio | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261106-5"><link rel="stylesheet" href="fechamento-producao.css?v=20261106-1"><script src="tema.js?v=20261009-1"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fechamento e envio | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261106-5"><link rel="stylesheet" href="fechamento-producao.css?v=20261108-1"><script src="tema.js?v=20261009-1"></script></head>
 <body><main class="account-workspace prod-pagina">
   <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Fechamento e envio</h1></div><div class="session-actions"><a href="producao.html">Lotes de produção</a><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div></header>
 
@@ -29,6 +29,12 @@
       <label class="prod-largo">Observação do fechamento<input id="obs-fechamento" maxlength="500"></label>
       <div class="session-actions prod-acoes"><button class="primary-button" type="button" id="btn-fechar">Gerar fechamento e enviar ao hospital</button></div>
     </div>
+
+    <section id="contestacoes-box" class="fp-contestacoes" hidden>
+      <h2>Contestações dos hospitais <span class="fp-contador" id="contestacoes-qtd"></span></h2>
+      <p class="prod-dica">Etiquetas que o hospital contestou na conferência. Elas saíram do valor aprovado: reinclua num próximo fechamento ou aceite a contestação.</p>
+      <div class="account-table"><table><thead><tr><th>Hospital</th><th>Fechamento</th><th>Data</th><th>Médico / exame</th><th>Atendimento</th><th>Motivo do hospital</th><th></th></tr></thead><tbody id="contestacoes"></tbody></table></div>
+    </section>
 
     <h2>Fechamentos</h2>
     <div class="account-table"><table><thead><tr><th>Nº</th><th>Hospital</th><th>Período</th><th>Etiquetas</th><th>Total</th><th>Status</th><th>Aprovação</th><th>NF</th><th>Ações</th></tr></thead><tbody id="fechamentos"></tbody></table></div>
@@ -76,4 +82,4 @@
     </dialog>
   </section>
   <p id="mensagem" role="status" aria-live="polite"></p>
-</main><script src="sidebar.js?v=20261107-efeitos"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script><script src="efeitos.js?v=20261107-1"></script><script src="ui.js?v=20261107-10"></script><script src="fechamento-producao.js?v=20261107-5"></script></body></html>
+</main><script src="sidebar.js?v=20261108-hospital"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261108-hospital"></script><script src="efeitos.js?v=20261107-1"></script><script src="ui.js?v=20261108-1"></script><script src="fechamento-producao.js?v=20261108-1"></script></body></html>

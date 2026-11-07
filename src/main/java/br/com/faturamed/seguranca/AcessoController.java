@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class AcessoController {
     public record TrocaSenha(@NotBlank String senhaAtual,@NotBlank String novaSenha) {}
-    private static final Set<String> GERIDOS_POR_FUNCIONARIO = Set.of("MEDICO", "EMPRESA");
+    private static final Set<String> GERIDOS_POR_FUNCIONARIO = Set.of("MEDICO", "EMPRESA", "HOSPITAL");
     private final UsuarioService users;
     private final PasswordEncoder encoder;
     public AcessoController(UsuarioService users,PasswordEncoder encoder) { this.users=users; this.encoder=encoder; }
@@ -41,6 +41,6 @@ public class AcessoController {
     }
     private void exigirGestao(String perfil, UsuarioAutenticado operador) {
         if (operador.perfil().equals("OPERADOR") && !GERIDOS_POR_FUNCIONARIO.contains(perfil))
-            throw new AccessDeniedException("Funcionario pode administrar somente acessos de medicos e empresas");
+            throw new AccessDeniedException("Funcionario pode administrar somente acessos de medicos, empresas e hospitais");
     }
 }

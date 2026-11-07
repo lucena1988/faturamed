@@ -19,3 +19,6 @@
 .fp-dialogo textarea { width: 100%; font-family: monospace; }
 #fechamentos td:last-child, #regras td:last-child { white-space: nowrap; }
 .fp-valor { text-align: right; white-space: nowrap; }
+
+.fp-contestacoes { margin: 8px 0 18px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #e0a24b 45%, var(--line)); background: color-mix(in srgb, #e0a24b 7%, var(--surface)); }
+.fp-contestacoes h2 { margin-top: 0; }

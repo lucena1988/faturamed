@@ -62,7 +62,7 @@ public class ExportadorFechamentoProducao {
             Sheet et = wb.createSheet("Etiquetas");
             linha(et, 0, cab, "Data", "Período", "Médico", "Exame", "Atendimento", "Paciente", "Convênio", "Plano", "Carteirinha", "Guia");
             r = 1;
-            for (var e : d.etiquetas())
+            for (var e : d.etiquetas().stream().filter(x -> "INCLUIDA".equals(x.situacao())).toList())
                 linha(et, r++, null, e.data().format(DATA), PERIODOS.getOrDefault(e.periodo(), e.periodo()), e.medico(), e.exame(),
                         e.nrAtendimento(), e.paciente(), e.convenio(), e.plano(), e.carteirinha(), e.guia());
             et.setAutoFilter(new CellRangeAddress(0, Math.max(0, r - 1), 0, 9));

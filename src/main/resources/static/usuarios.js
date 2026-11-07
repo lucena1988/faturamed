@@ -1,11 +1,12 @@
 (function () {
   const form = document.querySelector('#access-form'), message = document.querySelector('#access-message');
   const rows = document.querySelector('#access-rows'), dialog = document.querySelector('#password-dialog');
-  let doctors = [], companies = [], resetting = null;
+  let doctors = [], companies = [], hospitals = [], resetting = null;
   const api = FaturamedAuth.request;
   const json = (method, body) => ({method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   function profile() {
-    const medical = form.perfil.value === 'MEDICO', company = form.perfil.value === 'EMPRESA';
+    const medical = form.perfil.value === 'MEDICO', company = form.perfil.value === 'EMPRESA', hospital = form.perfil.value === 'HOSPITAL';
+    document.querySelector('#access-hospital-label').hidden = !hospital; form.hospitalId.disabled = !hospital; form.hospitalId.required = hospital;
     document.querySelector('#access-doctor-label').hidden = !medical; form.medicoId.disabled = !medical; form.medicoId.required = medical;
     document.querySelector('#access-company-label').hidden = !company; form.empresaId.disabled = !company; form.empresaId.required = company;
   }
@@ -16,8 +17,9 @@
       const tr = document.createElement('tr');
       const doctor = doctors.find(d=>d.id===user.medicoId);
       const company = companies.find(c=>c.id===user.empresaId);
-      const perfilLabel = ({ADMIN:'Administrador técnico',DEV:'Administrador técnico (legado)',OPERADOR:'Funcionário FaturaMed',MEDICO:'Médico',EMPRESA:'Empresa'})[user.perfil] || user.perfil;
-      const vinculo = doctor ? `${doctor.nome} - CRM ${doctor.crm||"a preencher"}/${doctor.uf||"--"}` : company ? company.nome : '-';
+      const hospitalVinculo = hospitals.find(h=>h.id===user.hospitalId);
+      const perfilLabel = ({ADMIN:'Administrador técnico',DEV:'Administrador técnico (legado)',OPERADOR:'Funcionário FaturaMed',MEDICO:'Médico',EMPRESA:'Empresa',HOSPITAL:'Hospital'})[user.perfil] || user.perfil;
+      const vinculo = doctor ? `${doctor.nome} - CRM ${doctor.crm||"a preencher"}/${doctor.uf||"--"}` : company ? company.nome : hospitalVinculo ? hospitalVinculo.nome : '-';
       const values = [user.nome,user.email,perfilLabel,vinculo,user.ativo?'Ativo':'Inativo'];
       values.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;td.dataset.label=rows.closest('table').querySelectorAll('th')[index].textContent;tr.append(td);});
       const actions = document.createElement('td'); actions.dataset.label='Ações';
@@ -36,7 +38,7 @@
   form.perfil.addEventListener('change',profile);
   form.addEventListener('submit',async event=>{
     event.preventDefault();const button=form.querySelector('button');button.disabled=true;message.textContent='Criando acesso...';
-    try {await api('/api/usuarios',json('POST',{nome:form.nome.value,email:form.email.value,senha:form.senha.value,perfil:form.perfil.value,medicoId:form.perfil.value==='MEDICO'?Number(form.medicoId.value):null,empresaId:form.perfil.value==='EMPRESA'?Number(form.empresaId.value):null}));form.reset();profile();await load();message.textContent='Acesso criado.';}
+    try {await api('/api/usuarios',json('POST',{nome:form.nome.value,email:form.email.value,senha:form.senha.value,perfil:form.perfil.value,medicoId:form.perfil.value==='MEDICO'?Number(form.medicoId.value):null,empresaId:form.perfil.value==='EMPRESA'?Number(form.empresaId.value):null,hospitalId:form.perfil.value==='HOSPITAL'?Number(form.hospitalId.value):null}));form.reset();profile();await load();message.textContent='Acesso criado.';}
     catch(error){message.textContent=error.message;}
     finally {button.disabled=false;}
   });
@@ -48,5 +50,5 @@
     catch(error){document.querySelector('#reset-message').textContent=error.message;}
     finally{button.disabled=false;}
   });
-  (async()=>{try{const user=await api('/api/auth/me');if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'),new Option('Empresa','EMPRESA'));document.querySelector('h1').textContent='Acessos de médicos e empresas';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}[doctors,companies]=await Promise.all([api('/api/medicos'),api('/api/empresas-clientes')]);form.empresaId.replaceChildren(new Option('Selecione uma empresa',''),...companies.filter(c=>c.ativo).map(c=>new Option(c.nome,c.id)));form.medicoId.replaceChildren(new Option('Selecione um médico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm||"a preencher"}/${d.uf||"--"}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
+  (async()=>{try{const user=await api('/api/auth/me');if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'),new Option('Empresa','EMPRESA'),new Option('Hospital','HOSPITAL'));document.querySelector('h1').textContent='Acessos de médicos, empresas e hospitais';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}[doctors,companies,hospitals]=await Promise.all([api('/api/medicos'),api('/api/empresas-clientes'),api('/api/hospitais')]);form.hospitalId.replaceChildren(new Option('Selecione um hospital',''),...hospitals.filter(h=>h.ativo).map(h=>new Option(h.nome,h.id)));form.empresaId.replaceChildren(new Option('Selecione uma empresa',''),...companies.filter(c=>c.ativo).map(c=>new Option(c.nome,c.id)));form.medicoId.replaceChildren(new Option('Selecione um médico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm||"a preencher"}/${d.uf||"--"}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
 })();

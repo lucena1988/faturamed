@@ -49,6 +49,11 @@ public class FechamentoProducaoController {
     @DeleteMapping("/fechamentos/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelar(@PathVariable long id, Principal p) { service.cancelar(id, nome(p)); }
 
+    public record Decisao(String decisao, String resposta) {}
+    @GetMapping("/contestacoes") public List<FechamentoProducaoService.Contestacao> contestacoes() { return service.contestacoes(); }
+    @PostMapping("/contestacoes/{itemId}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resolver(@PathVariable long itemId, @RequestBody Decisao d, Principal p) { service.resolverContestacao(itemId, d.decisao(), d.resposta(), nome(p)); }
+
     @GetMapping("/fechamentos/{id}/planilha")
     public ResponseEntity<byte[]> planilha(@PathVariable long id) {
         var d = service.detalhe(id);

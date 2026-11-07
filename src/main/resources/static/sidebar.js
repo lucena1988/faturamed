@@ -90,7 +90,7 @@
   }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261107-10';
+    js.src = 'ui.js?v=20261108-1';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view]) => ({label, grupo: titulo, url: href || `index.html#${view}`})));

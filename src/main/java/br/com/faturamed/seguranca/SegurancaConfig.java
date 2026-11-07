@@ -34,6 +34,8 @@ public class SegurancaConfig {
                 .requestMatchers("/api/auth/**", "/conta.html", "/conta.js", "/notificacoes.js", "/notificacoes.css", "/chamados-widget.js", "/chamados-widget.css").authenticated()
                 .requestMatchers("/api/medico/**", "/completar-cadastro.html", "/portal.html", "/portal.js", "/conferencia-portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
                 .requestMatchers("/api/empresa/**", "/empresa.html", "/empresa.js", "/empresa.css").hasRole("EMPRESA")
+                .requestMatchers("/api/hospital-portal/**", "/hospital.html", "/hospital.js", "/hospital.css").hasRole("HOSPITAL")
+                .requestMatchers("/ui.css", "/ui.js", "/modulos.css", "/vidro.css", "/temas.css", "/efeitos.css", "/efeitos.js").authenticated()
                 .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
             .requestCache(RequestCacheConfigurer::disable)
@@ -52,6 +54,8 @@ public class SegurancaConfig {
                             response.sendRedirect("/portal.html");
                         else if(authentication!=null && authentication.getPrincipal() instanceof UsuarioAutenticado user && user.perfil().equals("EMPRESA"))
                             response.sendRedirect("/empresa.html");
+                        else if(authentication!=null && authentication.getPrincipal() instanceof UsuarioAutenticado user && user.perfil().equals("HOSPITAL"))
+                            response.sendRedirect("/hospital.html");
                         else response.sendError(403,"Acesso nao permitido");
                     }
                 }))
@@ -62,6 +66,7 @@ public class SegurancaConfig {
                         case "ADMIN", "OPERADOR" -> "/";
                         case "DEV" -> "/chamados.html";
                         case "EMPRESA" -> "/empresa.html";
+                        case "HOSPITAL" -> "/hospital.html";
                         case "MEDICO" -> medicos.cadastroCompleto(user.medicoId()) ? "/portal.html" : "/completar-cadastro.html";
                         default -> "/portal.html";
                     };

@@ -111,6 +111,8 @@ public class ProducaoService {
         } else {
             Lote atual = buscar(id);
             if ("ENVIADO".equals(atual.status())) throw new ConflitoRevisaoException("Lote ja incluido em fechamento nao pode ser alterado");
+            Integer emFechamento = jdbc.queryForObject("select count(*) from producao_fechamento_item fi join producao_item i on i.id=fi.item_id where i.lote_id=? and fi.situacao='INCLUIDA'", Integer.class, id);
+            if (emFechamento != null && emFechamento > 0) throw new ConflitoRevisaoException("Lote tem etiquetas em fechamento ativo e nao pode ser alterado");
             if (jdbc.update("""
                     update producao_lote set hospital_id=?,data_producao=?,periodo=?,tipo_agenda=?,auxiliar=?,observacao=?,
                     atualizado_em=now(),versao=versao+1 where id=? and versao=?""", c.hospitalId(), c.dataProducao(), periodo,

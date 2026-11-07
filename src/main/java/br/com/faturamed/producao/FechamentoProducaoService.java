@@ -34,9 +34,14 @@ public class FechamentoProducaoService {
     public record Previa(long hospitalId, LocalDate inicio, LocalDate fim, int lotes, int etiquetas, List<Calculo> calculos,
             List<ResumoMedico> resumo, List<SemRegra> semRegra, BigDecimal total) {}
     public record Fechamento(long id, long hospitalId, String hospital, LocalDate dataInicio, LocalDate dataFim, String status,
-            BigDecimal total, String aprovadoPor, LocalDate aprovadoEm, String nfNumero, LocalDate nfData, String observacao, int etiquetas) {}
+            BigDecimal total, String aprovadoPor, LocalDate aprovadoEm, String nfNumero, LocalDate nfData, String observacao, int etiquetas,
+            java.time.LocalDateTime vistoHospitalEm, BigDecimal valorEnviado, int contestadas) {}
     public record Etiqueta(LocalDate data, String periodo, String medico, String exame, String nrAtendimento, String paciente,
-            String convenio, String plano, String carteirinha, String guia) {}
+            String convenio, String plano, String carteirinha, String guia, long itemId, long loteId, String situacao,
+            String contestacao, String contestacaoMotivo, String contestacaoResposta) {}
+    /** Etiqueta contestada pelo hospital aguardando decisao da FaturaMed. */
+    public record Contestacao(long itemId, long loteId, long fechamentoId, String hospital, LocalDate data, String medico, String exame,
+            String nrAtendimento, String paciente, String motivo, String por, java.time.LocalDateTime em) {}
     public record Detalhe(Fechamento fechamento, List<Calculo> calculos, List<ResumoMedico> resumo, List<Etiqueta> etiquetas) {}
 
     private final JdbcTemplate jdbc;
@@ -120,18 +125,33 @@ public class FechamentoProducaoService {
     private record ItemLinha(long itemId, long loteId, LocalDate data, String periodo, Long medicoId, String medico, Long exameId, String exame,
             String nr, String paciente) {}
 
+    private static final String SELECT_ITEM = """
+            select i.id, l.id lote_id, l.data_producao, l.periodo, i.medico_id, m.nome medico, i.exame_id, e.nome exame, i.nr_atendimento, i.paciente
+            from producao_item i join producao_lote l on l.id=i.lote_id left join medico_cadastro m on m.id=i.medico_id
+            left join producao_exame_tipo e on e.id=i.exame_id
+            """;
+    /** Etiquetas disponiveis para fechar: lote conferido (ou ja enviado, no caso de etiqueta reincluida), fora de outro fechamento e sem contestacao aberta. */
+    private static final String DISPONIVEIS = """
+            where l.hospital_id=? and l.data_producao between ? and ? and l.status in ('CONFERIDO','ENVIADO')
+              and not exists (select 1 from producao_fechamento_item fi where fi.item_id=i.id and fi.situacao='INCLUIDA')
+              and (i.contestacao is null or i.contestacao='REINCLUIR')
+            """;
+
+    private List<ItemLinha> itens(String filtro, Object... args) {
+        return jdbc.query(SELECT_ITEM + filtro + " order by l.data_producao, l.id, i.ordem", (r, n) -> new ItemLinha(r.getLong("id"), r.getLong("lote_id"),
+                r.getObject("data_producao", LocalDate.class), r.getString("periodo"), (Long) r.getObject("medico_id", Long.class),
+                Objects.toString(r.getString("medico"), ""), (Long) r.getObject("exame_id", Long.class), Objects.toString(r.getString("exame"), ""),
+                r.getString("nr_atendimento"), r.getString("paciente")), args);
+    }
+
     @Transactional(readOnly = true)
     public Previa previa(long hospitalId, LocalDate inicio, LocalDate fim) {
         if (fim.isBefore(inicio)) throw new IllegalArgumentException("Data final antes da inicial");
-        List<ItemLinha> itens = jdbc.query("""
-                select i.id, l.id lote_id, l.data_producao, l.periodo, i.medico_id, m.nome medico, i.exame_id, e.nome exame, i.nr_atendimento, i.paciente
-                from producao_item i join producao_lote l on l.id=i.lote_id left join medico_cadastro m on m.id=i.medico_id
-                left join producao_exame_tipo e on e.id=i.exame_id
-                where l.hospital_id=? and l.data_producao between ? and ? and l.status='CONFERIDO' and l.fechamento_id is null
-                order by l.data_producao, l.id, i.ordem""", (r, n) -> new ItemLinha(r.getLong("id"), r.getLong("lote_id"),
-                r.getObject("data_producao", LocalDate.class), r.getString("periodo"), (Long) r.getObject("medico_id", Long.class),
-                Objects.toString(r.getString("medico"), ""), (Long) r.getObject("exame_id", Long.class), Objects.toString(r.getString("exame"), ""),
-                r.getString("nr_atendimento"), r.getString("paciente")), hospitalId, inicio, fim);
+        return calcular(hospitalId, inicio, fim, itens(DISPONIVEIS, hospitalId, inicio, fim));
+    }
+
+    /** Valoriza uma lista de etiquetas pelas regras do hospital (agenda = lote x medico). */
+    private Previa calcular(long hospitalId, LocalDate inicio, LocalDate fim, List<ItemLinha> itens) {
         Map<List<Object>, List<ItemLinha>> agendas = new LinkedHashMap<>();
         for (ItemLinha i : itens) agendas.computeIfAbsent(Arrays.asList(i.loteId(), i.medicoId()), k -> new ArrayList<>()).add(i);
         List<MotorValorProducao.Agenda> lista = agendas.values().stream().filter(v -> v.get(0).medicoId() != null)
@@ -168,22 +188,26 @@ public class FechamentoProducaoService {
             jdbc.update("""
                     insert into producao_fechamento_calculo(fechamento_id,lote_id,data_producao,periodo,medico_id,regra_id,descricao,exames,pontos,valor)
                     values(?,?,?,?,?,?,?,?,?,?)""", id, c.loteId(), c.data(), c.periodo(), c.medicoId(), c.regraId(), c.descricao(), c.exames(), c.pontos(), c.valor());
+        List<ItemLinha> incluidos = itens(DISPONIVEIS, hospitalId, inicio, fim);
+        for (ItemLinha i : incluidos) jdbc.update("insert into producao_fechamento_item(fechamento_id,item_id) values(?,?)", id, i.itemId());
         jdbc.update("""
-                insert into producao_fechamento_item(fechamento_id,item_id) select ?, i.id from producao_item i join producao_lote l on l.id=i.lote_id
-                where l.hospital_id=? and l.data_producao between ? and ? and l.status='CONFERIDO' and l.fechamento_id is null""", id, hospitalId, inicio, fim);
-        List<Long> lotes = jdbc.queryForList("""
-                select id from producao_lote where hospital_id=? and data_producao between ? and ? and status='CONFERIDO' and fechamento_id is null""",
-                Long.class, hospitalId, inicio, fim);
-        jdbc.update("""
-                update producao_lote set fechamento_id=?, status='ENVIADO', atualizado_em=now(), versao=versao+1
-                where hospital_id=? and data_producao between ? and ? and status='CONFERIDO' and fechamento_id is null""", id, hospitalId, inicio, fim);
+                update producao_item set contestacao=null where contestacao='REINCLUIR'
+                and id in (select item_id from producao_fechamento_item where fechamento_id=?)""", id);
+        List<Long> lotes = incluidos.stream().map(ItemLinha::loteId).distinct().toList();
+        for (Long lote : lotes) {
+            jdbc.update("update producao_lote set fechamento_id=?, status='ENVIADO', atualizado_em=now(), versao=versao+1 where id=?", id, lote);
+            jdbc.update("insert into producao_fechamento_lote(fechamento_id,lote_id) values(?,?)", id, lote);
+        }
+        jdbc.update("update producao_fechamento set valor_enviado=total where id=?", id);
         historico.fechamento(id, "GERADO", "Fechamento gerado com " + lotes.size() + " lote(s) e " + p.etiquetas() + " etiqueta(s), total R$ " + p.total(), usuario);
         for (Long lote : lotes) historico.lote(lote, "ENVIADA", "Incluído no fechamento nº " + id, usuario);
         return detalhe(id);
     }
 
     private static final String SELECT_FECHAMENTO = """
-            select f.*, h.nome hospital, (select count(*) from producao_fechamento_item x where x.fechamento_id=f.id) etiquetas
+            select f.*, h.nome hospital, (select count(*) from producao_fechamento_item x where x.fechamento_id=f.id and x.situacao='INCLUIDA') etiquetas,
+                   (select count(*) from producao_fechamento_item x join producao_item i on i.id=x.item_id where x.fechamento_id=f.id
+                      and (x.situacao='RETIRADA' or i.contestacao='PENDENTE')) contestadas
             from producao_fechamento f join hospital_cadastro h on h.id=f.hospital_id
             """;
 
@@ -191,7 +215,9 @@ public class FechamentoProducaoService {
         return new Fechamento(r.getLong("id"), r.getLong("hospital_id"), r.getString("hospital"), r.getObject("data_inicio", LocalDate.class),
                 r.getObject("data_fim", LocalDate.class), r.getString("status"), r.getBigDecimal("total"), r.getString("aprovado_por"),
                 r.getObject("aprovado_em", LocalDate.class), r.getString("nf_numero"), r.getObject("nf_data", LocalDate.class),
-                r.getString("observacao"), r.getInt("etiquetas"));
+                r.getString("observacao"), r.getInt("etiquetas"),
+                r.getTimestamp("visto_hospital_em") == null ? null : r.getTimestamp("visto_hospital_em").toLocalDateTime(),
+                r.getBigDecimal("valor_enviado"), r.getInt("contestadas"));
     }
 
     @Transactional(readOnly = true)
@@ -211,13 +237,15 @@ public class FechamentoProducaoService {
                 Objects.toString(r.getString("medico"), ""), (Long) r.getObject("regra_id", Long.class), r.getString("descricao"), r.getInt("exames"),
                 r.getInt("pontos"), r.getBigDecimal("valor")), id);
         List<Etiqueta> etiquetas = jdbc.query("""
-                select l.data_producao, l.periodo, m.nome medico, e.nome exame, i.nr_atendimento, i.paciente, i.convenio, i.plano, i.carteirinha, i.guia
+                select l.data_producao, l.periodo, m.nome medico, e.nome exame, i.nr_atendimento, i.paciente, i.convenio, i.plano, i.carteirinha, i.guia,
+                       i.id item_id, l.id lote_id, fi.situacao, i.contestacao, i.contestacao_motivo, i.contestacao_resposta
                 from producao_fechamento_item fi join producao_item i on i.id=fi.item_id join producao_lote l on l.id=i.lote_id
                 left join medico_cadastro m on m.id=i.medico_id left join producao_exame_tipo e on e.id=i.exame_id
                 where fi.fechamento_id=? order by m.nome, l.data_producao, i.nr_atendimento""", (r, n) -> new Etiqueta(
                 r.getObject("data_producao", LocalDate.class), r.getString("periodo"), Objects.toString(r.getString("medico"), ""),
                 Objects.toString(r.getString("exame"), ""), r.getString("nr_atendimento"), r.getString("paciente"), r.getString("convenio"),
-                r.getString("plano"), r.getString("carteirinha"), r.getString("guia")), id);
+                r.getString("plano"), r.getString("carteirinha"), r.getString("guia"), r.getLong("item_id"), r.getLong("lote_id"),
+                r.getString("situacao"), r.getString("contestacao"), r.getString("contestacao_motivo"), r.getString("contestacao_resposta")), id);
         return new Detalhe(f.get(0), calculos, resumir(calculos), etiquetas);
     }
 
@@ -226,10 +254,65 @@ public class FechamentoProducaoService {
     public Detalhe aprovar(long id, String aprovadoPor, LocalDate em, String usuario) {
         if (aprovadoPor == null || aprovadoPor.isBlank()) throw new IllegalArgumentException("Informe quem aprovou no hospital");
         exigirStatus(id, "AGUARDANDO");
+        aplicarContestacoes(id, usuario);
         jdbc.update("update producao_fechamento set status='APROVADO', aprovado_por=?, aprovado_em=? where id=?",
                 aprovadoPor.trim(), em == null ? LocalDate.now() : em, id);
         historico.fechamento(id, "APROVADO", "Ok do hospital registrado: aprovado por " + aprovadoPor.trim(), usuario);
         return detalhe(id);
+    }
+
+    /**
+     * Na aprovacao, as etiquetas contestadas saem do fechamento (ficam "em analise" para a FaturaMed decidir)
+     * e o valor e recalculado so com as etiquetas aceitas. Nao trava o fechamento.
+     */
+    void aplicarContestacoes(long id, String usuario) {
+        List<Long> contestadas = jdbc.queryForList("""
+                select i.id from producao_fechamento_item fi join producao_item i on i.id=fi.item_id
+                where fi.fechamento_id=? and fi.situacao='INCLUIDA' and i.contestacao='PENDENTE'""", Long.class, id);
+        if (contestadas.isEmpty()) return;
+        for (Long item : contestadas) {
+            jdbc.update("update producao_fechamento_item set situacao='RETIRADA' where fechamento_id=? and item_id=?", id, item);
+            jdbc.update("update producao_item set contestacao='EM_ANALISE' where id=?", item);
+        }
+        Map<String, Object> f = jdbc.queryForMap("select hospital_id, data_inicio, data_fim, total from producao_fechamento where id=?", id);
+        LocalDate inicio = ((java.sql.Date) f.get("data_inicio")).toLocalDate(), fim = ((java.sql.Date) f.get("data_fim")).toLocalDate();
+        Previa p = calcular(((Number) f.get("hospital_id")).longValue(), inicio, fim, itens("""
+                where exists (select 1 from producao_fechamento_item fi where fi.item_id=i.id and fi.fechamento_id=? and fi.situacao='INCLUIDA')""", id));
+        jdbc.update("delete from producao_fechamento_calculo where fechamento_id=?", id);
+        for (Calculo c : p.calculos())
+            jdbc.update("""
+                    insert into producao_fechamento_calculo(fechamento_id,lote_id,data_producao,periodo,medico_id,regra_id,descricao,exames,pontos,valor)
+                    values(?,?,?,?,?,?,?,?,?,?)""", id, c.loteId(), c.data(), c.periodo(), c.medicoId(), c.regraId(), c.descricao(), c.exames(), c.pontos(), c.valor());
+        jdbc.update("update producao_fechamento set total=? where id=?", p.total(), id);
+        historico.fechamento(id, "CONTESTADAS", contestadas.size() + " etiqueta(s) contestada(s) retirada(s); total recalculado de R$ " + f.get("total") + " para R$ " + p.total(), usuario);
+    }
+
+    // ================= contestacoes (lado FaturaMed) =================
+    @Transactional(readOnly = true)
+    public List<Contestacao> contestacoes() {
+        return jdbc.query("""
+                select i.id item_id, l.id lote_id, fi.fechamento_id, h.nome hospital, l.data_producao, m.nome medico, e.nome exame,
+                       i.nr_atendimento, i.paciente, i.contestacao_motivo, i.contestacao_por, i.contestacao_em
+                from producao_item i join producao_lote l on l.id=i.lote_id join hospital_cadastro h on h.id=l.hospital_id
+                left join medico_cadastro m on m.id=i.medico_id left join producao_exame_tipo e on e.id=i.exame_id
+                left join lateral (select max(fechamento_id) fechamento_id from producao_fechamento_item x where x.item_id=i.id) fi on true
+                where i.contestacao='EM_ANALISE' order by i.contestacao_em""", (r, n) -> new Contestacao(r.getLong("item_id"), r.getLong("lote_id"),
+                r.getLong("fechamento_id"), r.getString("hospital"), r.getObject("data_producao", LocalDate.class), Objects.toString(r.getString("medico"), ""),
+                Objects.toString(r.getString("exame"), ""), r.getString("nr_atendimento"), r.getString("paciente"), r.getString("contestacao_motivo"),
+                r.getString("contestacao_por"), r.getTimestamp("contestacao_em") == null ? null : r.getTimestamp("contestacao_em").toLocalDateTime()));
+    }
+
+    /** REINCLUIR: a etiqueta volta a ficar disponivel para um proximo fechamento. ACEITA: nao sera faturada. */
+    @Transactional
+    public void resolverContestacao(long itemId, String decisao, String resposta, String usuario) {
+        String d = decisao == null ? "" : decisao.toUpperCase(Locale.ROOT);
+        if (!Set.of("REINCLUIR", "ACEITA").contains(d)) throw new IllegalArgumentException("Decisao invalida");
+        if (jdbc.update("update producao_item set contestacao=?, contestacao_resposta=? where id=? and contestacao='EM_ANALISE'",
+                d, resposta == null ? "" : resposta.trim(), itemId) == 0)
+            throw new ConflitoRevisaoException("Contestacao ja resolvida ou inexistente");
+        Long lote = jdbc.queryForObject("select lote_id from producao_item where id=?", Long.class, itemId);
+        historico.lote(lote, "CONTESTACAO", ("ACEITA".equals(d) ? "Contestação aceita: etiqueta não será faturada" : "Contestação recusada: etiqueta volta para o próximo fechamento")
+                + (resposta == null || resposta.isBlank() ? "" : " (" + resposta.trim() + ")"), usuario);
     }
 
     @Transactional
@@ -249,6 +332,7 @@ public class FechamentoProducaoService {
         for (Long lote : jdbc.queryForList("select id from producao_lote where fechamento_id=?", Long.class, id))
             historico.lote(lote, "RETIRADA", "Fechamento nº " + id + " cancelado: lote voltou para conferido", usuario);
         historico.fechamento(id, "CANCELADO", "Fechamento cancelado", usuario);
+        jdbc.update("update producao_item set contestacao=null, contestacao_motivo='' where contestacao='PENDENTE' and id in (select item_id from producao_fechamento_item where fechamento_id=?)", id);
         jdbc.update("update producao_lote set fechamento_id=null, status='CONFERIDO', atualizado_em=now(), versao=versao+1 where fechamento_id=?", id);
         jdbc.update("delete from producao_fechamento where id=?", id);
     }

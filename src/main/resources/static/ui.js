@@ -268,11 +268,12 @@
     input.focus();
   }
   document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrirBusca(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !document.body.hasAttribute('data-sem-busca')) { e.preventDefault(); abrirBusca(); }
   });
   window.fmUi.abrirBusca = abrirBusca;
 
   function botaoBusca() {
+    if (document.body.hasAttribute('data-sem-busca')) return;
     const header = document.querySelector('main :is(.account-heading, .conciliation-heading, .topbar) .session-actions');
     if (!header || header.querySelector('.fm-busca-botao')) return;
     const b = document.createElement('button');

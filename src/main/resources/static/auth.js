@@ -31,7 +31,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     if(location.pathname!=='/login.html'){
       request('/api/auth/me').then(user => {
-        const externo = ['MEDICO','EMPRESA'].includes(user.perfil);
+        const externo = ['MEDICO','EMPRESA','HOSPITAL'].includes(user.perfil);
         if (externo) {
           document.querySelectorAll('a[href="usuarios.html"],a[href="/usuarios.html"]').forEach(link=>link.remove());
         }
