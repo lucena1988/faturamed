@@ -145,12 +145,20 @@ public class ProducaoService {
         Lote lote = buscar(id);
         if (!"RASCUNHO".equals(s)) {
             if (lote.itens().isEmpty()) throw new IllegalArgumentException("Lote sem itens");
-            if (lote.itens().stream().anyMatch(Item::pendenteRevisao))
-                throw new IllegalArgumentException("Revise os itens pendentes antes de conferir o lote");
-            if (lote.itens().stream().anyMatch(i -> i.medicoId() == null))
-                throw new IllegalArgumentException("Informe o medico de todas as etiquetas antes de conferir o lote");
-            if (!lote.exameIds().isEmpty() && lote.itens().stream().anyMatch(i -> i.exameId() == null))
-                throw new IllegalArgumentException("Informe o exame de todas as etiquetas antes de conferir o lote");
+            List<String> problemas = new ArrayList<>();
+            for (int n = 0; n < lote.itens().size(); n++) {
+                Item i = lote.itens().get(n);
+                List<String> p = new ArrayList<>();
+                if (!i.nrAtendimento().matches("[0-9]{7,10}")) p.add("atendimento invalido");
+                if (i.paciente().isBlank()) p.add("sem paciente");
+                if (i.medicoId() == null) p.add("sem medico");
+                if (!lote.exameIds().isEmpty() && i.exameId() == null) p.add("sem exame");
+                if (i.pendenteRevisao()) p.add("nao conferida");
+                if (!p.isEmpty()) problemas.add("linha " + (n + 1) + " (" + String.join(", ", p) + ")");
+            }
+            if (!problemas.isEmpty())
+                throw new IllegalArgumentException("Corrija antes de conferir: " + String.join("; ", problemas.subList(0, Math.min(10, problemas.size())))
+                        + (problemas.size() > 10 ? " e mais " + (problemas.size() - 10) + " etiqueta(s)" : ""));
         }
         jdbc.update("update producao_lote set status=?,atualizado_em=now(),versao=versao+1 where id=?", s, id);
         return buscar(id);

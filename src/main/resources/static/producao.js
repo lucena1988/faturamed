@@ -7,6 +7,7 @@
   let itens = [];
   let duplicados = new Map();
   let fotoPendente = null;
+  let exibirFaltas = false; // liga o destaque de problemas após a 1ª tentativa de conferir
   let medicos = [];
   let exames = [];
   const selMedicos = new Set();
@@ -81,6 +82,7 @@
   async function abrir(id) {
     const f = $('#cabecalho');
     f.reset(); fotoPendente = null; $('#foto').value = ''; $('#aviso-dup').hidden = true;
+    exibirFaltas = false; mostrarProblemas([]);
     selMedicos.clear(); selExames.clear();
     const img = $('#foto-preview'); img.hidden = true; img.removeAttribute('src');
     if (id) {
@@ -134,19 +136,22 @@
     }
     const vistos = new Map();
     const dis = bloqueado ? 'disabled' : '';
+    const faltas = new Map(exibirFaltas ? problemas().map(x => [x.i, new Set(x.p.map(p => p.campo))]) : []);
+    const falta = (i, c) => faltas.get(i)?.has(c) ? ' class="prod-falta"' : '';
     $('#itens').innerHTML = itens.map((it, i) => {
       const n = (vistos.get(it.nrAtendimento) || 0) + 1; vistos.set(it.nrAtendimento, n);
       const semVinculo = !it.medicoId || (selExames.size && !it.exameId);
       const classes = [it.pendenteRevisao ? 'pendente' : '', duplicados.has(it.nrAtendimento) ? 'duplicado' : '', n > 1 ? 'repetido' : '', semVinculo ? 'sem-vinculo' : ''].join(' ');
       const dup = duplicados.get(it.nrAtendimento);
       return `<tr class="${classes}" data-i="${i}" title="${dup ? esc('Já lançado em: ' + dup.join('; ')) : ''}"><td>${i + 1}</td>
-        <td><select data-vinculo="medicoId" ${dis}>${opcoesVinculo(selMedicos, nomeMedico, it.medicoId)}</select></td>
-        <td><select data-vinculo="exameId" ${dis}>${opcoesVinculo(selExames, nomeExame, it.exameId)}</select></td>
-        ${CAMPOS.map(c => `<td><input data-campo="${c}" value="${esc(it[c])}" ${dis}></td>`).join('')}
+        <td${falta(i, 'medicoId')}><select data-vinculo="medicoId" ${dis}>${opcoesVinculo(selMedicos, nomeMedico, it.medicoId)}</select></td>
+        <td${falta(i, 'exameId')}><select data-vinculo="exameId" ${dis}>${opcoesVinculo(selExames, nomeExame, it.exameId)}</select></td>
+        ${CAMPOS.map(c => `<td${falta(i, c)}><input data-campo="${c}" value="${esc(it[c])}" ${dis}></td>`).join('')}
         <td>${bloqueado ? '' : `${it.pendenteRevisao ? '<button type="button" class="text-button" data-ok title="Marcar como revisado">✓</button>' : ''}<button type="button" class="text-button prod-perigo" data-remover title="Remover etiqueta">✕</button>`}</td></tr>`;
     }).join('') || '<tr><td colspan="16" class="prod-vazio">Nenhuma etiqueta. Leia a foto da folha ou digite o nº de atendimento.</td></tr>';
     const pend = itens.filter(i => i.pendenteRevisao).length;
     $('#contagem').textContent = `${itens.length} etiqueta(s) em ${vistos.size} atendimento(s)${pend ? ` · ${pend} pendente(s)` : ''}`;
+    if (exibirFaltas) mostrarProblemas(problemas());
   }
 
   async function verificarDuplicidades() {
@@ -254,7 +259,39 @@
     return l;
   }
 
+  // lista, por etiqueta, o que impede a conferência do lote
+  function problemas() {
+    const lista = [];
+    itens.forEach((it, i) => {
+      const p = [];
+      if (!/^\d{7,10}$/.test(it.nrAtendimento || '')) p.push({campo: 'nrAtendimento', txt: it.nrAtendimento ? `atendimento "${it.nrAtendimento}" inválido` : 'sem nº de atendimento'});
+      if (!(it.paciente || '').trim()) p.push({campo: 'paciente', txt: 'sem paciente'});
+      if (!it.medicoId) p.push({campo: 'medicoId', txt: 'sem médico'});
+      if (selExames.size && !it.exameId) p.push({campo: 'exameId', txt: 'sem exame'});
+      if (it.pendenteRevisao) p.push({campo: null, txt: 'não conferida com a foto (clique ✓ na linha)'});
+      if (p.length) lista.push({i, p});
+    });
+    return lista;
+  }
+
+  function mostrarProblemas(lista) {
+    const box = $('#problemas');
+    if (!lista.length) { box.hidden = true; box.innerHTML = ''; return; }
+    const soRevisao = lista.every(x => x.p.length === 1 && !x.p[0].campo);
+    box.innerHTML = `<strong>Não é possível conferir: ${lista.length} etiqueta(s) com problema</strong>
+      ${soRevisao ? '<button type="button" class="secondary-button" data-revisar-todas>✓ Já conferi todas com a foto</button>' : ''}
+      <ul>${lista.map(x => `<li><a href="#" data-ir="${x.i}">Linha ${x.i + 1}${itens[x.i].paciente ? ` (${esc(itens[x.i].paciente)})` : ''}</a>: ${x.p.map(p => esc(p.txt)).join(', ')}</li>`).join('')}</ul>`;
+    box.hidden = false;
+  }
+
   async function mudarStatus(status) {
+    if (status !== 'RASCUNHO') {
+      const lista = problemas();
+      exibirFaltas = true;
+      renderItens();
+      mostrarProblemas(lista);
+      if (lista.length) { msg(''); $('#problemas').scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
+    }
     if (lote.status === 'RASCUNHO' && !(await salvar())) return;
     const l = await api(`/api/producao/lotes/${lote.id}/status`, json('POST', {status}));
     lote = {id: l.id, versao: l.versao, status: l.status};
@@ -290,6 +327,19 @@
     if (e.target.matches('[data-remover]')) { itens.splice(i, 1); await verificarDuplicidades(); }
     else if (e.target.matches('[data-ok]')) { itens[i].pendenteRevisao = false; renderItens(); }
   }));
+  $('#problemas').addEventListener('click', e => {
+    const ir = e.target.closest('[data-ir]');
+    if (ir) {
+      e.preventDefault();
+      const tr = document.querySelector(`#itens tr[data-i="${ir.dataset.ir}"]`);
+      tr?.scrollIntoView({behavior: 'smooth', block: 'center'});
+      (tr?.querySelector('.prod-falta input, .prod-falta select') || tr?.querySelector('input'))?.focus();
+    } else if (e.target.matches('[data-revisar-todas]')) {
+      itens.forEach(it => { it.pendenteRevisao = false; });
+      renderItens();
+      msg('Todas as etiquetas foram marcadas como conferidas. Clique em "Marcar como conferido" novamente.');
+    }
+  });
   $('#btn-salvar').addEventListener('click', proteger(async () => { await salvar(); await verificarDuplicidades(); }));
   $('#btn-conferir').addEventListener('click', proteger(() => mudarStatus('CONFERIDO')));
   $('#btn-enviar').addEventListener('click', proteger(() => mudarStatus('ENVIADO')));

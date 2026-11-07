@@ -41,3 +41,8 @@ main.account-workspace.prod-pagina { max-width: none; width: auto; margin-left: 
 .prod-tabela table { min-width: 1700px; width: 100%; }
 .prod-tabela select { max-width: none; width: 100%; min-width: 150px; }
 .app-shell > .page-content.account-workspace.prod-pagina, main.account-workspace.prod-pagina { max-width: none; width: auto; }
+.prod-problemas { border: 1px solid #f1aeb5; background: #f8d7da; color: #58151c; border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+.prod-problemas ul { margin: 6px 0 0; padding-left: 20px; max-height: 220px; overflow: auto; }
+.prod-problemas a { color: inherit; font-weight: 600; }
+.prod-problemas button { margin-left: 12px; }
+.prod-tabela td.prod-falta input, .prod-tabela td.prod-falta select { outline: 2px solid #dc3545; background: #fff0f1; }
