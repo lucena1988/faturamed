@@ -1,7 +1,6 @@
 (() => {
   const $ = s => document.querySelector(s);
   const TIPOS = {POR_EXAME: 'Por exame', POR_AGENDA: 'Fixo por agenda', TABELA_AGENDA: 'Tabela por quantidade', MENSAL_MEDICO: 'Fixo mensal'};
-  const STATUS = {AGUARDANDO: 'Aguardando hospital', APROVADO: 'Aprovado', NF_EMITIDA: 'NF emitida'};
   const PERIODOS = {MANHA: 'Manhã', TARDE: 'Tarde', NOITE: 'Noite', INTEGRAL: 'Integral'};
   let exames = [];
   let regras = [];
@@ -12,7 +11,6 @@
   const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   const data = d => d ? new Date(d + 'T00:00').toLocaleDateString('pt-BR') : '—';
   const msg = (t, erro) => { if (t) fmUi.toast(t, erro ? 'erro' : 'sucesso'); };
-  const COR_STATUS = {AGUARDANDO: 'ambar', APROVADO: 'azul', NF_EMITIDA: 'verde'};
   const ETAPAS = [{chave: 'AGUARDANDO', rotulo: 'Enviado'}, {chave: 'APROVADO', rotulo: 'Aprovado'}, {chave: 'NF_EMITIDA', rotulo: 'NF emitida'}];
   const hoje = () => new Date().toISOString().slice(0, 10);
   async function api(url, opcoes = {}) {
@@ -217,9 +215,6 @@
     const qtd = st => lista.filter(f => f.status === st).length;
     const mes = hoje().slice(0, 7);
     const nfMes = lista.filter(f => f.status === 'NF_EMITIDA' && (f.nfData || '').startsWith(mes));
-    const ef = window.fmEfeitos;
-    const nfPorMes = ef ? ef.porMes(lista.filter(f => f.status === 'NF_EMITIDA'), f => f.nfData, f => f.total) : [];
-    const geradoPorMes = ef ? ef.porMes(lista, f => f.dataFim, f => f.total) : [];
     // cards simples: sem bento, borda animada nem minigrafico (pedido do usuario)
     $('#cards').innerHTML = [
       {icone: 'relogio', rotulo: 'Aguardando ok do hospital', valor: brl(soma('AGUARDANDO')), sub: `${qtd('AGUARDANDO')} fechamento(s)`, zerado: !qtd('AGUARDANDO')},

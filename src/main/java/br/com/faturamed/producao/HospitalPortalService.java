@@ -27,7 +27,7 @@ public class HospitalPortalService {
     }
 
     public long hospitalDoUsuario(long usuarioId) {
-        Long h = jdbc.query("select hospital_id from usuario_acesso where id=? and perfil='HOSPITAL'", rs -> rs.next() ? (Long) rs.getObject(1, Long.class) : null, usuarioId);
+        Long h = jdbc.query("select hospital_id from usuario_acesso where id=? and perfil='HOSPITAL'", rs -> rs.next() ? rs.getObject(1, Long.class) : null, usuarioId);
         if (h == null) throw new org.springframework.security.access.AccessDeniedException("Usuario sem hospital vinculado");
         return h;
     }
@@ -106,7 +106,7 @@ public class HospitalPortalService {
                 : "update producao_item set contestacao='PENDENTE', contestacao_motivo=?, contestacao_por=?, contestacao_em=now() where id=? and id in (select item_id from producao_fechamento_item where fechamento_id=? and situacao='INCLUIDA')",
                 retirar ? new Object[]{itemId, fechamentoId} : new Object[]{motivo.trim().length() > 500 ? motivo.trim().substring(0, 500) : motivo.trim(), usuario, itemId, fechamentoId});
         if (n == 0) throw new RecursoNaoEncontradoException("Etiqueta nao pertence a este fechamento");
-        Long lote = jdbc.queryForObject("select lote_id from producao_item where id=?", Long.class, itemId);
+        long lote = jdbc.queryForObject("select lote_id from producao_item where id=?", Long.class, itemId);
         String nr = jdbc.queryForObject("select nr_atendimento from producao_item where id=?", String.class, itemId);
         historico.lote(lote, retirar ? "CONTESTACAO_RETIRADA" : "CONTESTADA",
                 retirar ? "Hospital retirou a contestação do atendimento " + nr : "Hospital contestou o atendimento " + nr + ": " + motivo.trim(), usuario);

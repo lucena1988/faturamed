@@ -150,7 +150,7 @@
 .fm-busca-botao { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--surface); color: var(--muted); font: inherit; font-size: .88rem; cursor: pointer; }
 .fm-busca-botao:hover { color: var(--primary-strong); background: var(--primary-soft); }
-.fm-busca-botao kbd, .fm-busca kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface-soft, #f3f6f7); font: 600 .72rem/1.4 inherit; color: var(--muted); }
+.fm-busca-botao kbd, .fm-busca kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface-soft, #f3f6f7); font-family: inherit; font-size: .72rem; font-weight: 600; line-height: 1.4; color: var(--muted); }
 .fm-busca { width: min(640px, 94vw); margin-top: 10vh; border: 0; border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); box-shadow: 0 24px 70px rgba(0,0,0,.35); }
 .fm-busca::backdrop { background: rgba(10, 20, 25, .45); }
 .fm-busca-campo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
