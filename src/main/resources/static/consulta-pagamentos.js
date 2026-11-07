@@ -2,7 +2,9 @@
   const $=id=>document.getElementById(id),money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const date=v=>v?v.split('-').reverse().join('/'):'Não informada',format=v=>money.format(v);
   const labels={SEM_ESTORNO:'Sem estorno',PARCIALMENTE_ESTORNADO:'Parcialmente estornado',ESTORNADO:'Estornado',CONFERENCIA:'Em conferência'};
-  const node=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e;};let report=null,lastReport=null,doctor='',generation=0,detailGeneration=0;
+  const node=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e;};
+  const urlPart=v=>encodeURIComponent(String(v??''));
+  let report=null,lastReport=null,doctor='',generation=0,detailGeneration=0;
   let attachmentReport=null,attachmentPayment=null,attachmentBusy=false,attachmentEditable=false;
   function row(id,values){const tr=node('tr','');values.forEach((v,i)=>{const td=node('td',v);td.dataset.label=$(id).closest('table').querySelectorAll('th')[i].textContent;tr.append(td);});$(id).append(tr);return tr;}
   function stats(id,data){$(id).replaceChildren();for(const [label,value] of [['Total original',data.valorOriginal],['Estornos acumulados',data.estornos],['Valor liquido atual',data.liquido]]){const item=node('div',label);item.append(node('strong',format(value)));$(id).append(item);}}
@@ -24,11 +26,11 @@
       await loadAttachments(token);
     }catch(e){if(token===detailGeneration)$('payment-consult-message').textContent=e.message;}
   }
-  function attachmentPath(){return `/api/conciliacoes/visitas/${attachmentReport}/recebimentos/pagamentos/${attachmentPayment}/comprovantes`;}
+  function attachmentPath(){return `/api/conciliacoes/visitas/${urlPart(attachmentReport)}/recebimentos/pagamentos/${urlPart(attachmentPayment)}/comprovantes`;}
   function renderAttachments(data){attachmentEditable=data.podeAlterar;$('comprovante-fields').disabled=attachmentBusy||!attachmentEditable;$('comprovantes-list').replaceChildren();
     for(const c of data.comprovantes){const li=node('li','');li.append(node('strong',c.nome),node('p',`${Math.ceil(c.tamanho/1024)} KB - ${c.responsavel} - ${new Date(c.criadoEm).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}`));
       if(c.retiradoEm)li.append(node('p',`Retirado de uso por ${c.retiradoPor} em ${new Date(c.retiradoEm).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}: ${c.motivoRetirada}`));
-      else {const link=node('a','Baixar comprovante');link.href=attachmentPath()+'/'+c.id;li.append(link);if(attachmentEditable){const remove=node('button','Retirar de uso');remove.type='button';remove.dataset.attachmentAction='true';remove.disabled=attachmentBusy;remove.onclick=async()=>{const justificativa=await fmPerguntar(`Retirar ${c.nome} de uso`,'Justificativa');if(!justificativa?.trim()||!await fmConfirmar(`Retirar ${c.nome} de uso? O histórico sera preservado.`))return;await changeAttachment('/'+c.id+'/retirada',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({justificativa})});};li.append(remove);}}
+      else {const link=node('a','Baixar comprovante');link.href=attachmentPath()+'/'+urlPart(c.id);li.append(link);if(attachmentEditable){const remove=node('button','Retirar de uso');remove.type='button';remove.dataset.attachmentAction='true';remove.disabled=attachmentBusy;remove.onclick=async()=>{const justificativa=await fmPerguntar(`Retirar ${c.nome} de uso`,'Justificativa');if(!justificativa?.trim()||!await fmConfirmar(`Retirar ${c.nome} de uso? O histórico sera preservado.`))return;await changeAttachment('/'+urlPart(c.id)+'/retirada',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({justificativa})});};li.append(remove);}}
       $('comprovantes-list').append(li);
     }
     if(!data.comprovantes.length)$('comprovantes-list').append(node('li','Nenhum comprovante anexado.'));
