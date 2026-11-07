@@ -46,6 +46,8 @@ server:
         secure: ${SESSION_COOKIE_SECURE:false}
 
 faturamed:
+  # endereco usado nos links dos e-mails (ex.: https://faturamed.com.br)
+  url-publica: ${APP_URL:http://localhost:8080}
   recuperacao-senha:
     remetente: ${MAIL_FROM:}
     # Somente para ambiente local sem SMTP: escreve o codigo no log. Nunca ligar em HML/producao.

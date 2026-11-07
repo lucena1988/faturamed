@@ -83,6 +83,18 @@ public class HospitalPortalService {
                 conferido ? "Lote conferido pelo hospital (fechamento nº " + fechamentoId + ")" : "Hospital desfez a conferência do lote", usuario);
     }
 
+    /** Marca de uma vez todos os lotes ainda nao conferidos do fechamento. Retorna quantos foram marcados. */
+    @Transactional
+    public int conferirTodos(long fechamentoId, long hospitalId, String usuario) {
+        exigirDoHospital(fechamentoId, hospitalId);
+        exigirEmConferencia(fechamentoId);
+        List<Long> lotes = jdbc.queryForList("select lote_id from producao_fechamento_lote where fechamento_id=? and conferido_em is null", Long.class, fechamentoId);
+        jdbc.update("update producao_fechamento_lote set conferido_em=now(), conferido_por=? where fechamento_id=? and conferido_em is null", usuario, fechamentoId);
+        for (Long lote : lotes) historico.lote(lote, "CONFERIDO_HOSPITAL", "Lote conferido pelo hospital (fechamento nº " + fechamentoId + ", em lote)", usuario);
+        if (!lotes.isEmpty()) historico.fechamento(fechamentoId, "LOTES_CONFERIDOS", lotes.size() + " lote(s) marcados como conferidos de uma vez", usuario);
+        return lotes.size();
+    }
+
     @Transactional
     public void contestar(long fechamentoId, long itemId, String motivo, long hospitalId, String usuario) {
         exigirDoHospital(fechamentoId, hospitalId);
@@ -111,6 +123,11 @@ public class HospitalPortalService {
                 usuario + " (portal do hospital)", LocalDate.now(), fechamentoId);
         historico.fechamento(fechamentoId, "APROVADO", "Aprovado e liberado para NF pelo hospital", usuario);
         return fechamentos.detalhe(fechamentoId);
+    }
+
+    public Map<String, Object> nfArquivo(long fechamentoId, long hospitalId) {
+        exigirDoHospital(fechamentoId, hospitalId);
+        return fechamentos.nfArquivo(fechamentoId);
     }
 
     public FechamentoProducaoService.Detalhe detalheParaPlanilha(long fechamentoId, long hospitalId) {

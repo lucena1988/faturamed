@@ -93,11 +93,8 @@
     const ef = window.fmEfeitos;
     const etiquetasMes = ef ? ef.porMes(lotes, l => l.dataProducao, l => l.itens) : [];
     const pendentes = soma(por('RASCUNHO'), l => l.pendentes);
-    $('#cards').classList.add('bento');
+    // cards simples: sem bento, borda animada nem minigrafico (pedido do usuario)
     $('#cards').innerHTML = cards.map(([st, icone, rotulo, valor, sub]) => fmUi.card({icone, rotulo, valor: String(valor), sub, zerado: !valor,
-      classe: st === 'RASCUNHO' && pendentes ? 'atencao' : '',
-      extra: !st && ef ? ef.sparkline(etiquetasMes) : '',
-      selo: !st && ef ? ef.tendencia(etiquetasMes.at(-1), etiquetasMes.at(-2)) : '',
       atributos: st ? `data-status="${st}" tabindex="0" role="button" title="Filtrar por este status"` : ''})).join('')
       .replaceAll('<div class="fm-card" data-status', '<div class="fm-card clicavel" data-status').replaceAll('<div class="fm-card zerado" data-status', '<div class="fm-card zerado clicavel" data-status');
   }

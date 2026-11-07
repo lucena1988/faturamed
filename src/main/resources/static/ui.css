@@ -267,3 +267,6 @@ main .topbar > .session-actions > a { text-decoration: none; }
 .fm-modo { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; margin: 0 2px 10px; border-radius: 10px; background: var(--surface-soft, #eef3f4); border: 1px solid var(--line); }
 .fm-usuario-menu .fm-modo button { justify-content: center; padding: 6px 8px; border-radius: 8px; font-size: .84rem; font-weight: 600; color: var(--muted); }
 .fm-usuario-menu .fm-modo button.on { background: var(--surface); color: var(--primary-strong); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* elementos escondidos continuam escondidos mesmo com estilo de botao */
+[hidden] { display: none !important; }

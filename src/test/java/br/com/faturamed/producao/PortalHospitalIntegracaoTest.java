@@ -57,7 +57,9 @@ class PortalHospitalIntegracaoTest {
 
         // sem conferir todos os lotes nao aprova
         assertThrows(IllegalArgumentException.class, () -> portal.aprovar(f.id(), hospital, "Faturamento Hosp"));
-        portal.conferirLote(f.id(), lote.id(), true, hospital, "Faturamento Hosp");
+        portal.conferirLote(f.id(), lote.id(), false, hospital, "Faturamento Hosp");
+        assertEquals(1, portal.conferirTodos(f.id(), hospital, "Faturamento Hosp"), "marca de uma vez os lotes que faltam");
+        assertEquals(0, portal.conferirTodos(f.id(), hospital, "Faturamento Hosp"));
         var aprovado = portal.aprovar(f.id(), hospital, "Faturamento Hosp").fechamento();
         assertEquals("APROVADO", aprovado.status());
         assertEquals(new BigDecimal("96.00"), aprovado.total(), "valor recalculado sem a etiqueta contestada");
@@ -71,6 +73,13 @@ class PortalHospitalIntegracaoTest {
         var segundo = fechamentos.fechar(hospital, dia, dia, "", "operador").fechamento();
         assertEquals(1, segundo.etiquetas());
         assertEquals(0, fechamentos.previa(hospital, dia, dia).etiquetas());
+
+        // NF emitida com arquivo: o hospital baixa; outro hospital nao
+        fechamentos.registrarNf(f.id(), "123", dia, "operador");
+        fechamentos.salvarNfArquivo(f.id(), new byte[]{'%', 'P', 'D', 'F'}, "nf-123.pdf", "application/pdf", "operador");
+        assertEquals("nf-123.pdf", portal.nfArquivo(f.id(), hospital).get("nf_arquivo_nome"));
+        assertEquals("nf-123.pdf", portal.listar(hospital).stream().filter(x -> x.id() == f.id()).findFirst().orElseThrow().nfArquivoNome());
+        assertThrows(RuntimeException.class, () -> portal.nfArquivo(f.id(), outro));
     }
 
     private static ProducaoService.Item item(String nr, long medico, long exame) {

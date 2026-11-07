@@ -35,7 +35,7 @@ public class FechamentoProducaoService {
             List<ResumoMedico> resumo, List<SemRegra> semRegra, BigDecimal total) {}
     public record Fechamento(long id, long hospitalId, String hospital, LocalDate dataInicio, LocalDate dataFim, String status,
             BigDecimal total, String aprovadoPor, LocalDate aprovadoEm, String nfNumero, LocalDate nfData, String observacao, int etiquetas,
-            java.time.LocalDateTime vistoHospitalEm, BigDecimal valorEnviado, int contestadas) {}
+            java.time.LocalDateTime vistoHospitalEm, BigDecimal valorEnviado, int contestadas, String nfArquivoNome) {}
     public record Etiqueta(LocalDate data, String periodo, String medico, String exame, String nrAtendimento, String paciente,
             String convenio, String plano, String carteirinha, String guia, long itemId, long loteId, String situacao,
             String contestacao, String contestacaoMotivo, String contestacaoResposta) {}
@@ -46,7 +46,10 @@ public class FechamentoProducaoService {
 
     private final JdbcTemplate jdbc;
     private final HistoricoProducao historico;
-    public FechamentoProducaoService(JdbcTemplate jdbc, HistoricoProducao historico) { this.jdbc = jdbc; this.historico = historico; }
+    private final AvisoHospitalEmail aviso;
+    public FechamentoProducaoService(JdbcTemplate jdbc, HistoricoProducao historico, AvisoHospitalEmail aviso) {
+        this.jdbc = jdbc; this.historico = historico; this.aviso = aviso;
+    }
 
     // ================= regras =================
     @Transactional(readOnly = true)
@@ -199,13 +202,15 @@ public class FechamentoProducaoService {
             jdbc.update("insert into producao_fechamento_lote(fechamento_id,lote_id) values(?,?)", id, lote);
         }
         jdbc.update("update producao_fechamento set valor_enviado=total where id=?", id);
+        aviso.fechamentoEnviado(id);
         historico.fechamento(id, "GERADO", "Fechamento gerado com " + lotes.size() + " lote(s) e " + p.etiquetas() + " etiqueta(s), total R$ " + p.total(), usuario);
         for (Long lote : lotes) historico.lote(lote, "ENVIADA", "Incluído no fechamento nº " + id, usuario);
         return detalhe(id);
     }
 
     private static final String SELECT_FECHAMENTO = """
-            select f.*, h.nome hospital, (select count(*) from producao_fechamento_item x where x.fechamento_id=f.id and x.situacao='INCLUIDA') etiquetas,
+            select f.id, f.hospital_id, f.data_inicio, f.data_fim, f.status, f.total, f.aprovado_por, f.aprovado_em, f.nf_numero, f.nf_data,
+                   f.observacao, f.visto_hospital_em, f.valor_enviado, f.nf_arquivo_nome, h.nome hospital, (select count(*) from producao_fechamento_item x where x.fechamento_id=f.id and x.situacao='INCLUIDA') etiquetas,
                    (select count(*) from producao_fechamento_item x join producao_item i on i.id=x.item_id where x.fechamento_id=f.id
                       and (x.situacao='RETIRADA' or i.contestacao='PENDENTE')) contestadas
             from producao_fechamento f join hospital_cadastro h on h.id=f.hospital_id
@@ -217,7 +222,7 @@ public class FechamentoProducaoService {
                 r.getObject("aprovado_em", LocalDate.class), r.getString("nf_numero"), r.getObject("nf_data", LocalDate.class),
                 r.getString("observacao"), r.getInt("etiquetas"),
                 r.getTimestamp("visto_hospital_em") == null ? null : r.getTimestamp("visto_hospital_em").toLocalDateTime(),
-                r.getBigDecimal("valor_enviado"), r.getInt("contestadas"));
+                r.getBigDecimal("valor_enviado"), r.getInt("contestadas"), r.getString("nf_arquivo_nome"));
     }
 
     @Transactional(readOnly = true)
@@ -322,7 +327,23 @@ public class FechamentoProducaoService {
         jdbc.update("update producao_fechamento set status='NF_EMITIDA', nf_numero=?, nf_data=? where id=?", numero.trim(),
                 data == null ? LocalDate.now() : data, id);
         historico.fechamento(id, "NF_EMITIDA", "NF " + numero.trim() + " registrada", usuario);
+        aviso.nfEmitida(id);
         return detalhe(id);
+    }
+
+    // ================= arquivo da NF =================
+    @Transactional
+    public void salvarNfArquivo(long id, byte[] arquivo, String nome, String tipo, String usuario) {
+        exigirStatus(id, "NF_EMITIDA");
+        jdbc.update("update producao_fechamento set nf_arquivo=?, nf_arquivo_nome=?, nf_arquivo_tipo=? where id=?", arquivo, nome, tipo, id);
+        historico.fechamento(id, "NF_ARQUIVO", "Arquivo da NF anexado (" + nome + ")", usuario);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> nfArquivo(long id) {
+        List<Map<String, Object>> r = jdbc.queryForList("select nf_arquivo, nf_arquivo_nome, nf_arquivo_tipo from producao_fechamento where id=? and nf_arquivo is not null", id);
+        if (r.isEmpty()) throw new RecursoNaoEncontradoException("Fechamento sem arquivo de NF");
+        return r.get(0);
     }
 
     /** Desfaz um fechamento ainda nao aprovado: as folhas voltam a ficar conferidas e disponiveis. */

@@ -24,3 +24,18 @@
 .hp-motivo { display: block; margin-top: 2px; color: #a12b36; font-size: .8rem; text-decoration: none; }
 :root[data-theme="dark"] .hp-motivo { color: #f0b9bf; }
 .hp-contestar { color: #a12b36 !important; }
+
+/* ferramentas da conferencia: progresso, filtro e acao em lote */
+.hp-ferramentas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 4px 0 12px; }
+.hp-progresso { flex: 1 1 100%; height: 8px; border-radius: 999px; background: var(--surface-soft, #eef3f4); overflow: hidden; border: 1px solid var(--line); }
+.hp-progresso span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #2e8b57, color-mix(in srgb, #2e8b57 60%, var(--mod-cor))); transition: width .35s ease; }
+.hp-filtro { display: inline-flex; padding: 3px; gap: 3px; border-radius: 12px; background: var(--surface-soft, #eef3f4); border: 1px solid var(--line); }
+.hp-filtro button { border: 0; background: none; padding: 6px 12px; border-radius: 9px; font: inherit; font-size: .86rem; font-weight: 600; color: var(--muted); cursor: pointer; min-height: 0; }
+.hp-filtro button.on { background: var(--surface); color: var(--mod-forte); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.hp-filtro b { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--mod-suave); color: var(--mod-forte); font-size: .72rem; }
+#btn-conferir-todos { margin-left: auto; }
+.hp-salvo { display: block; color: #2e8b57; font-size: .78rem; margin-top: 2px; }
+:root[data-theme="dark"] .hp-salvo { color: #8fd3a8; }
+.hp-lote.saindo { animation: hp-sai .26s ease-in forwards; }
+@keyframes hp-sai { to { opacity: 0; transform: translateX(24px); } }
+.hp-vazio { padding: 20px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }

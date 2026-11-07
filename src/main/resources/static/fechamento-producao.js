@@ -177,9 +177,17 @@
         ${fmUi.menuAcoes([
           `<a role="menuitem" href="/api/producao/fechamentos/${f.id}/planilha">Baixar planilha</a>`,
           `<button type="button" role="menuitem" data-historico="${f.id}">Ver histórico</button>`,
+          ...(f.nfArquivoNome ? [`<a role="menuitem" href="/api/producao/fechamentos/${f.id}/nf/arquivo">Baixar NF (${esc(f.nfArquivoNome)})</a>`] : []),
+          ...(f.status === 'NF_EMITIDA' ? [`<button type="button" role="menuitem" data-anexar-nf="${f.id}">${f.nfArquivoNome ? 'Trocar arquivo da NF' : 'Anexar arquivo da NF'}</button>`] : []),
           ...(f.status === 'AGUARDANDO' ? ['<hr>', `<button type="button" role="menuitem" class="perigo" data-cancelar="${f.id}">Cancelar fechamento</button>`] : [])])}
       </div></td></tr>`).join('')
       || fmUi.vazio(9, {titulo: 'Nenhum fechamento ainda', texto: 'Escolha o hospital e o período acima e clique em "Calcular prévia".', icone: 'fechamento'});
+  }
+
+  async function enviarArquivoNf(id, arquivo) {
+    const fd = new FormData();
+    fd.append('arquivo', arquivo);
+    await api(`/api/producao/fechamentos/${id}/nf/arquivo`, {method: 'POST', body: fd});
   }
 
   async function listarContestacoes() {
@@ -212,20 +220,26 @@
     const ef = window.fmEfeitos;
     const nfPorMes = ef ? ef.porMes(lista.filter(f => f.status === 'NF_EMITIDA'), f => f.nfData, f => f.total) : [];
     const geradoPorMes = ef ? ef.porMes(lista, f => f.dataFim, f => f.total) : [];
-    $('#cards').classList.add('bento');
+    // cards simples: sem bento, borda animada nem minigrafico (pedido do usuario)
     $('#cards').innerHTML = [
-      {icone: 'relogio', rotulo: 'Aguardando ok do hospital', valor: brl(soma('AGUARDANDO')), sub: `${qtd('AGUARDANDO')} fechamento(s)`, zerado: !qtd('AGUARDANDO'),
-        classe: qtd('AGUARDANDO') ? 'atencao' : '', extra: ef ? ef.sparkline(geradoPorMes) : '',
-        selo: ef ? ef.tendencia(geradoPorMes.at(-1), geradoPorMes.at(-2)) : ''},
+      {icone: 'relogio', rotulo: 'Aguardando ok do hospital', valor: brl(soma('AGUARDANDO')), sub: `${qtd('AGUARDANDO')} fechamento(s)`, zerado: !qtd('AGUARDANDO')},
       {icone: 'check', rotulo: 'Aprovado, aguardando NF', valor: brl(soma('APROVADO')), sub: `${qtd('APROVADO')} fechamento(s)`, zerado: !qtd('APROVADO')},
-      {icone: 'nota', rotulo: 'NF emitida neste mês', valor: brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), sub: `${nfMes.length} nota(s)`, zerado: !nfMes.length,
-        selo: ef ? ef.tendencia(nfPorMes.at(-1), nfPorMes.at(-2)) : ''}
+      {icone: 'nota', rotulo: 'NF emitida neste mês', valor: brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), sub: `${nfMes.length} nota(s)`, zerado: !nfMes.length}
     ].map(fmUi.card).join('');
   }
 
   $('#fechamentos').addEventListener('click', proteger(async e => {
-    const b = e.target.closest('button'); if (!b || !(b.dataset.historico || b.dataset.aprovar || b.dataset.nf || b.dataset.cancelar)) return;
+    const b = e.target.closest('button'); if (!b || !(b.dataset.historico || b.dataset.aprovar || b.dataset.nf || b.dataset.cancelar || b.dataset.anexarNf)) return;
     let pulsar = null;
+    if (b.dataset.anexarNf) {
+      const r = await fmUi.perguntar({titulo: 'Anexar arquivo da NF', texto: 'O hospital poderá baixar a nota pelo portal.', confirmar: 'Anexar',
+        campos: [{nome: 'arquivo', rotulo: 'Arquivo da NF (PDF, XML ou imagem)', tipo: 'file', obrigatorio: true}]});
+      if (!r || !(r.arquivo instanceof File) || !r.arquivo.size) return;
+      await enviarArquivoNf(b.dataset.anexarNf, r.arquivo);
+      msg('Arquivo da NF anexado.');
+      await listarFechamentos();
+      return;
+    }
     if (b.dataset.historico) { await fmUi.mostrarHistorico(`Histórico do fechamento nº ${b.dataset.historico}`, `/api/producao/historico/fechamento/${b.dataset.historico}`); return; }
     if (b.dataset.aprovar) {
       const r = await fmUi.perguntar({titulo: 'Registrar ok do hospital', texto: 'Informe quem conferiu e aprovou a produção no hospital.', confirmar: 'Registrar aprovação',
@@ -236,10 +250,12 @@
       pulsar = b.dataset.aprovar;
     } else if (b.dataset.nf) {
       const r = await fmUi.perguntar({titulo: 'Registrar nota fiscal', texto: 'Informe a NF emitida para este fechamento.', confirmar: 'Registrar NF',
-        campos: [{nome: 'numero', rotulo: 'Número da NF', obrigatorio: true}, {nome: 'data', rotulo: 'Data de emissão', tipo: 'date', valor: hoje(), obrigatorio: true}]});
+        campos: [{nome: 'numero', rotulo: 'Número da NF', obrigatorio: true}, {nome: 'data', rotulo: 'Data de emissão', tipo: 'date', valor: hoje(), obrigatorio: true},
+          {nome: 'arquivo', rotulo: 'Arquivo da NF (PDF, XML ou imagem) — opcional, o hospital baixa pelo portal', tipo: 'file'}]});
       if (!r) return;
-      await api(`/api/producao/fechamentos/${b.dataset.nf}/nf`, json('POST', r));
-      msg('NF registrada.');
+      await api(`/api/producao/fechamentos/${b.dataset.nf}/nf`, json('POST', {numero: r.numero, data: r.data}));
+      if (r.arquivo instanceof File && r.arquivo.size) await enviarArquivoNf(b.dataset.nf, r.arquivo);
+      msg('NF registrada. O hospital foi avisado por e-mail.');
       pulsar = b.dataset.nf;
     } else if (b.dataset.cancelar) {
       if (!(await fmUi.confirmar({titulo: 'Cancelar este fechamento?', texto: 'Os lotes voltam a ficar conferidos e disponíveis para um novo fechamento.', confirmar: 'Cancelar fechamento', cancelar: 'Voltar', perigo: true}))) return;

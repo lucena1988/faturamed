@@ -36,6 +36,11 @@ public class HospitalPortalController {
         service.conferirLote(id, loteId, m.conferido(), hospital(u), u.nome());
     }
 
+    @PostMapping("/fechamentos/{id}/lotes/conferir-todos")
+    public Map<String, Object> conferirTodos(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado u) {
+        return Map.of("marcados", service.conferirTodos(id, hospital(u), u.nome()));
+    }
+
     @PostMapping("/fechamentos/{id}/itens/{itemId}/contestacao") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void contestar(@PathVariable long id, @PathVariable long itemId, @RequestBody Contestar c, @AuthenticationPrincipal UsuarioAutenticado u) {
         service.contestar(id, itemId, c.motivo() == null ? "" : c.motivo(), hospital(u), u.nome());
@@ -48,6 +53,11 @@ public class HospitalPortalController {
 
     @PostMapping("/fechamentos/{id}/aprovar")
     public FechamentoProducaoService.Detalhe aprovar(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado u) { return service.aprovar(id, hospital(u), u.nome()); }
+
+    @GetMapping("/fechamentos/{id}/nf")
+    public ResponseEntity<byte[]> nf(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado u) {
+        return FechamentoProducaoController.arquivoNf(service.nfArquivo(id, hospital(u)));
+    }
 
     @GetMapping("/fechamentos/{id}/planilha")
     public ResponseEntity<byte[]> planilha(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado u) {
