@@ -23,7 +23,7 @@ function render(){const search=normalize($('#medico-search').value);const status
   tr.append(td);rows.append(tr);}
  if(!selected.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=9;td.textContent='Nenhum médico encontrado.';tr.append(td);rows.append(tr);}$('#count').textContent=`${selected.length} médicos`;}
 async function convidar(m,button){
- if(!confirm(`Gerar um link de convite para ${m.nome}? Um convite anterior ainda não usado deixa de valer.`))return;
+ if(!await (window.fmConfirmar||(t=>Promise.resolve(confirm(t))))(`Gerar um link de convite para ${m.nome}? Um convite anterior ainda não usado deixa de valer.`))return;
  button.disabled=true;
  try{const convite=await request(`/api/medicos/${m.id}/convite`,{method:'POST'});const dialog=$('#convite-dialog');
   $('#convite-medico').textContent=`${m.nome} · ${(m.email||'').replaceAll(';','; ')} · válido até ${new Date(convite.expiraEm).toLocaleString('pt-BR')}`;

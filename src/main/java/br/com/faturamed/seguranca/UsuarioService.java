@@ -16,12 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UsuarioService implements UserDetailsService {
-    public record Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao, Long empresaId) {
-        public Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao) { this(id,email,nome,perfil,medicoId,ativo,versao,null); }
+    public record Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao, Long empresaId, Long hospitalId) {
+        public Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao) { this(id,email,nome,perfil,medicoId,ativo,versao,null,null); }
+        public Usuario(long id, String email, String nome, String perfil, Long medicoId, boolean ativo, long versao, Long empresaId) { this(id,email,nome,perfil,medicoId,ativo,versao,empresaId,null); }
     }
     public record Novo(@NotBlank @Email @Size(max=180) String email, @NotBlank @Size(max=180) String nome,
-            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV|OPERADOR|EMPRESA") @NotNull String perfil, Long medicoId, Long empresaId) {
-        public Novo(String email, String nome, String senha, String perfil, Long medicoId) { this(email,nome,senha,perfil,medicoId,null); }
+            @NotBlank String senha, @Pattern(regexp="ADMIN|MEDICO|DEV|OPERADOR|EMPRESA|HOSPITAL") @NotNull String perfil, Long medicoId, Long empresaId, Long hospitalId) {
+        public Novo(String email, String nome, String senha, String perfil, Long medicoId) { this(email,nome,senha,perfil,medicoId,null,null); }
+        public Novo(String email, String nome, String senha, String perfil, Long medicoId, Long empresaId) { this(email,nome,senha,perfil,medicoId,empresaId,null); }
     }
     public record Situacao(boolean ativo, @NotNull @PositiveOrZero Long versao) {}
     public record NovaSenha(@NotBlank String senha, @NotNull @PositiveOrZero Long versao) {}
@@ -39,10 +41,10 @@ public class UsuarioService implements UserDetailsService {
     }
     @Override public UsuarioAutenticado loadUserByUsername(String email) {
         var users = jdbc.query("""
-                select u.*, (u.ativo and coalesce(m.ativo,true) and coalesce(e.ativo,true)) as habilitado,
+                select u.*, (u.ativo and coalesce(m.ativo,true) and coalesce(e.ativo,true) and coalesce(h.ativo,true)) as habilitado,
                 (u.bloqueado_ate > now()) as bloqueado
                 from usuario_acesso u left join medico_cadastro m on m.id=u.medico_id
-                left join empresa_cliente e on e.id=u.empresa_id where u.email=?
+                left join empresa_cliente e on e.id=u.empresa_id left join hospital_cadastro h on h.id=u.hospital_id where u.email=?
                 """, (r,n) -> new UsuarioAutenticado(r.getLong("id"),r.getString("email"),r.getString("nome"),r.getString("senha_hash"),
                 r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("habilitado"),r.getBoolean("bloqueado"),r.getLong("versao"),
                 r.getObject("empresa_id",Long.class)), email(email));
@@ -50,12 +52,17 @@ public class UsuarioService implements UserDetailsService {
     }
     public List<Usuario> listar() {
         return jdbc.query("select * from usuario_acesso order by nome,id", (r,n) -> new Usuario(r.getLong("id"),r.getString("email"),r.getString("nome"),
-                r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("ativo"),r.getLong("versao"),r.getObject("empresa_id",Long.class)));
+                r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("ativo"),r.getLong("versao"),r.getObject("empresa_id",Long.class),
+                r.getObject("hospital_id",Long.class)));
     }
     @Transactional public Usuario criar(Novo dados) { return criar(dados, null); }
     @Transactional public Usuario criar(Novo dados, Long operador) {
         validarSenha(dados.senha());
-        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV", "OPERADOR", "EMPRESA").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
+        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV", "OPERADOR", "EMPRESA", "HOSPITAL").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
+        if (dados.perfil().equals("HOSPITAL")) {
+            Boolean ativo = dados.hospitalId() == null ? null : jdbc.query("select ativo from hospital_cadastro where id=?", rs -> rs.next() ? rs.getBoolean(1) : null, dados.hospitalId());
+            if (!Boolean.TRUE.equals(ativo)) throw new IllegalArgumentException("Selecione um hospital ativo");
+        } else if (dados.hospitalId()!=null) throw new IllegalArgumentException("Somente o perfil Hospital pode ser vinculado a um hospital");
         if (dados.perfil().equals("MEDICO")) {
             if (dados.medicoId()==null || !medicos.buscar(dados.medicoId()).ativo()) throw new IllegalArgumentException("Selecione um medico ativo");
         } else if (dados.medicoId()!=null) throw new IllegalArgumentException("Somente o perfil Medico pode ser vinculado a um medico");
@@ -63,8 +70,8 @@ public class UsuarioService implements UserDetailsService {
             if (dados.empresaId()==null || !empresas.buscar(dados.empresaId()).ativo()) throw new IllegalArgumentException("Selecione uma empresa ativa");
         } else if (dados.empresaId()!=null) throw new IllegalArgumentException("Somente o perfil Empresa pode ser vinculado a uma empresa");
         try {
-            long id=jdbc.queryForObject("insert into usuario_acesso(email,nome,senha_hash,perfil,medico_id,empresa_id) values(?,?,?,?,?,?) returning id",
-                    Long.class,email(dados.email()),dados.nome().trim(),encoder.encode(dados.senha()),dados.perfil(),dados.medicoId(),dados.empresaId());
+            long id=jdbc.queryForObject("insert into usuario_acesso(email,nome,senha_hash,perfil,medico_id,empresa_id,hospital_id) values(?,?,?,?,?,?,?) returning id",
+                    Long.class,email(dados.email()),dados.nome().trim(),encoder.encode(dados.senha()),dados.perfil(),dados.medicoId(),dados.empresaId(),dados.hospitalId());
             auditar(id, operador, "CRIACAO");
             return buscar(id);
         } catch(DuplicateKeyException e) { throw new ConflitoRevisaoException("Email ou medico ja possui acesso cadastrado"); }

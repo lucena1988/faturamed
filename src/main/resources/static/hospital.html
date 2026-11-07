@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Portal do Hospital | FaturaMed</title>
+<link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema">
+<link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="ui.css?v=20261108-4">
+<link rel="stylesheet" href="efeitos.css?v=20261107-1"><link rel="stylesheet" href="producao.css?v=20261107-1"><link rel="stylesheet" href="hospital.css?v=20261108-3">
+<script src="tema.js?v=20261009-1"></script></head>
+<body data-sem-busca data-modulo="producao"><main class="account-workspace prod-pagina page-content">
+  <header class="account-heading"><div><a class="company-name" href="hospital.html">FaturaMed</a><h1>Portal do Hospital</h1><span id="hospital-nome" class="hp-hospital"></span></div>
+    <div class="session-actions"><a href="conta.html">Minha conta</a><button class="text-button" type="button" data-logout>Sair</button></div></header>
+
+  <section id="view-lista">
+    <p class="prod-dica">Aqui chegam os fechamentos de produção enviados pela FaturaMed. Confira lote a lote, conteste o que não reconhecer e libere para a emissão da nota fiscal.</p>
+    <div id="cards" class="fm-cards" aria-label="Resumo"></div>
+    <div class="account-table"><table><thead><tr><th>Nº</th><th>Período</th><th>Etiquetas</th><th>Valor</th><th>Situação</th><th>NF</th><th></th></tr></thead><tbody id="fechamentos"></tbody></table></div>
+  </section>
+
+  <section id="view-conferencia" hidden>
+    <button type="button" class="text-button" id="btn-voltar">← Voltar aos fechamentos</button>
+    <div class="hp-topo">
+      <div><h2 id="conf-titulo">Fechamento</h2><p class="prod-dica" id="conf-sub"></p></div>
+      <div id="conf-etapas"></div>
+    </div>
+    <div id="conf-cards" class="fm-cards"></div>
+    <h3>Resumo por médico</h3>
+    <div class="account-table"><table><thead><tr><th>Médico</th><th>Agendas</th><th>Exames</th><th>Valor</th></tr></thead><tbody id="conf-resumo"></tbody></table></div>
+    <h3>Lotes <span class="prod-dica">— marque cada lote como conferido; conteste somente as etiquetas que não reconhecer</span></h3>
+    <div class="hp-ferramentas" id="conf-ferramentas">
+      <div class="hp-progresso" aria-hidden="true"><span id="conf-barra-progresso"></span></div>
+      <div class="hp-filtro" role="radiogroup" aria-label="Mostrar lotes">
+        <button type="button" data-filtro="pendentes" class="on">A conferir <b id="qtd-pendentes"></b></button>
+        <button type="button" data-filtro="todos">Todos <b id="qtd-todos"></b></button>
+        <button type="button" data-filtro="contestados">Com contestação <b id="qtd-contestados"></b></button>
+      </div>
+      <button type="button" class="secondary-button" id="btn-conferir-todos">Marcar todos como conferidos</button>
+    </div>
+    <div id="conf-lotes" class="hp-lotes"></div>
+    <div class="fm-barra-fixa" id="conf-barra">
+      <span class="fm-barra-resumo"><span id="conf-progresso"></span><small class="hp-salvo" id="conf-salvo"></small></span>
+      <button class="secondary-button" type="button" id="btn-continuar-depois" title="Seu progresso já fica salvo a cada marcação">Salvar e continuar depois</button>
+      <a class="secondary-button" id="btn-nf" href="#" hidden>Baixar NF</a>
+      <a class="secondary-button" id="btn-planilha" href="#">Baixar planilha</a>
+      <button class="primary-button" type="button" id="btn-aprovar">Aprovar e liberar para NF</button>
+    </div>
+  </section>
+</main>
+<script src="auth.js?v=20261108-hospital"></script><script src="efeitos.js?v=20261107-1"></script><script src="ui.js?v=20261108-1"></script><script src="hospital.js?v=20261108-3"></script>
+</body></html>

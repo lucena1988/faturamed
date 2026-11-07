@@ -1,0 +1,272 @@
+/* Componentes visuais globais do FaturaMed (carregado pelo sidebar.js em todas as paginas administrativas). */
+
+/* ---------- botoes: tres tipos padronizados ---------- */
+.secondary-button,
+.page-content button:not([class]),
+.page-content input[type="submit"]:not([class]),
+.page-content input[type="button"]:not([class]) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 38px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  font: inherit; font-weight: 700; font-size: .92rem; line-height: 1.2; text-decoration: none;
+  color: var(--primary-strong); background: var(--surface); border: 1px solid var(--line);
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.secondary-button:hover,
+.page-content button:not([class]):hover { background: var(--primary-soft); border-color: var(--primary-soft-line); }
+.primary-button, .text-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font: inherit; font-weight: 700; text-decoration: none; transition: background-color .15s, border-color .15s; }
+.primary-button { font-weight: 800; }
+.text-button:hover { background: var(--primary-soft); filter: brightness(.97); }
+:is(.primary-button, .secondary-button, .text-button, button):disabled { opacity: .55; cursor: not-allowed; }
+.page-content :is(.text-button.prod-perigo, .prod-perigo.text-button) { color: var(--danger-fg, #b02a37); }
+
+/* ---------- cabecalho: trilha de navegacao e links discretos ---------- */
+.fm-trilha { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; font-size: .82rem; color: var(--muted); }
+.fm-trilha a { color: var(--muted); text-decoration: none; }
+.fm-trilha a:hover { color: var(--primary-strong); text-decoration: underline; }
+.fm-trilha-sep { opacity: .6; }
+.fm-trilha-grupo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--mod-forte, var(--primary-strong)); }
+.fm-trilha-grupo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--mod-cor, var(--primary)); }
+:is(.account-heading, .conciliation-heading) h1 { margin: 0; }
+:is(.account-heading, .conciliation-heading) > a,
+:is(.account-heading, .conciliation-heading) .session-actions > a {
+  color: var(--primary-strong); text-decoration: none; font-weight: 600; font-size: .9rem;
+  padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+}
+:is(.account-heading, .conciliation-heading) > a:hover,
+:is(.account-heading, .conciliation-heading) .session-actions > a:hover { background: var(--primary-soft); border-color: var(--primary-soft-line); }
+
+/* ---------- menu do usuario ---------- */
+.fm-usuario { position: relative; }
+.fm-usuario-botao { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.fm-usuario-botao:hover { background: var(--primary-soft); }
+.fm-avatar { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--primary-fill); color: var(--on-primary, #fff); font-size: .78rem; font-weight: 800; letter-spacing: .02em; }
+.fm-usuario-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 220px; padding: 6px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0,0,0,.16); }
+.fm-usuario-menu[hidden] { display: none; }
+.fm-usuario-info { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.fm-usuario-info strong { display: block; font-size: .9rem; }
+.fm-usuario-info small { color: var(--muted); font-size: .78rem; }
+.fm-usuario-menu :is(a, button) { display: flex; width: 100%; align-items: center; gap: 8px; padding: 9px 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--text); font: inherit; font-size: .9rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; min-height: 0; }
+.fm-usuario-menu :is(a, button):hover { background: var(--primary-soft); }
+.fm-usuario-menu [data-logout] { color: var(--danger-fg, #b02a37); }
+
+/* ---------- etiquetas de status ---------- */
+.fm-status { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.fm-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .8; }
+.fm-status.cinza { background: var(--surface-soft, #eef3f4); color: var(--muted); }
+.fm-status.azul { background: #e3edfb; color: #1f4f8f; }
+.fm-status.verde { background: #e1f3e8; color: #1f6b3d; }
+.fm-status.ambar { background: #fff3cd; color: #7a5a00; }
+:root[data-theme="dark"] .fm-status.azul { background: rgba(120,160,230,.18); color: #b9cff2; }
+:root[data-theme="dark"] .fm-status.verde { background: rgba(110,190,140,.18); color: #b4e0c3; }
+:root[data-theme="dark"] .fm-status.ambar { background: rgba(230,190,90,.18); color: #f0d79a; }
+
+/* ---------- numeros e tabelas ---------- */
+.page-content table { font-variant-numeric: tabular-nums; }
+.fm-num, .fp-valor { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- avisos flutuantes ---------- */
+.fm-toasts { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; max-width: min(420px, calc(100vw - 40px)); }
+.fm-toast { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-left: 4px solid var(--primary); box-shadow: 0 10px 28px rgba(0,0,0,.18); font-size: .92rem;
+  animation: fm-entra .2s ease-out; }
+.fm-toast.sucesso { border-left-color: #2e8b57; }
+.fm-toast.erro { border-left-color: var(--danger-fg, #b02a37); }
+.fm-toast.saindo { opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+.fm-toast button { margin-left: auto; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 2px; min-height: 0; }
+@keyframes fm-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- janelas proprias ---------- */
+.fm-dialogo { width: min(460px, 94vw); border: 0; border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); box-shadow: 0 24px 60px rgba(0,0,0,.3); }
+.fm-dialogo::backdrop { background: rgba(10, 20, 25, .45); }
+.fm-dialogo form { display: grid; gap: 14px; padding: 22px; }
+.fm-dialogo h2 { margin: 0; font-size: 1.15rem; }
+.fm-dialogo p { margin: 0; color: var(--muted); line-height: 1.45; }
+.fm-dialogo label { display: grid; gap: 4px; font-size: .88rem; font-weight: 600; }
+.fm-dialogo input { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.fm-dialogo-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.fm-dialogo .perigo { background: var(--danger-fg, #b02a37); border-color: var(--danger-fg, #b02a37); }
+
+/* ---------- carregamento ---------- */
+.fm-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: fm-gira .7s linear infinite; }
+@keyframes fm-gira { to { transform: rotate(360deg); } }
+.fm-esqueleto td { padding: 12px 8px; }
+.fm-esqueleto span { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-soft, #eef3f4) 25%, var(--line) 50%, var(--surface-soft, #eef3f4) 75%);
+  background-size: 200% 100%; animation: fm-brilho 1.2s infinite; }
+@keyframes fm-brilho { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- tela vazia ---------- */
+.fm-vazio td { padding: 36px 16px !important; text-align: center; }
+.fm-vazio-icone { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--mod-suave, var(--primary-soft)); color: var(--mod-forte, var(--primary-strong)); margin-bottom: 8px; }
+.fm-vazio-icone svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fm-vazio strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+.fm-vazio p { margin: 0 0 12px; color: var(--muted); }
+
+/* ---------- cards de resumo ---------- */
+.fm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 4px 0 18px; }
+.fm-card { padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--mod-cor, var(--primary)); }
+.fm-card span { display: block; color: var(--muted); font-size: .82rem; font-weight: 600; }
+.fm-card strong { display: block; margin-top: 4px; font-size: 1.45rem; font-variant-numeric: tabular-nums; color: var(--text); }
+.fm-card small { color: var(--muted); font-size: .78rem; }
+.fm-card.clicavel { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.fm-card.clicavel:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+
+/* ---------- barra de acoes fixa ---------- */
+.fm-barra-fixa { position: sticky; bottom: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px -8px 0; padding: 12px 8px;
+  background: color-mix(in srgb, var(--bg, var(--surface)) 92%, transparent); backdrop-filter: blur(6px); border-top: 1px solid var(--line); }
+.fm-barra-fixa .fm-barra-resumo { margin-right: auto; color: var(--muted); font-size: .88rem; }
+
+/* ---------- foco visivel em tudo que e clicavel ---------- */
+:is(summary, [tabindex], .fm-card.clicavel):focus-visible { outline: 3px solid var(--focus, var(--primary)); outline-offset: 2px; }
+
+/* ---------- icones de traco (mesmo estilo do menu) ---------- */
+.fm-ico { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- escala tipografica unica ---------- */
+.page-content h1 { font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem); line-height: 1.2; font-weight: 800; letter-spacing: -.01em; }
+.page-content h2 { font-size: 1.15rem; line-height: 1.3; font-weight: 700; margin: 24px 0 10px; }
+.page-content h3 { font-size: 1rem; line-height: 1.35; font-weight: 700; margin: 16px 0 8px; }
+.page-content :is(p, td, li, label) { line-height: 1.45; }
+.page-content :is(small, .prod-dica) { font-size: .82rem; }
+.page-content th { font-size: .74rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+
+/* ---------- linha do tempo (historico) ---------- */
+.fm-dialogo-largo { width: min(560px, 94vw); }
+.fm-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; max-height: 60vh; overflow: auto; }
+.fm-timeline li { position: relative; display: flex; gap: 12px; padding: 0 0 14px 0; }
+.fm-timeline li:not(:last-child)::before { content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--line); }
+.fm-timeline-marca { flex: 0 0 12px; height: 12px; margin-top: 4px; border-radius: 50%; background: var(--mod-cor, var(--primary)); box-shadow: 0 0 0 3px var(--mod-suave, var(--primary-soft)); }
+.fm-timeline :is(.acao-CANCELADO, .acao-RETIRADA, .acao-REABERTA) .fm-timeline-marca { background: var(--muted); box-shadow: 0 0 0 3px var(--surface-soft, #eee); }
+.fm-timeline :is(.acao-NF_EMITIDA, .acao-APROVADO, .acao-CONFERIDA) .fm-timeline-marca { background: #2e8b57; box-shadow: 0 0 0 3px #e1f3e8; }
+.fm-timeline strong { display: block; font-size: .92rem; font-weight: 600; }
+.fm-timeline small { color: var(--muted); font-size: .8rem; }
+.fm-historico { margin-top: 18px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; background: var(--surface); }
+.fm-historico summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.fm-historico[open] summary { margin-bottom: 12px; }
+
+/* ---------- busca global ---------- */
+.fm-busca-botao { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); font: inherit; font-size: .88rem; cursor: pointer; }
+.fm-busca-botao:hover { color: var(--primary-strong); background: var(--primary-soft); }
+.fm-busca-botao kbd, .fm-busca kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface-soft, #f3f6f7); font-family: inherit; font-size: .72rem; font-weight: 600; line-height: 1.4; color: var(--muted); }
+.fm-busca { width: min(640px, 94vw); margin-top: 10vh; border: 0; border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); box-shadow: 0 24px 70px rgba(0,0,0,.35); }
+.fm-busca::backdrop { background: rgba(10, 20, 25, .45); }
+.fm-busca-campo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.fm-busca-campo .fm-ico { width: 20px; height: 20px; color: var(--muted); }
+.fm-busca-campo input { flex: 1; border: 0; outline: none; background: none; font: inherit; font-size: 1.05rem; color: var(--text); }
+.fm-busca-lista { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.fm-busca-lista li { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.fm-busca-lista li.ativo, .fm-busca-lista li[data-i]:hover { background: var(--primary-soft); }
+.fm-busca-tipo { flex: 0 0 84px; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.fm-busca-texto strong { display: block; font-weight: 600; font-size: .95rem; }
+.fm-busca-texto small { color: var(--muted); font-size: .8rem; }
+.fm-busca-vazio { color: var(--muted); justify-content: center; cursor: default !important; }
+.fm-busca-dica { margin: 0; padding: 8px 16px; border-top: 1px solid var(--line); font-size: .75rem; color: var(--muted); }
+@media (max-width: 700px) { .fm-busca-botao span, .fm-busca-botao kbd { display: none; } }
+
+/* ---------- cards com icone ---------- */
+.fm-card-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.fm-card-icone { flex: 0 0 30px; width: 30px; height: 30px; padding: 6px; border-radius: 9px; fill: none; stroke: var(--mod-forte, var(--primary-strong));
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; background: var(--mod-suave, var(--primary-soft)); }
+.fm-card strong { font-size: 1.6rem; font-weight: 800; letter-spacing: -.01em; }
+.fm-card.zerado { border-top-color: var(--line); }
+.fm-card.zerado strong, .fm-card.zerado .fm-card-icone { opacity: .55; }
+
+/* ---------- linha de etapas ---------- */
+.fm-etapas { display: flex; list-style: none; margin: 0; padding: 0; min-width: 170px; }
+.fm-etapas li { position: relative; flex: 1; display: grid; justify-items: center; gap: 4px; }
+.fm-etapas li span { position: relative; z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line); }
+.fm-etapas li:not(:first-child)::before { content: ""; position: absolute; top: 5px; right: 50%; width: 100%; height: 2px; background: var(--line); }
+.fm-etapas li.feito span { background: var(--mod-cor, var(--primary)); border-color: var(--mod-cor, var(--primary)); }
+.fm-etapas li.feito::before, .fm-etapas li.atual::before { background: var(--mod-cor, var(--primary)) !important; }
+.fm-etapas li.atual span { border-color: var(--mod-cor, var(--primary)); box-shadow: 0 0 0 4px var(--mod-suave, var(--primary-soft)); }
+.fm-etapas small { font-size: .68rem; color: var(--muted); white-space: nowrap; }
+.fm-etapas li.atual small { color: var(--mod-forte, var(--primary-strong)); font-weight: 700; }
+
+/* ---------- menu de acoes ---------- */
+.fm-celula-acoes { display: flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+.fm-acoes-menu { position: relative; }
+.fm-acoes-botao { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+.fm-acoes-botao:hover, .fm-acoes-botao[aria-expanded="true"] { background: var(--primary-soft); color: var(--primary-strong); border-color: var(--primary-soft-line); }
+.fm-acoes-botao .fm-ico { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+.fm-acoes-lista { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 190px; padding: 6px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.18); animation: fm-entra .12s ease-out; }
+.fm-acoes-lista[hidden] { display: none; }
+.fm-acoes-lista :is(a, button) { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 7px; background: none;
+  color: var(--text); font: inherit; font-size: .88rem; text-align: left; text-decoration: none; cursor: pointer; min-height: 0; }
+.fm-acoes-lista :is(a, button):hover { background: var(--primary-soft); }
+.fm-acoes-lista .perigo { color: var(--danger-fg, #b02a37); }
+.fm-acoes-lista hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+
+/* ---------- abas com contador e cor do modulo ---------- */
+.fp-aba { position: relative; transition: color .15s; }
+.fp-aba.ativa { border-bottom-color: var(--mod-cor, currentColor) !important; color: var(--mod-forte, inherit); }
+.fp-contador { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-soft, #eef3f4); color: var(--muted); font-size: .72rem; font-weight: 700; }
+.fp-aba.ativa .fp-contador { background: var(--mod-suave, var(--primary-soft)); color: var(--mod-forte, var(--primary-strong)); }
+
+/* ---------- tabelas mais elegantes ---------- */
+.page-content .account-table { overflow: auto; max-height: min(70vh, 900px); border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+.page-content .account-table table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.page-content .account-table thead th { position: sticky; top: 0; z-index: 4; background: var(--surface-soft, var(--surface)); border-bottom: 1px solid var(--line); }
+.page-content .account-table :is(th, td) { padding: 10px 12px; }
+.page-content .account-table tbody tr { transition: background-color .12s; }
+.page-content .account-table tbody tr:hover { background: var(--mod-suave, var(--surface-soft)); }
+.page-content .account-table tbody tr:not(:last-child) td { border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.prod-tabela .account-table, .page-content .prod-tabela { max-height: none; }
+
+/* ---------- transicoes suaves ---------- */
+@keyframes fm-surge { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fm-cards .fm-card { animation: fm-surge .22s ease-out both; }
+.fm-cards .fm-card:nth-child(2) { animation-delay: .04s; }
+.fm-cards .fm-card:nth-child(3) { animation-delay: .08s; }
+.fm-cards .fm-card:nth-child(4) { animation-delay: .12s; }
+.page-content section:not([hidden]) > .account-table, .page-content .account-table tbody:not(:empty) { animation: fm-surge .2s ease-out both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---------- tema escuro: mais contraste no texto secundario ---------- */
+:root[data-theme="dark"] .fm-card small, :root[data-theme="dark"] .prod-dica, :root[data-theme="dark"] .fm-card span { color: color-mix(in srgb, var(--muted) 80%, white); }
+:root[data-theme="dark"] .fm-card, :root[data-theme="dark"] .page-content .account-table { border-color: color-mix(in srgb, var(--line) 75%, transparent); }
+
+/* mensagens de pagina que agora aparecem como aviso flutuante */
+.fm-msg-oculta { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* telas antigas: cards de indicadores no mesmo padrao */
+.page-content .kpi-card { border-radius: 12px; border: 1px solid var(--line); border-top: 3px solid var(--mod-cor, var(--primary)); animation: fm-surge .22s ease-out both; }
+.page-content .kpi-card strong { font-size: 1.5rem; font-weight: 800; letter-spacing: -.01em; }
+/* toast antigo do Dashboard segue o visual novo */
+#toast.toast { border-radius: 10px; border: 1px solid var(--line); border-left: 4px solid #2e8b57; box-shadow: 0 10px 28px rgba(0,0,0,.18); background: var(--surface); color: var(--text); }
+
+/* seletor de aparencia no menu do usuario */
+.fm-usuario-menu .fm-aparencia { justify-content: space-between; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0; margin: 4px 0; }
+.fm-aparencia-opcoes { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface-soft, #eef3f4); border: 1px solid var(--line); }
+.fm-aparencia-opcoes b { padding: 2px 9px; border-radius: 999px; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.fm-aparencia-opcoes b.on { background: var(--surface); color: var(--primary-strong); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Dashboard: acoes da sessao (busca, sino, tema, usuario) numa linha propria no topo, a direita */
+main .topbar { flex-wrap: wrap; }
+main .topbar > .session-actions { order: -1; flex: 1 0 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 4px; }
+main .topbar > .session-actions > a { text-decoration: none; }
+
+/* lista de temas no menu do usuario */
+.fm-usuario-menu .fm-aparencia { display: block; padding: 8px 6px; margin: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.fm-aparencia-titulo { display: block; padding: 0 4px 6px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.fm-aparencia-lista { display: grid; gap: 2px; }
+.fm-usuario-menu .fm-aparencia-lista button { padding: 6px 8px; font-size: .86rem; }
+.fm-usuario-menu .fm-aparencia-lista button.on { background: var(--primary-soft); font-weight: 700; }
+.fm-usuario-menu .fm-aparencia-lista button.on::after { content: "✓"; margin-left: auto; color: var(--primary-strong); }
+.fm-tema-amostra { flex: 0 0 18px; height: 18px; border-radius: 6px; border: 1px solid var(--line); }
+.t-classica { background: linear-gradient(135deg, #fff 50%, #24677d 50%); }
+.t-vidro { background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(140,190,220,.6)); }
+.t-aurora { background: linear-gradient(135deg, #24677d, #8a6be0); }
+.t-papel { background: linear-gradient(135deg, #f7f3ea 50%, #2b2a26 50%); }
+.t-contraste { background: linear-gradient(135deg, #000 50%, #fff 50%); border-color: #000; }
+
+/* modo claro/escuro agora fica no menu do usuario */
+.fm-com-menu-usuario .theme-toggle { display: none !important; }
+.fm-modo { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; margin: 0 2px 10px; border-radius: 10px; background: var(--surface-soft, #eef3f4); border: 1px solid var(--line); }
+.fm-usuario-menu .fm-modo button { justify-content: center; padding: 6px 8px; border-radius: 8px; font-size: .84rem; font-weight: 600; color: var(--muted); }
+.fm-usuario-menu .fm-modo button.on { background: var(--surface); color: var(--primary-strong); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* elementos escondidos continuam escondidos mesmo com estilo de botao */
+[hidden] { display: none !important; }

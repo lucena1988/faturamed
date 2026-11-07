@@ -31,7 +31,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     if(location.pathname!=='/login.html'){
       request('/api/auth/me').then(user => {
-        const externo = ['MEDICO','EMPRESA'].includes(user.perfil);
+        const externo = ['MEDICO','EMPRESA','HOSPITAL'].includes(user.perfil);
         if (externo) {
           document.querySelectorAll('a[href="usuarios.html"],a[href="/usuarios.html"]').forEach(link=>link.remove());
         }
@@ -48,7 +48,7 @@
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
       try { await request('/api/auth/logout', {method: 'POST'}); location.replace('/login.html'); }
-      catch(error) { button.disabled = false; alert(error.message); }
+      catch(error) { button.disabled = false; (window.fmAvisar || alert)(error.message); }
     }));
   });
 })();

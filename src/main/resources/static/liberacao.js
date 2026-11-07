@@ -11,7 +11,7 @@
     try{const data=await FaturamedAuth.request(`/api/conciliacoes/visitas/${id}/liberacao`);if(token===generation)render(data);}catch(e){if(token===generation)$('release-status').textContent=e.message;}
   }
   $('release-form').onsubmit=async e=>{e.preventDefault();if(saving||!state?.podeLiberar)return;const id=report,token=generation,fields=e.target.elements;const body={versao:state.versao,observacao:fields.observacao.value,confirmaPendencias:fields.confirmaPendencias.checked};
-    if(!confirm(`Liberar o relatório #${id}, revisão ${state.versao}, com ${state.visitas} visitas para os médicos vinculados? ${state.semMedico} visitas sem médico não aparecerao no portal.`))return;
+    if(!await fmConfirmar(`Liberar o relatório #${id}, revisão ${state.versao}, com ${state.visitas} visitas para os médicos vinculados? ${state.semMedico} visitas sem médico não aparecerao no portal.`))return;
     saving=true;$('release-fields').disabled=true;$('release-save').disabled=true;$('release-refresh').disabled=true;
     try{const data=await FaturamedAuth.request(`/api/conciliacoes/visitas/${id}/liberacao`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(token===generation){saving=false;render(data);e.target.reset();}}
     catch(error){if(token===generation){state=null;$('release-status').textContent=error.message+' Atualize a liberação antes de tentar novamente.';}}

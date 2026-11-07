@@ -1,0 +1,76 @@
+/* Identidade discreta por modulo: Visitas hospitalares (verde claro) Fechamento por Producao (violeta suave) Cadastros (azul acinzentado) Faturamento (ocre), Financeiro (azul-petroleo claro) e Gestao (vermelho queimado suave, distinto do vermelho de erro). */
+:root {
+  --mod-visitas: #5f9f7a;
+  --mod-visitas-forte: #3f7a59;
+  --mod-visitas-suave: #edf6f0;
+  --mod-producao: #75689a;
+  --mod-producao-forte: #5a4e80;
+  --mod-producao-suave: #f1eef7;
+  --mod-cadastros: #5f84ab;
+  --mod-cadastros-forte: #415f80;
+  --mod-cadastros-suave: #edf2f8;
+  --mod-gestao: #b56a6a;
+  --mod-gestao-forte: #8e4848;
+  --mod-gestao-suave: #f8eeee;
+  --mod-faturamento: #b5824f;
+  --mod-faturamento-forte: #8a5f33;
+  --mod-faturamento-suave: #f8f1e9;
+  --mod-financeiro: #4b93a6;
+  --mod-financeiro-forte: #326f80;
+  --mod-financeiro-suave: #eaf4f7;
+}
+:root[data-theme="dark"] {
+  --mod-producao: #a99cd0;
+  --mod-producao-forte: #c9bfe6;
+  --mod-producao-suave: rgba(169, 156, 208, .14);
+  --mod-visitas: #8cc7a3;
+  --mod-visitas-forte: #b5dcc4;
+  --mod-visitas-suave: rgba(140, 199, 163, .14);
+  --mod-cadastros: #93b3d6;
+  --mod-cadastros-forte: #bcd1e8;
+  --mod-cadastros-suave: rgba(147, 179, 214, .14);
+  --mod-gestao: #d79a9a;
+  --mod-gestao-forte: #ecc2c2;
+  --mod-gestao-suave: rgba(215, 154, 154, .14);
+  --mod-faturamento: #d6aa7c;
+  --mod-faturamento-forte: #ebcaa6;
+  --mod-faturamento-suave: rgba(214, 170, 124, .14);
+  --mod-financeiro: #86bccb;
+  --mod-financeiro-forte: #b3d6e0;
+  --mod-financeiro-suave: rgba(134, 188, 203, .14);
+}
+
+/* menu: bolinha de cor no titulo do grupo e filete no item ativo */
+.nav-group[data-modulo] > .nav-group-title { gap: 8px; justify-content: flex-start; }
+.nav-group[data-modulo] > .nav-group-title .nav-chevron { margin-left: auto; }
+.nav-group[data-modulo] > .nav-group-title::before { content: ""; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--mod-cor); opacity: .85; }
+.nav-group[data-modulo="visitas"] { --mod-cor: var(--mod-visitas); --mod-suave: var(--mod-visitas-suave); --mod-forte: var(--mod-visitas-forte); }
+.nav-group[data-modulo="producao"] { --mod-cor: var(--mod-producao); --mod-suave: var(--mod-producao-suave); --mod-forte: var(--mod-producao-forte); }
+.nav-group[data-modulo="cadastros"] { --mod-cor: var(--mod-cadastros); --mod-suave: var(--mod-cadastros-suave); --mod-forte: var(--mod-cadastros-forte); }
+.nav-group[data-modulo="gestao"] { --mod-cor: var(--mod-gestao); --mod-suave: var(--mod-gestao-suave); --mod-forte: var(--mod-gestao-forte); }
+.nav-group[data-modulo="faturamento"] { --mod-cor: var(--mod-faturamento); --mod-suave: var(--mod-faturamento-suave); --mod-forte: var(--mod-faturamento-forte); }
+.nav-group[data-modulo="financeiro"] { --mod-cor: var(--mod-financeiro); --mod-suave: var(--mod-financeiro-suave); --mod-forte: var(--mod-financeiro-forte); }
+.nav-group[data-modulo] .nav-item.active { background: var(--mod-suave); color: var(--mod-forte); box-shadow: inset 3px 0 0 var(--mod-cor); }
+.nav-group[data-modulo] .nav-item:hover { background: var(--mod-suave); color: var(--mod-forte); }
+/* titulo do grupo fica neutro mesmo com pagina ativa; so acende ao passar o mouse */
+.nav-group[data-modulo]:has(.nav-item.active) > .nav-group-title { color: var(--muted); }
+
+/* pagina: filete no topo e etiqueta acima do titulo */
+body[data-modulo="visitas"] { --mod-cor: var(--mod-visitas); --mod-forte: var(--primary-strong, var(--mod-visitas)); --mod-suave: var(--mod-visitas-suave); }
+body[data-modulo="producao"] { --mod-cor: var(--mod-producao); --mod-forte: var(--mod-producao-forte); --mod-suave: var(--mod-producao-suave); }
+body[data-modulo="cadastros"] { --mod-cor: var(--mod-cadastros); --mod-forte: var(--mod-cadastros-forte); --mod-suave: var(--mod-cadastros-suave); }
+body[data-modulo="gestao"] { --mod-cor: var(--mod-gestao); --mod-forte: var(--mod-gestao-forte); --mod-suave: var(--mod-gestao-suave); }
+body[data-modulo="faturamento"] { --mod-cor: var(--mod-faturamento); --mod-forte: var(--mod-faturamento-forte); --mod-suave: var(--mod-faturamento-suave); }
+body[data-modulo="financeiro"] { --mod-cor: var(--mod-financeiro); --mod-forte: var(--mod-financeiro-forte); --mod-suave: var(--mod-financeiro-suave); }
+body[data-modulo] .page-content { box-shadow: inset 0 3px 0 var(--mod-cor); }
+.modulo-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; padding: 2px 10px; border-radius: 999px;
+  background: var(--mod-suave); color: var(--mod-forte); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.modulo-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mod-cor); }
+.account-heading .modulo-badge { display: flex; width: fit-content; }
+
+/* ao passar o mouse, o titulo do grupo "acende" na cor do modulo */
+.nav-group[data-modulo] > .nav-group-title { transition: color .15s, background-color .15s; }
+.nav-group[data-modulo] > .nav-group-title:hover,
+.nav-group[data-modulo] > .nav-group-title:focus-visible { color: var(--mod-forte); background: var(--mod-suave); }
+.nav-group[data-modulo] > .nav-group-title:hover::before,
+.nav-group[data-modulo] > .nav-group-title:focus-visible::before { opacity: 1; }
