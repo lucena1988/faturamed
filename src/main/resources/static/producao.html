@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Folhas de produção | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261106-3"><script src="tema.js?v=20261009-1"></script></head>
+<body><main class="account-workspace prod-pagina">
+  <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Folhas de produção</h1></div><div class="session-actions"><a href="/">Dashboard</a><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div></header>
+
+  <section id="view-lista">
+    <form id="filtros" class="prod-filtros">
+      <label>De<input type="date" name="de"></label>
+      <label>Até<input type="date" name="ate"></label>
+      <label>Hospital<select name="hospitalId" data-hospitais><option value="">Todos</option></select></label>
+      <label>Médico<select name="medicoId" data-medicos><option value="">Todos</option></select></label>
+      <label>Status<select name="status"><option value="">Todos</option><option value="RASCUNHO">Rascunho</option><option value="CONFERIDO">Conferido</option><option value="ENVIADO">Enviado</option></select></label>
+      <button class="secondary-button" type="submit">Filtrar</button>
+      <button class="primary-button" type="button" id="btn-novo">+ Novo lote</button>
+    </form>
+    <div class="account-table"><table><thead><tr><th>Data</th><th>Período</th><th>Hospital</th><th>Médicos</th><th>Exames</th><th>Itens</th><th>Pendentes</th><th>Status</th></tr></thead><tbody id="lotes"></tbody></table></div>
+  </section>
+
+  <section id="view-lote" hidden>
+    <button type="button" class="text-button" id="btn-voltar">← Voltar à lista</button>
+    <form id="cabecalho" class="prod-cabecalho">
+      <label>Hospital<select name="hospitalId" data-hospitais required><option value="">Selecione</option></select></label>
+      <div class="prod-multi"><span>Médicos executantes</span><details id="sel-medicos"><summary>Selecione</summary><div class="prod-multi-lista"><input type="search" placeholder="Buscar médico" data-busca><div data-opcoes></div></div></details></div>
+      <div class="prod-multi"><span>Exames</span><details id="sel-exames"><summary>Selecione</summary><div class="prod-multi-lista"><input type="search" placeholder="Buscar exame" data-busca><div data-opcoes></div><div class="prod-novo-exame"><input id="novo-exame" maxlength="120" placeholder="Novo exame"><button type="button" class="secondary-button" id="btn-novo-exame">+ Adicionar</button></div></div></details></div>
+      <label>Data<input type="date" name="dataProducao" required></label>
+      <label>Período<select name="periodo"><option value="MANHA">Manhã</option><option value="TARDE">Tarde</option><option value="NOITE">Noite</option><option value="INTEGRAL">Integral</option></select></label>
+      <label>Auxiliar<input name="auxiliar" maxlength="120"></label>
+      <label class="prod-largo">Observação<input name="observacao" maxlength="500"></label>
+    </form>
+    <p class="prod-status">Status: <strong id="lote-status">Novo</strong></p>
+
+    <div class="prod-captura">
+      <div class="prod-foto">
+        <label class="secondary-button prod-upload">📷 Ler foto da folha<input type="file" id="foto" accept="image/jpeg,image/png,image/webp" hidden></label>
+        <p id="ocr-aviso" class="prod-dica"></p>
+        <img id="foto-preview" alt="Foto da folha" hidden>
+      </div>
+      <div class="prod-itens">
+        <form id="rapido" class="prod-rapido">
+          <label>Nº atendimento (digite ou use o leitor)<input name="nr" inputmode="numeric" autocomplete="off" placeholder="58373882"></label>
+          <button class="secondary-button" type="submit">Adicionar etiqueta</button>
+        </form>
+        <p id="aviso-dup" class="prod-alerta" hidden></p>
+        <p class="prod-dica"><span id="contagem">0 etiquetas</span> · linhas em amarelo precisam de revisão · cada etiqueta é um item faturável</p>
+        <div class="account-table prod-tabela"><table><thead><tr><th>#</th><th>Médico</th><th>Exame</th><th>Atendimento</th><th>Data/hora</th><th>Paciente</th><th>Nasc.</th><th>Prontuário</th><th>Convênio</th><th>Plano</th><th>Carteirinha</th><th>Guia</th><th>Senha</th><th>Procedimento</th><th>Solicitante</th><th></th></tr></thead><tbody id="itens"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="session-actions prod-acoes">
+      <button class="primary-button" type="button" id="btn-salvar">Salvar lote</button>
+      <button class="secondary-button" type="button" id="btn-conferir">Marcar como conferido</button>
+      <button class="secondary-button" type="button" id="btn-enviar">Enviar ao faturamento</button>
+      <button class="text-button" type="button" id="btn-reabrir">Reabrir</button>
+      <button class="text-button prod-perigo" type="button" id="btn-excluir">Excluir lote</button>
+    </div>
+  </section>
+  <p id="mensagem" role="status" aria-live="polite"></p>
+</main><script src="sidebar.js?v=20261106-folhas"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script><script src="producao.js?v=20261106-2"></script></body></html>

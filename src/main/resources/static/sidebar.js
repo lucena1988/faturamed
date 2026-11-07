@@ -11,6 +11,7 @@
   const ambiente = host === 'localhost' || host === '127.0.0.1' ? 'local' : host.includes('homologacao') ? 'de homologação' : 'de produção';
   const groups = [
     ['nav-producao', 'Produção', [
+      ['Folhas de produção', 'producao.html', null, '<path d="M4 4h16v16H4z"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/>'],
       ['Base hospitalar', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
       ['Importações', null, 'importacoes', '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/>'],
       ['Conciliação de visitas', 'conciliacao.html', null, '<path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/>'],
