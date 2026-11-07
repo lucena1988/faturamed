@@ -270,3 +270,6 @@ main .topbar > .session-actions > a { text-decoration: none; }
 
 /* elementos escondidos continuam escondidos mesmo com estilo de botao */
 [hidden] { display: none !important; }
+
+.fm-status.vermelho { background: #fbe4e6; color: #8e2430; }
+:root[data-theme="dark"] .fm-status.vermelho { background: rgba(220,120,130,.2); color: #f0b9bf; }

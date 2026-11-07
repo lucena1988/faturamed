@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Visão geral | FaturaMed</title>
+<link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema">
+<link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261107-1">
+<link rel="stylesheet" href="painel-producao.css?v=20261108-2"><script src="tema.js?v=20261009-1"></script></head>
+<body><main class="account-workspace prod-pagina">
+  <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Visão geral</h1><p class="pp-saudacao" id="saudacao"></p></div>
+    <div class="session-actions"><label class="pp-filtro">Hospital<select id="filtro-hospital"><option value="">Todos os hospitais</option></select></label><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div></header>
+
+  <div class="pp-grade" id="grade">
+    <section class="pp-bloco" id="bloco-tarefas" aria-labelledby="t-tarefas">
+      <h2 id="t-tarefas">Para fazer hoje</h2>
+      <div class="pp-tarefas" id="tarefas"></div>
+    </section>
+
+    <section class="pp-bloco" id="bloco-mes" aria-labelledby="t-mes">
+      <h2 id="t-mes">Números do mês</h2>
+      <div id="cards" class="fm-cards"></div>
+    </section>
+
+    <section class="pp-bloco" aria-labelledby="t-prazos">
+      <h2 id="t-prazos">Prazos de conferência dos hospitais <span class="prod-dica" id="prazo-dias"></span></h2>
+      <div class="pp-prazos" id="prazos"></div>
+    </section>
+
+    <section class="pp-bloco" aria-labelledby="t-hospitais">
+      <h2 id="t-hospitais">Por hospital</h2>
+      <div class="account-table"><table><thead><tr><th>Hospital</th><th>Etiquetas para fechar</th><th>Aguardando hospital</th><th>Aprovado, sem NF</th><th>NF emitida no mês</th></tr></thead><tbody id="hospitais"></tbody></table></div>
+    </section>
+
+    <section class="pp-bloco pp-largo" aria-labelledby="t-mapa">
+      <h2 id="t-mapa">Produção dos últimos 6 meses <span class="prod-dica">— etiquetas por dia</span></h2>
+      <div class="pp-mapa-caixa"><div class="pp-mapa-dias"><span>seg</span><span></span><span>qua</span><span></span><span>sex</span><span></span><span></span></div><div class="pp-mapa" id="mapa"></div></div>
+      <div class="pp-legenda"><span>menos</span><i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><i class="n4"></i><span>mais</span></div>
+    </section>
+  </div>
+</main><script src="sidebar.js?v=20261108-visitas"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261108-hospital"></script>
+<script src="efeitos.js?v=20261107-1"></script><script src="tatil.js?v=20261108-1"></script><script src="ui.js?v=20261108-6"></script><script src="painel-producao.js?v=20261108-2"></script></body></html>

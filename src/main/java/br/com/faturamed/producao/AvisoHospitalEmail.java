@@ -40,10 +40,23 @@ public class AvisoHospitalEmail {
                 Olá.
 
                 A FaturaMed enviou o fechamento de produção nº %d (%s a %s), no valor de %s, para conferência do %s.
+                Prazo para conferência: %s.
 
                 Acesse o portal para conferir lote a lote, contestar o que não reconhecer e liberar para a emissão da nota fiscal:
                 %s/hospital.html?fechamento=%d
-                """.formatted(fechamentoId, f.inicio(), f.fim(), f.total(), f.hospital(), urlPublica, fechamentoId));
+                """.formatted(fechamentoId, f.inicio(), f.fim(), f.total(), f.hospital(), f.prazo(), urlPublica, fechamentoId));
+    }
+
+    public void lembretePrazo(long fechamentoId, java.time.LocalDate prazo) {
+        var f = dados(fechamentoId);
+        enviar(f.hospitalId(), "FaturaMed - lembrete: conferência do fechamento nº " + fechamentoId + " vence em " + prazo.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")), """
+                Olá.
+
+                O prazo para conferir o fechamento de produção nº %d (%s a %s), no valor de %s, vence em %s.
+
+                Se já conferiu tudo, basta aprovar e liberar para a emissão da nota fiscal no portal:
+                %s/hospital.html?fechamento=%d
+                """.formatted(fechamentoId, f.inicio(), f.fim(), f.total(), prazo.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")), urlPublica, fechamentoId));
     }
 
     public void nfEmitida(long fechamentoId) {
@@ -58,16 +71,16 @@ public class AvisoHospitalEmail {
                 """.formatted(f.nf(), fechamentoId, f.inicio(), f.fim(), f.total(), f.temArquivo() ? " e baixe a nota" : "", urlPublica, fechamentoId));
     }
 
-    private record Dados(long hospitalId, String hospital, String inicio, String fim, String total, String nf, boolean temArquivo) {}
+    private record Dados(long hospitalId, String hospital, String inicio, String fim, String total, String nf, boolean temArquivo, String prazo) {}
 
     private Dados dados(long id) {
         return jdbc.queryForObject("""
                 select f.hospital_id, h.nome, to_char(f.data_inicio,'DD/MM/YYYY') ini, to_char(f.data_fim,'DD/MM/YYYY') fim,
-                       f.total, coalesce(f.nf_numero,'') nf, (f.nf_arquivo is not null) arquivo
+                       f.total, coalesce(f.nf_numero,'') nf, (f.nf_arquivo is not null) arquivo, coalesce(to_char(f.prazo_conferencia,'DD/MM/YYYY'),'—') prazo
                 from producao_fechamento f join hospital_cadastro h on h.id=f.hospital_id where f.id=?""",
                 (r, n) -> new Dados(r.getLong(1), r.getString(2), r.getString(3), r.getString(4),
                         java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("pt-BR")).format(r.getBigDecimal(5)),
-                        r.getString(6), r.getBoolean(7)), id);
+                        r.getString(6), r.getBoolean(7), r.getString(8)), id);
     }
 
     private void enviar(long hospitalId, String assunto, String texto) {

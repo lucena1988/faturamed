@@ -13,17 +13,17 @@
   const ambiente = host === 'localhost' || host === '127.0.0.1' ? 'local' : host.includes('homologacao') ? 'de homologação' : 'de produção';
   const groups = [
     ['nav-fechamento-producao', 'Fechamento por Produção', [
+      ['Visão geral', 'painel-producao.html', null, '<path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/>'],
       ['Lotes de produção', 'producao.html', null, '<path d="M4 4h16v16H4z"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/>'],
       ['Fechamento e envio', 'fechamento-producao.html', null, '<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>']], 'producao'],
     ['nav-producao', 'Visitas hospitalares', [
+      ['Dashboard', null, 'dashboard', '<path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/>'],
       ['Base hospitalar', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
       ['Importações', null, 'importacoes', '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/>'],
       ['Conciliação de visitas', 'conciliacao.html', null, '<path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/>'],
-      ['Layouts', null, 'layouts', '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>']], 'visitas'],
-    ['nav-faturamento', 'Faturamento', [
-      ['Dashboard', null, 'dashboard', '<path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/>'],
       ['Divergências', null, 'divergencias', '<path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/>'],
-      ['Solicitações dos médicos', 'solicitacoes-medicos.html', null, '<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 9h8M8 12h5"/>']], 'faturamento'],
+      ['Solicitações dos médicos', 'solicitacoes-medicos.html', null, '<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 9h8M8 12h5"/>'],
+      ['Layouts', null, 'layouts', '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>']], 'visitas'],
     ['nav-financeiro', 'Financeiro', [
       ['Recebimentos', 'recebimentos.html', null, '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/>'],
       ['Fila de cobrança', 'cobrancas.html', null, '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/>']], 'financeiro'],
@@ -77,11 +77,16 @@
     : Promise.resolve(window.prompt(texto));
 
   // Estilos globais (componentes e cores por modulo) e grupo da pagina atual (usado na trilha do cabecalho)
-  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261108-4', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1']) {
+  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261108-6', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
     if (document.querySelector(`link[href^="${href.split('?')[0]}"]`)) continue;
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = href;
     document.head.append(css);
+  }
+  if (!document.querySelector('script[src^="tatil.js"]')) {
+    const tt = document.createElement('script');
+    tt.src = 'tatil.js?v=20261108-1';
+    document.head.append(tt);
   }
   if (!document.querySelector('script[src^="efeitos.js"]')) {
     const ef = document.createElement('script');
@@ -90,7 +95,7 @@
   }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261108-1';
+    js.src = 'ui.js?v=20261108-6';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view]) => ({label, grupo: titulo, url: href || `index.html#${view}`})));

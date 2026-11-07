@@ -137,7 +137,7 @@
     const pv = previaAtual;
     $('#previa').hidden = false;
     $('#previa-total').textContent = `${pv.lotes} lote(s) · ${pv.etiquetas} etiqueta(s) · total ${brl(pv.total)}`;
-    $('#previa-resumo').innerHTML = pv.resumo.map(r => `<tr><td>${esc(r.medico)}</td><td>${r.agendas}</td><td>${r.exames}</td><td class="fp-valor">${brl(r.total)}</td></tr>`).join('')
+    $('#previa-resumo').innerHTML = pv.resumo.map(r => `<tr><td>${window.fmTatil ? fmTatil.pessoa(r.medico) : esc(r.medico)}</td><td>${r.agendas}</td><td>${r.exames}</td><td class="fp-valor">${brl(r.total)}</td></tr>`).join('')
       + (pv.resumo.length ? `<tr><th>Total</th><th></th><th></th><th class="fp-valor">${brl(pv.total)}</th></tr>` : fmUi.vazio(4, {titulo: 'Nenhum lote conferido neste período', texto: 'Confira os lotes do hospital em Lotes de produção e calcule de novo.', icone: 'busca'}));
     $('#previa-calculo').innerHTML = pv.calculos.map(c => `<tr><td>${esc(c.medico)}</td><td>${data(c.data)}</td><td>${PERIODOS[c.periodo] || ''}</td>
       <td>${esc(c.descricao)}</td><td>${c.exames}</td><td>${c.pontos}</td><td class="fp-valor">${brl(c.valor)}</td></tr>`).join('');
@@ -153,9 +153,10 @@
     const f = $('#form-previa');
     if (!(await fmUi.confirmar({titulo: `Gerar fechamento de ${brl(previaAtual.total)}?`, texto: `${previaAtual.lotes} lote(s) e ${previaAtual.etiquetas} etiqueta(s) serão incluídas e ficarão bloqueadas para edição até o fechamento ser cancelado.`, confirmar: 'Gerar fechamento'}))) return;
     const pronto = fmUi.carregando($('#btn-fechar'), 'Gerando…');
+    const fecharCubo = window.fmTatil?.carregando('Gerando o fechamento…');
     let d;
     try { d = await api('/api/producao/fechamentos', json('POST', {hospitalId: +f.elements.hospitalId.value, inicio: f.elements.inicio.value,
-      fim: f.elements.fim.value, observacao: $('#obs-fechamento').value})); } finally { pronto(); }
+      fim: f.elements.fim.value, observacao: $('#obs-fechamento').value})); } finally { pronto(); fecharCubo?.(); }
     $('#previa').hidden = true;
     msg(`Fechamento nº ${d.fechamento.id} gerado. Baixe a planilha e envie ao hospital.`);
     await listarFechamentos();
@@ -168,6 +169,7 @@
     $('#fechamentos').innerHTML = lista.map(f => `<tr data-id="${f.id}"><td>${f.id}</td><td>${esc(f.hospital)}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td>
       <td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td>${fmUi.etapas(ETAPAS, f.status)}</td>
       <td>${f.aprovadoPor ? `${esc(f.aprovadoPor)} em ${data(f.aprovadoEm)}` : f.vistoHospitalEm ? `<small>Aberto pelo hospital em ${new Date(f.vistoHospitalEm).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</small>` : '<small>Ainda não aberto pelo hospital</small>'}
+        ${f.diasParaPrazo != null ? `<br>${fmUi.prazo(f.diasParaPrazo)}` : ''}
         ${f.contestadas ? `<br>${fmUi.status(`${f.contestadas} contestada(s)`, 'ambar')}` : ''}${f.valorEnviado != null && Number(f.valorEnviado) !== Number(f.total) ? `<br><small>enviado: ${brl(f.valorEnviado)}</small>` : ''}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})` : '—'}</td>
       <td><div class="fm-celula-acoes">
         ${f.status === 'AGUARDANDO' ? `<button type="button" class="secondary-button" data-aprovar="${f.id}">Registrar ok</button>` : ''}
@@ -258,6 +260,7 @@
       msg('Fechamento cancelado.');
     }
     await listarFechamentos();
+    if (pulsar) window.fmTatil?.confete();
     if (pulsar) window.fmEfeitos?.pulso(document.querySelector(`#fechamentos tr[data-id="${pulsar}"]`));
   }));
 

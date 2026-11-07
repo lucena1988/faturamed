@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.*;
 public class FechamentoProducaoController {
     private static String nome(Principal p) { return p == null ? null : p.getName(); }
     private final FechamentoProducaoService service;
+    @org.springframework.beans.factory.annotation.Autowired private PainelProducaoService painel;
+
+    @GetMapping("/painel") public PainelProducaoService.Painel painel(@RequestParam(required = false) Long hospitalId) { return painel.painel(hospitalId); }
+
     private final ExportadorFechamentoProducao exportador;
     public FechamentoProducaoController(FechamentoProducaoService service, ExportadorFechamentoProducao exportador) {
         this.service = service; this.exportador = exportador;

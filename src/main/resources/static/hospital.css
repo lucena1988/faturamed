@@ -39,3 +39,4 @@
 .hp-lote.saindo { animation: hp-sai .26s ease-in forwards; }
 @keyframes hp-sai { to { opacity: 0; transform: translateX(24px); } }
 .hp-vazio { padding: 20px; text-align: center; border: 1px dashed var(--line); border-radius: 14px; }
+.hp-prazo { margin-top: 6px; text-align: center; }
