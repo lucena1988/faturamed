@@ -93,7 +93,41 @@
     d.showModal();
   }
 
-  window.fmUi = {linhaDoTempo, mostrarHistorico, icone, toast, dialogo, confirmar, perguntar: dialogo, carregando, esqueleto, vazio, status, esc};
+  // ---------- card de resumo com icone ----------
+  const ICONES_CARD = {
+    relogio: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+    check: '<circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+    nota: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+    rascunho: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>',
+    enviado: '<path d="M3 11 21 3l-6 18-3-8z"/><path d="m12 13 9-10"/>',
+    etiqueta: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'
+  };
+  const card = ({icone, rotulo, valor, sub = '', zerado = false, atributos = ''}) =>
+    `<div class="fm-card${zerado ? ' zerado' : ''}" ${atributos}><span class="fm-card-topo"><span>${esc(rotulo)}</span>${icone ? `<svg class="fm-card-icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES_CARD[icone] || ''}</svg>` : ''}</span>
+      <strong>${esc(valor)}</strong><small>${esc(sub)}</small></div>`;
+
+  // ---------- linha de etapas (ex.: Enviado -> Aprovado -> NF) ----------
+  const etapas = (passos, atual) => {
+    const idx = passos.findIndex(p => p.chave === atual);
+    return `<ol class="fm-etapas" aria-label="Situação: ${esc(passos[idx]?.rotulo || atual)}">${passos.map((p, i) =>
+      `<li class="${i < idx ? 'feito' : i === idx ? 'atual' : ''}" title="${esc(p.rotulo)}"><span></span><small>${esc(p.rotulo)}</small></li>`).join('')}</ol>`;
+  };
+
+  // ---------- menu de acoes "..." em linhas de tabela ----------
+  const menuAcoes = itens => `<div class="fm-acoes-menu"><button type="button" class="fm-acoes-botao" aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações">
+      <svg class="fm-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
+      <div class="fm-acoes-lista" role="menu" hidden>${itens.join('')}</div></div>`;
+  document.addEventListener('click', e => {
+    const botao = e.target.closest('.fm-acoes-botao');
+    document.querySelectorAll('.fm-acoes-lista:not([hidden])').forEach(l => {
+      if (!botao || l.previousElementSibling !== botao) { l.hidden = true; l.previousElementSibling.setAttribute('aria-expanded', 'false'); }
+    });
+    if (botao) { const l = botao.nextElementSibling; l.hidden = !l.hidden; botao.setAttribute('aria-expanded', String(!l.hidden)); }
+    else if (e.target.closest('.fm-acoes-lista [role=menuitem]')) e.target.closest('.fm-acoes-lista').hidden = true;
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.fm-acoes-lista').forEach(l => { l.hidden = true; }); });
+
+  window.fmUi = {card, etapas, menuAcoes, linhaDoTempo, mostrarHistorico, icone, toast, dialogo, confirmar, perguntar: dialogo, carregando, esqueleto, vazio, status, esc};
 
   // ---------- cabecalho: trilha + menu do usuario ----------
   function montarCabecalho() {
@@ -199,7 +233,50 @@
     header.prepend(b);
   }
 
-  function iniciar() { montarCabecalho(); botaoBusca(); }
+  // ---------- padrao automatico nas telas antigas ----------
+  // 1) mensagens de status da pagina (fora de janelas) viram avisos flutuantes
+  // (mensagens de orientacao fixas, como "Selecione um medico.", ficam na tela)
+  const MENSAGENS = ['message', 'dashboard-message', 'h-message', 'e-message', 'queue-message', 'account-message'];
+  const progresso = t => /^(Carregando|Processando|Aguarde|Lendo|Importando|Enviando|Gerando|Salvando|Atualizando|Selecione)/i.test(t);
+  const pareceErro = t => /(erro|falha|inv[aá]lid|n[aã]o foi poss|indispon|negad|obrigat[oó]ri|j[aá] cadastrad|n[aã]o encontrad|conflito|alterad[oa] por outro)/i.test(t);
+  function avisosAutomaticos() {
+    for (const id of MENSAGENS) {
+      const el = document.getElementById(id);
+      if (!el || el.closest('dialog') || el.dataset.fmToast) continue;
+      el.dataset.fmToast = '1';
+      el.classList.toggle('fm-msg-oculta', !progresso(el.textContent.trim()));
+      let ultimo = '';
+      new MutationObserver(() => {
+        const t = el.textContent.trim();
+        const andamento = progresso(t);
+        el.classList.toggle('fm-msg-oculta', !andamento); // andamento ("Carregando...") continua visivel na pagina
+        if (t && t !== ultimo && !andamento) toast(t, pareceErro(t) ? 'erro' : 'sucesso');
+        ultimo = t;
+      }).observe(el, {childList: true, characterData: true, subtree: true});
+    }
+  }
+  // 2) linhas "Nenhum ... encontrado" viram tela vazia com icone
+  function vaziosAutomaticos(raiz = document) {
+    raiz.querySelectorAll('main tbody > tr:only-child > td:only-child').forEach(td => {
+      const tr = td.parentElement;
+      const texto = td.textContent.trim();
+      if (tr.classList.contains('fm-vazio') || tr.classList.contains('fm-esqueleto') || !/^(Nenhum|Nenhuma|Sem |Nada )/i.test(texto) || td.children.length > 1) return;
+      tr.classList.add('fm-vazio');
+      td.innerHTML = `<span class="fm-vazio-icone"><svg viewBox="0 0 24 24">${/encontrad/i.test(texto) ? ICONES.busca : ICONES.folha}</svg></span><strong>${esc(texto)}</strong>`;
+    });
+  }
+  function padraoAutomatico() {
+    avisosAutomaticos();
+    vaziosAutomaticos();
+    let agendado = false;
+    new MutationObserver(() => {
+      if (agendado) return;
+      agendado = true;
+      requestAnimationFrame(() => { agendado = false; vaziosAutomaticos(); });
+    }).observe(document.querySelector('main') || document.body, {childList: true, subtree: true});
+  }
+
+  function iniciar() { montarCabecalho(); botaoBusca(); padraoAutomatico(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
   else iniciar();
 })();

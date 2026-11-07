@@ -75,7 +75,7 @@
     : Promise.resolve(window.prompt(texto));
 
   // Estilos globais (componentes e cores por modulo) e grupo da pagina atual (usado na trilha do cabecalho)
-  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261107-2']) {
+  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261107-4']) {
     if (document.querySelector(`link[href^="${href.split('?')[0]}"]`)) continue;
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = href;
@@ -83,10 +83,21 @@
   }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261107-3';
+    js.src = 'ui.js?v=20261107-5';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view]) => ({label, grupo: titulo, url: href || `index.html#${view}`})));
+  // no index as telas trocam pelo #hash: aplica a cor/grupo do modulo da tela visivel
+  if (onIndex) {
+    const porHash = () => {
+      const view = (location.hash || '#dashboard').slice(1);
+      const g = groups.find(x => x[2].some(([, href, v]) => !href && v === view));
+      window.fmNavAtual = g ? {titulo: g[1], modulo: g[3] || null} : null;
+      if (g?.[3]) document.body.dataset.modulo = g[3]; else delete document.body.dataset.modulo;
+    };
+    window.addEventListener('hashchange', porHash);
+    if (document.body) porHash(); else document.addEventListener('DOMContentLoaded', porHash);
+  }
   const grupoAtual = groups.find(g => g[2].some(([, href]) => href && href === page));
   if (grupoAtual) {
     window.fmNavAtual = {titulo: grupoAtual[1], modulo: grupoAtual[3] || null};

@@ -86,12 +86,13 @@
     const soma = (lista, f) => lista.reduce((t, l) => t + f(l), 0);
     const por = s => lotes.filter(l => l.status === s);
     const cards = [
-      ['RASCUNHO', 'Em rascunho', por('RASCUNHO').length, `${soma(por('RASCUNHO'), l => l.pendentes)} etiqueta(s) pendente(s)`],
-      ['CONFERIDO', 'Conferidos, aguardando fechamento', por('CONFERIDO').length, `${soma(por('CONFERIDO'), l => l.itens)} etiqueta(s)`],
-      ['ENVIADO', 'Enviados em fechamento', por('ENVIADO').length, `${soma(por('ENVIADO'), l => l.itens)} etiqueta(s)`],
-      ['', 'Total de etiquetas', soma(lotes, l => l.itens), `${lotes.length} lote(s)${filtrado ? ' no filtro' : ''}`]];
-    $('#cards').innerHTML = cards.map(([st, rotulo, valor, sub]) =>
-      `<div class="fm-card${st ? ' clicavel' : ''}" ${st ? `data-status="${st}" tabindex="0" role="button" title="Filtrar por este status"` : ''}><span>${rotulo}</span><strong>${valor}</strong><small>${sub}</small></div>`).join('');
+      ['RASCUNHO', 'rascunho', 'Em rascunho', por('RASCUNHO').length, `${soma(por('RASCUNHO'), l => l.pendentes)} etiqueta(s) pendente(s)`],
+      ['CONFERIDO', 'check', 'Conferidos, aguardando fechamento', por('CONFERIDO').length, `${soma(por('CONFERIDO'), l => l.itens)} etiqueta(s)`],
+      ['ENVIADO', 'enviado', 'Enviados em fechamento', por('ENVIADO').length, `${soma(por('ENVIADO'), l => l.itens)} etiqueta(s)`],
+      ['', 'etiqueta', 'Total de etiquetas', soma(lotes, l => l.itens), `${lotes.length} lote(s)${filtrado ? ' no filtro' : ''}`]];
+    $('#cards').innerHTML = cards.map(([st, icone, rotulo, valor, sub]) => fmUi.card({icone, rotulo, valor: String(valor), sub, zerado: !valor,
+      atributos: st ? `data-status="${st}" tabindex="0" role="button" title="Filtrar por este status"` : ''})).join('')
+      .replaceAll('<div class="fm-card" data-status', '<div class="fm-card clicavel" data-status').replaceAll('<div class="fm-card zerado" data-status', '<div class="fm-card zerado clicavel" data-status');
   }
 
   function mostrar(view) { if (view === 'lista') sujo = false; $('#view-lista').hidden = view !== 'lista'; $('#view-lote').hidden = view !== 'lote'; msg(''); }

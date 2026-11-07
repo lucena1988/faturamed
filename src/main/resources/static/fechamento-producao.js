@@ -13,6 +13,7 @@
   const data = d => d ? new Date(d + 'T00:00').toLocaleDateString('pt-BR') : '—';
   const msg = (t, erro) => { if (t) fmUi.toast(t, erro ? 'erro' : 'sucesso'); };
   const COR_STATUS = {AGUARDANDO: 'ambar', APROVADO: 'azul', NF_EMITIDA: 'verde'};
+  const ETAPAS = [{chave: 'AGUARDANDO', rotulo: 'Enviado'}, {chave: 'APROVADO', rotulo: 'Aprovado'}, {chave: 'NF_EMITIDA', rotulo: 'NF emitida'}];
   const hoje = () => new Date().toISOString().slice(0, 10);
   async function api(url, opcoes = {}) {
     const r = await fetch(url, opcoes);
@@ -44,6 +45,7 @@
   async function listarRegras() {
     const h = $('#regras-hospital').value;
     regras = await api('/api/producao/regras' + (h ? `?hospitalId=${h}` : ''));
+    document.querySelector('.fp-aba[data-aba=regras]').innerHTML = `Regras de valor<span class="fp-contador">${regras.length}</span>`;
     const nomeExame = id => exames.find(e => e.id === id)?.nome || `#${id}`;
     $('#regras').innerHTML = regras.map(r => {
       let valor = brl(r.valor);
@@ -166,11 +168,16 @@
     const lista = await api('/api/producao/fechamentos');
     renderCards(lista);
     $('#fechamentos').innerHTML = lista.map(f => `<tr><td>${f.id}</td><td>${esc(f.hospital)}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td>
-      <td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td>${fmUi.status(STATUS[f.status], COR_STATUS[f.status])}</td>
+      <td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td>${fmUi.etapas(ETAPAS, f.status)}</td>
       <td>${f.aprovadoPor ? `${esc(f.aprovadoPor)} em ${data(f.aprovadoEm)}` : '—'}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})` : '—'}</td>
-      <td><a class="text-button" href="/api/producao/fechamentos/${f.id}/planilha">Planilha</a><button type="button" class="text-button" data-historico="${f.id}">Histórico</button>
-        ${f.status === 'AGUARDANDO' ? `<button type="button" class="text-button" data-aprovar="${f.id}">Registrar ok do hospital</button><button type="button" class="text-button prod-perigo" data-cancelar="${f.id}">Cancelar</button>` : ''}
-        ${f.status === 'APROVADO' ? `<button type="button" class="text-button" data-nf="${f.id}">Registrar NF</button>` : ''}</td></tr>`).join('')
+      <td><div class="fm-celula-acoes">
+        ${f.status === 'AGUARDANDO' ? `<button type="button" class="secondary-button" data-aprovar="${f.id}">Registrar ok</button>` : ''}
+        ${f.status === 'APROVADO' ? `<button type="button" class="secondary-button" data-nf="${f.id}">Registrar NF</button>` : ''}
+        ${fmUi.menuAcoes([
+          `<a role="menuitem" href="/api/producao/fechamentos/${f.id}/planilha">Baixar planilha</a>`,
+          `<button type="button" role="menuitem" data-historico="${f.id}">Ver histórico</button>`,
+          ...(f.status === 'AGUARDANDO' ? ['<hr>', `<button type="button" role="menuitem" class="perigo" data-cancelar="${f.id}">Cancelar fechamento</button>`] : [])])}
+      </div></td></tr>`).join('')
       || fmUi.vazio(9, {titulo: 'Nenhum fechamento ainda', texto: 'Escolha o hospital e o período acima e clique em "Calcular prévia".', icone: 'fechamento'});
   }
 
@@ -180,14 +187,14 @@
     const mes = hoje().slice(0, 7);
     const nfMes = lista.filter(f => f.status === 'NF_EMITIDA' && (f.nfData || '').startsWith(mes));
     $('#cards').innerHTML = [
-      ['Aguardando ok do hospital', brl(soma('AGUARDANDO')), `${qtd('AGUARDANDO')} fechamento(s)`],
-      ['Aprovado, aguardando NF', brl(soma('APROVADO')), `${qtd('APROVADO')} fechamento(s)`],
-      ['NF emitida neste mês', brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), `${nfMes.length} nota(s)`]
-    ].map(([r, v, s]) => `<div class="fm-card"><span>${r}</span><strong>${v}</strong><small>${s}</small></div>`).join('');
+      {icone: 'relogio', rotulo: 'Aguardando ok do hospital', valor: brl(soma('AGUARDANDO')), sub: `${qtd('AGUARDANDO')} fechamento(s)`, zerado: !qtd('AGUARDANDO')},
+      {icone: 'check', rotulo: 'Aprovado, aguardando NF', valor: brl(soma('APROVADO')), sub: `${qtd('APROVADO')} fechamento(s)`, zerado: !qtd('APROVADO')},
+      {icone: 'nota', rotulo: 'NF emitida neste mês', valor: brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), sub: `${nfMes.length} nota(s)`, zerado: !nfMes.length}
+    ].map(fmUi.card).join('');
   }
 
   $('#fechamentos').addEventListener('click', proteger(async e => {
-    const b = e.target.closest('button'); if (!b) return;
+    const b = e.target.closest('button'); if (!b || !(b.dataset.historico || b.dataset.aprovar || b.dataset.nf || b.dataset.cancelar)) return;
     if (b.dataset.historico) { await fmUi.mostrarHistorico(`Histórico do fechamento nº ${b.dataset.historico}`, `/api/producao/historico/fechamento/${b.dataset.historico}`); return; }
     if (b.dataset.aprovar) {
       const r = await fmUi.perguntar({titulo: 'Registrar ok do hospital', texto: 'Informe quem conferiu e aprovou a produção no hospital.', confirmar: 'Registrar aprovação',
