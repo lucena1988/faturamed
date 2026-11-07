@@ -48,3 +48,6 @@
 .n4 { background: var(--mod-forte, #5a4e80); }
 .pp-mapa i.futuro { visibility: hidden; }
 .pp-legenda { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: .75rem; color: var(--muted); justify-content: flex-end; }
+
+.pp-filtro { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.pp-filtro select { min-width: 220px; padding: 7px 10px; border-radius: 10px; }

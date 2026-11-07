@@ -46,7 +46,9 @@ class PortalHospitalIntegracaoTest {
         assertEquals(new BigDecimal("144.00"), f.total());
         assertNotNull(f.prazoConferencia(), "prazo de conferencia definido no envio");
         assertTrue(f.diasParaPrazo() > 0);
-        var visao = painel.painel();
+        var visao = painel.painel(null);
+        assertEquals(1, painel.painel(hospital).hospitais().size(), "filtro por hospital");
+        assertTrue(painel.painel(outro).prazos().isEmpty());
         assertTrue(visao.tarefas().aguardandoHospital() >= 1);
         assertTrue(visao.prazos().stream().anyMatch(x -> x.fechamentoId() == f.id()));
 

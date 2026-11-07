@@ -15,7 +15,7 @@ public class FechamentoProducaoController {
     private final FechamentoProducaoService service;
     @org.springframework.beans.factory.annotation.Autowired private PainelProducaoService painel;
 
-    @GetMapping("/painel") public PainelProducaoService.Painel painel() { return painel.painel(); }
+    @GetMapping("/painel") public PainelProducaoService.Painel painel(@RequestParam(required = false) Long hospitalId) { return painel.painel(hospitalId); }
 
     private final ExportadorFechamentoProducao exportador;
     public FechamentoProducaoController(FechamentoProducaoService service, ExportadorFechamentoProducao exportador) {

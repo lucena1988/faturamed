@@ -78,13 +78,36 @@
     $('#mapa').innerHTML = celulas.join('');
   }
 
+  // filtro por hospital: lembrado na URL (?hospitalId=) e neste navegador
+  const CHAVE = 'faturamed-painel-hospital';
+  let hospitalId = new URLSearchParams(location.search).get('hospitalId') || (() => { try { return localStorage.getItem(CHAVE) || ''; } catch (_) { return ''; } })();
+  const comHospital = url => hospitalId ? url + (url.includes('?') ? '&' : '?') + 'hospitalId=' + hospitalId : url;
+
+  async function carregar() {
+    const r = await fetch('/api/producao/painel' + (hospitalId ? '?hospitalId=' + hospitalId : ''));
+    if (!r.ok) throw new Error('Não foi possível carregar o painel');
+    desenhar(await r.json());
+    // os atalhos das tarefas e prazos levam o filtro junto
+    document.querySelectorAll('.pp-tarefa, .pp-prazo').forEach(a => { a.href = comHospital(a.getAttribute('href').split('?hospitalId')[0].replace(/[?&]hospitalId=\d+/, '')); });
+  }
+
+  $('#filtro-hospital').addEventListener('change', async e => {
+    hospitalId = e.target.value;
+    try { localStorage.setItem(CHAVE, hospitalId); } catch (_) {}
+    history.replaceState(null, '', hospitalId ? '?hospitalId=' + hospitalId : location.pathname);
+    try { await carregar(); } catch (err) { fmUi.toast(err.message, 'erro'); }
+  });
+
   (async () => {
     try {
-      const [eu, painel] = await Promise.all([fetch('/api/auth/me').then(r => r.json()), fetch('/api/producao/painel').then(r => r.ok ? r.json() : Promise.reject(new Error('Não foi possível carregar o painel')))]);
+      const [eu, hospitais] = await Promise.all([fetch('/api/auth/me').then(r => r.json()), fetch('/api/hospitais').then(r => r.ok ? r.json() : [])]);
       saudacao(eu.nome);
       // gestor (administrador) ve primeiro os numeros; funcionario ve primeiro as tarefas
       if (['ADMIN', 'DEV'].includes(eu.perfil)) $('#grade').classList.add('gestor');
-      desenhar(painel);
+      $('#filtro-hospital').insertAdjacentHTML('beforeend', hospitais.filter(h => h.ativo !== false).map(h => `<option value="${h.id}">${esc(h.nome)}</option>`).join(''));
+      if (![...$('#filtro-hospital').options].some(o => o.value === hospitalId)) hospitalId = '';
+      $('#filtro-hospital').value = hospitalId;
+      await carregar();
     } catch (e) { fmUi.toast(e.message, 'erro'); }
   })();
 })();
