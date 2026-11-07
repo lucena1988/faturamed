@@ -1,0 +1,118 @@
+/* Visual "tatil": botoes que afundam, icones animados, avatares e status em relevo, cards com parallax,
+   barra de vidro, interruptor 3D, ilustracoes nas telas vazias, confete e cubo de carregamento.
+   Papel e Alto contraste ficam planos; "reduzir animacoes" desliga os movimentos. */
+
+/* ---------- 1) botoes "apertaveis" ---------- */
+.primary-button {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 3px 0 color-mix(in srgb, var(--mod-forte, var(--primary-fill)) 70%, black), 0 6px 14px -6px color-mix(in srgb, var(--mod-cor, var(--primary)) 70%, transparent);
+  transform: translateY(0); transition: transform .08s, box-shadow .08s, background-color .15s;
+}
+.primary-button:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 0 0 color-mix(in srgb, var(--mod-forte, var(--primary-fill)) 70%, black), 0 2px 6px -4px rgba(0,0,0,.4); }
+:is(.secondary-button, .page-content button:not([class])) { box-shadow: 0 2px 0 var(--line), 0 1px 2px rgba(0,0,0,.05); transition: transform .08s, box-shadow .08s, background-color .15s; }
+:is(.secondary-button, .page-content button:not([class])):active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 var(--line); }
+
+/* ---------- 2) icones animados ao passar o mouse ---------- */
+.fm-card-icone > * { transform-box: view-box; transform-origin: 12px 12px; }
+.fm-card:hover .fm-card-icone[data-icone="relogio"] > :last-child { animation: tt-ponteiro .9s ease-in-out; }
+.fm-card:hover .fm-card-icone[data-icone="check"] > :last-child { stroke-dasharray: 16; animation: tt-desenha .6s ease-out; }
+.fm-card:hover .fm-card-icone[data-icone="nota"] { animation: tt-imprime .7s ease-in-out; }
+.fm-card:hover .fm-card-icone[data-icone="enviado"] > * { animation: tt-decola .8s ease-in-out; }
+.fm-card:hover .fm-card-icone[data-icone="rascunho"] > * { animation: tt-rabisca .6s ease-in-out; }
+.fm-card:hover .fm-card-icone[data-icone="etiqueta"] > * { transform-origin: 6px 6px; animation: tt-balanca .8s ease-in-out; }
+@keyframes tt-ponteiro { to { transform: rotate(360deg); } }
+@keyframes tt-desenha { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+@keyframes tt-imprime { 0%, 100% { background-position: 0 0; } 40% { transform: perspective(240px) translateY(-4px); } 70% { transform: perspective(240px) translateY(1px); } }
+@keyframes tt-decola { 0% { transform: none; } 45% { transform: translate(6px, -6px) scale(.7); opacity: 0; } 46% { transform: translate(-6px, 6px) scale(.7); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes tt-rabisca { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(10deg); } }
+@keyframes tt-balanca { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(14deg); } 65% { transform: rotate(-8deg); } }
+
+/* ---------- 3) avatares em relevo ---------- */
+.fm-avatar, .tt-avatar {
+  background: radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,.5), transparent 55%), linear-gradient(160deg, color-mix(in srgb, var(--av, var(--primary-fill)) 70%, white), var(--av, var(--primary-fill)) 60%, color-mix(in srgb, var(--av, var(--primary-fill)) 75%, black)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.18), 0 3px 6px -2px rgba(0,0,0,.3);
+  color: #fff !important; text-shadow: 0 1px 1px rgba(0,0,0,.25);
+}
+.tt-avatar { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: .66rem; font-weight: 800; letter-spacing: .02em; flex: 0 0 26px; }
+.tt-pessoa { display: inline-flex; align-items: center; gap: 8px; }
+.tt-pessoas { display: inline-flex; align-items: center; gap: 8px; }
+.tt-pilha { display: inline-flex; }
+.tt-pilha .tt-avatar + .tt-avatar { margin-left: -8px; outline: 2px solid var(--surface); }
+
+/* ---------- 4) status como pilulas de gel ---------- */
+.fm-status {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 60%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 2px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.08);
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+:root[data-theme="dark"] .fm-status { background-image: linear-gradient(180deg, rgba(255,255,255,.14), transparent 60%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.15); }
+
+/* ---------- 5) cards com inclinacao 3D (parallax, intensidade baixa) ---------- */
+.fm-card.tt-tilt { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .18s ease-out, box-shadow .2s; will-change: transform; }
+.fm-card.tt-tilt .fm-card-icone { translate: calc(var(--ry, 0deg) * -1.2px / 1deg) calc(var(--rx, 0deg) * 1.2px / 1deg); }
+
+/* ---------- 6) barra de progresso de vidro ---------- */
+.hp-progresso { height: 14px !important; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--line) 80%, white) !important;
+  background: linear-gradient(180deg, rgba(0,0,0,.06), rgba(255,255,255,.4)), var(--surface-soft, #eef3f4) !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.12), 0 1px 0 rgba(255,255,255,.7); }
+.hp-progresso span { position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #6fd39a, #2e8b57 60%, #23704a) !important;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.2); }
+.hp-progresso span::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.28) 0 10px, transparent 10px 22px);
+  animation: tt-onda 1.4s linear infinite; }
+@keyframes tt-onda { to { background-position: 44px 0; } }
+
+/* ---------- 7) interruptor 3D ("Marcar como conferido") ---------- */
+.hp-check input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; position: relative; width: 38px !important; height: 22px !important; margin: 0; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(180deg, #cfd8dc, #e9eef0); box-shadow: inset 0 2px 4px rgba(0,0,0,.2), 0 1px 0 rgba(255,255,255,.8); transition: background .2s;
+}
+.hp-check input[type="checkbox"]::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #e3e8ea 70%); box-shadow: 0 2px 4px rgba(0,0,0,.3), inset 0 -1px 2px rgba(0,0,0,.1);
+  transition: transform .22s cubic-bezier(.3,1.6,.5,1);
+}
+.hp-check input[type="checkbox"]:checked { background: linear-gradient(180deg, #2e8b57, #4fbf80); }
+.hp-check input[type="checkbox"]:checked::before { transform: translateX(16px); }
+.hp-check input[type="checkbox"]:disabled { opacity: .6; cursor: default; }
+
+/* ---------- 8) ilustracao 3D nas telas vazias ---------- */
+.fm-vazio-icone { position: relative; width: 64px !important; height: 64px !important; border-radius: 18px !important; margin-bottom: 14px !important;
+  --ico-base: var(--mod-cor, var(--primary));
+  background: radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,.55), transparent 55%), linear-gradient(160deg, color-mix(in srgb, var(--ico-base) 70%, white), var(--ico-base) 55%, color-mix(in srgb, var(--ico-base) 75%, black)) !important;
+  color: #fff !important; box-shadow: inset 0 2px 0 rgba(255,255,255,.55), inset 0 -3px 5px color-mix(in srgb, var(--ico-base) 60%, black), 0 14px 22px -10px color-mix(in srgb, var(--ico-base) 70%, transparent);
+  animation: tt-flutua 3.2s ease-in-out infinite; }
+.fm-vazio-icone svg { width: 30px !important; height: 30px !important; stroke-width: 2 !important; }
+.fm-vazio-icone::before, .fm-vazio-icone::after { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+  background: color-mix(in srgb, var(--ico-base) 30%, var(--surface)); box-shadow: 0 6px 12px -8px rgba(0,0,0,.3); }
+.fm-vazio-icone::before { transform: translate(-10px, 8px) rotate(-10deg); }
+.fm-vazio-icone::after { transform: translate(10px, 6px) rotate(9deg); opacity: .7; }
+@keyframes tt-flutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* ---------- 9) confete ---------- */
+.tt-confete { position: fixed; inset: 0; pointer-events: none; z-index: 2000; overflow: hidden; }
+.tt-confete i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; opacity: .95; animation: tt-cai var(--d, 1.1s) cubic-bezier(.25,.6,.5,1) forwards; }
+@keyframes tt-cai { to { transform: translate(var(--x, 0), 105vh) rotate(var(--r, 540deg)); opacity: 0; } }
+
+/* ---------- 10) cubo de carregamento ---------- */
+.tt-carregando { position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center; background: color-mix(in srgb, var(--bg, #fff) 55%, transparent); backdrop-filter: blur(4px); animation: fm-entra .2s ease-out; }
+.tt-carregando > div { display: grid; justify-items: center; gap: 18px; color: var(--text); font-weight: 600; }
+.tt-cubo { width: 54px; height: 54px; position: relative; transform-style: preserve-3d; animation: tt-gira 2.4s cubic-bezier(.6,.1,.4,.9) infinite; }
+.tt-cubo span { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 10px; color: #fff; font-weight: 900; font-size: 1.3rem;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--mod-cor, var(--primary)) 70%, white), var(--mod-forte, var(--primary-strong)));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 6px rgba(0,0,0,.25); backface-visibility: hidden; }
+.tt-cubo span:nth-child(1) { transform: translateZ(27px); }
+.tt-cubo span:nth-child(2) { transform: rotateY(90deg) translateZ(27px); }
+.tt-cubo span:nth-child(3) { transform: rotateY(180deg) translateZ(27px); }
+.tt-cubo span:nth-child(4) { transform: rotateY(-90deg) translateZ(27px); }
+.tt-cubo span:nth-child(5) { transform: rotateX(90deg) translateZ(27px); }
+.tt-cubo span:nth-child(6) { transform: rotateX(-90deg) translateZ(27px); }
+@keyframes tt-gira { 0% { transform: rotateX(-25deg) rotateY(0); } 50% { transform: rotateX(-25deg) rotateY(180deg); } 100% { transform: rotateX(-25deg) rotateY(360deg); } }
+
+/* ---------- temas planos e acessibilidade ---------- */
+:root:is([data-aparencia="papel"], [data-aparencia="contraste"]) :is(.fm-status, .tt-avatar, .fm-avatar, .fm-vazio-icone, .primary-button, .secondary-button, .hp-progresso, .hp-progresso span) { background-image: none !important; box-shadow: none !important; animation: none !important; }
+:root:is([data-aparencia="papel"], [data-aparencia="contraste"]) .fm-vazio-icone::before, :root:is([data-aparencia="papel"], [data-aparencia="contraste"]) .fm-vazio-icone::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .fm-card.tt-tilt { transform: none !important; }
+  .fm-vazio-icone, .hp-progresso span::after, .tt-cubo { animation: none !important; }
+  .fm-card:hover .fm-card-icone, .fm-card:hover .fm-card-icone > * { animation: none !important; }
+}

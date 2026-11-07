@@ -103,7 +103,7 @@
     etiqueta: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'
   };
   const card = ({icone, rotulo, valor, sub = '', zerado = false, atributos = '', classe = '', extra = '', selo = ''}) =>
-    `<div class="fm-card${zerado ? ' zerado' : ''}${classe ? ' ' + classe : ''}" ${atributos}><span class="fm-card-topo"><span>${esc(rotulo)}</span>${icone ? `<svg class="fm-card-icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES_CARD[icone] || ''}</svg>` : ''}</span>
+    `<div class="fm-card${zerado ? ' zerado' : ''}${classe ? ' ' + classe : ''}" ${atributos}><span class="fm-card-topo"><span>${esc(rotulo)}</span>${icone ? `<svg class="fm-card-icone" data-icone="${esc(icone)}" viewBox="0 0 24 24" aria-hidden="true">${ICONES_CARD[icone] || ''}</svg>` : ''}</span>
       <strong>${esc(valor)}</strong><small>${esc(sub)}${selo}</small>${extra}</div>`;
 
   // ---------- linha de etapas (ex.: Enviado -> Aprovado -> NF) ----------
@@ -127,7 +127,10 @@
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.fm-acoes-lista').forEach(l => { l.hidden = true; }); });
 
-  window.fmUi = {card, etapas, menuAcoes, linhaDoTempo, mostrarHistorico, icone, toast, dialogo, confirmar, perguntar: dialogo, carregando, esqueleto, vazio, status, esc};
+  const prazo = dias => dias == null ? '' : dias < 0 ? status(`${-dias} dia(s) atrasado`, 'vermelho')
+    : dias === 0 ? status('vence hoje', 'ambar') : dias === 1 ? status('vence amanhã', 'ambar') : status(`${dias} dias úteis p/ conferir`, 'cinza');
+
+  window.fmUi = {prazo, card, etapas, menuAcoes, linhaDoTempo, mostrarHistorico, icone, toast, dialogo, confirmar, perguntar: dialogo, carregando, esqueleto, vazio, status, esc};
 
   // ---------- cabecalho: trilha + menu do usuario ----------
   function montarCabecalho() {
@@ -205,6 +208,7 @@
       const partes = String(eu.nome || eu.email || '?').trim().split(/\s+/);
       const iniciais = ((partes[0] || '')[0] || '') + (partes.length > 1 ? partes.at(-1)[0] : '');
       caixa.querySelector('.fm-avatar').textContent = iniciais.toUpperCase();
+      if (window.fmTatil) caixa.querySelector('.fm-avatar').style.setProperty('--av', window.fmTatil.cor(eu.nome || eu.email || ''));
       caixa.querySelector('.fm-usuario-nome').textContent = partes[0];
       caixa.querySelector('.fm-usuario-info strong').textContent = eu.nome || '';
       caixa.querySelector('.fm-usuario-info small').textContent = eu.email || '';

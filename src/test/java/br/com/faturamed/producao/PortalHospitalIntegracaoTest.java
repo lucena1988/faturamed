@@ -24,6 +24,7 @@ class PortalHospitalIntegracaoTest {
     @Autowired FechamentoProducaoService fechamentos;
     @Autowired HospitalPortalService portal;
     @Autowired UsuarioService usuarios;
+    @Autowired PainelProducaoService painel;
 
     @Test
     void hospitalConfereContestaEAprovaSemTravar() {
@@ -43,6 +44,11 @@ class PortalHospitalIntegracaoTest {
 
         var f = fechamentos.fechar(hospital, dia, dia, "", "operador").fechamento();
         assertEquals(new BigDecimal("144.00"), f.total());
+        assertNotNull(f.prazoConferencia(), "prazo de conferencia definido no envio");
+        assertTrue(f.diasParaPrazo() > 0);
+        var visao = painel.painel();
+        assertTrue(visao.tarefas().aguardandoHospital() >= 1);
+        assertTrue(visao.prazos().stream().anyMatch(x -> x.fechamentoId() == f.id()));
 
         var conta = usuarios.criar(new UsuarioService.Novo("hosp-" + sufixo + "@teste.local", "Faturamento Hosp", "SenhaTesteSegura12", "HOSPITAL", null, null, hospital));
         assertEquals(hospital, portal.hospitalDoUsuario(conta.id()));

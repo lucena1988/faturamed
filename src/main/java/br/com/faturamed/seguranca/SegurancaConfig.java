@@ -35,7 +35,7 @@ public class SegurancaConfig {
                 .requestMatchers("/api/medico/**", "/completar-cadastro.html", "/portal.html", "/portal.js", "/conferencia-portal.js", "/extrato-portal.js", "/extrato-portal.css").hasRole("MEDICO")
                 .requestMatchers("/api/empresa/**", "/empresa.html", "/empresa.js", "/empresa.css").hasRole("EMPRESA")
                 .requestMatchers("/api/hospital-portal/**", "/hospital.html", "/hospital.js", "/hospital.css").hasRole("HOSPITAL")
-                .requestMatchers("/ui.css", "/ui.js", "/modulos.css", "/vidro.css", "/temas.css", "/efeitos.css", "/efeitos.js").authenticated()
+                .requestMatchers("/ui.css", "/ui.js", "/modulos.css", "/vidro.css", "/temas.css", "/efeitos.css", "/efeitos.js", "/icones3d.css", "/tatil.css", "/tatil.js").authenticated()
                 .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
             .requestCache(RequestCacheConfigurer::disable)

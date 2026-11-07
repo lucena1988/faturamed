@@ -46,6 +46,9 @@ server:
         secure: ${SESSION_COOKIE_SECURE:false}
 
 faturamed:
+  producao:
+    prazo-conferencia-dias: ${PRAZO_CONFERENCIA_DIAS:5}
+    lembrete-cron: ${LEMBRETE_PRAZO_CRON:0 0 8 * * MON-FRI}
   # endereco usado nos links dos e-mails (ex.: https://faturamed.com.br)
   url-publica: ${APP_URL:http://localhost:8080}
   recuperacao-senha:

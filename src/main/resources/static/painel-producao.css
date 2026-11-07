@@ -1,0 +1,50 @@
+/* Visao geral da producao */
+.pp-saudacao { margin: 4px 0 0; color: var(--muted); }
+.pp-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; }
+.pp-bloco { min-width: 0; }
+.pp-bloco h2 { margin-top: 0; }
+.pp-largo, #bloco-tarefas, #bloco-mes { grid-column: 1 / -1; }
+.pp-grade.gestor #bloco-mes { order: -1; }
+@media (max-width: 1000px) { .pp-grade { grid-template-columns: 1fr; } }
+
+/* tarefas */
+.pp-tarefas { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.pp-tarefa { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text); text-decoration: none; transition: transform .15s, box-shadow .15s; }
+.pp-tarefa:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+.pp-tarefa strong { display: block; font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pp-tarefa span { color: var(--muted); font-size: .86rem; }
+.pp-tarefa .fm-card-icone { flex: 0 0 38px; }
+.pp-tarefa.urgente { border-color: color-mix(in srgb, #dc3545 45%, var(--line)); background: color-mix(in srgb, #dc3545 6%, var(--surface)); }
+.pp-tarefa.urgente .fm-card-icone { --ico-base: #c0444f; }
+.pp-tarefa.zero { opacity: .55; }
+.pp-tarefa.zero:hover { transform: none; box-shadow: none; }
+.pp-tudo-certo { grid-column: 1 / -1; padding: 18px; border-radius: 14px; border: 1px dashed var(--line); text-align: center; color: var(--muted); }
+
+/* prazos */
+.pp-prazos { display: grid; gap: 8px; }
+.pp-prazo { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); text-decoration: none; }
+.pp-prazo:hover { background: var(--mod-suave, var(--primary-soft)); }
+.pp-prazo div { flex: 1; min-width: 0; }
+.pp-prazo small { display: block; color: var(--muted); }
+.pp-contador { flex: 0 0 auto; min-width: 74px; text-align: center; padding: 6px 10px; border-radius: 10px; font-weight: 800; font-size: .82rem; line-height: 1.15; }
+.pp-contador b { display: block; font-size: 1.15rem; }
+.pp-contador.ok { background: #e1f3e8; color: #1f6b3d; }
+.pp-contador.perto { background: #fff3cd; color: #7a5a00; }
+.pp-contador.vencido { background: #fbe4e6; color: #8e2430; }
+:root[data-theme="dark"] .pp-contador.ok { background: rgba(110,190,140,.18); color: #b4e0c3; }
+:root[data-theme="dark"] .pp-contador.perto { background: rgba(230,190,90,.18); color: #f0d79a; }
+:root[data-theme="dark"] .pp-contador.vencido { background: rgba(220,120,130,.2); color: #f0b9bf; }
+
+/* mapa de calor */
+.pp-mapa-caixa { display: flex; gap: 6px; overflow-x: auto; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+.pp-mapa-dias { display: grid; grid-template-rows: repeat(7, 14px); gap: 3px; font-size: .66rem; color: var(--muted); }
+.pp-mapa { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 14px); grid-auto-columns: 14px; gap: 3px; }
+.pp-mapa i, .pp-legenda i { width: 14px; height: 14px; border-radius: 3px; display: block; }
+.n0 { background: var(--surface-soft, #eef3f4); outline: 1px solid color-mix(in srgb, var(--line) 60%, transparent); outline-offset: -1px; }
+.n1 { background: color-mix(in srgb, var(--mod-cor, #75689a) 28%, var(--surface)); }
+.n2 { background: color-mix(in srgb, var(--mod-cor, #75689a) 52%, var(--surface)); }
+.n3 { background: color-mix(in srgb, var(--mod-cor, #75689a) 76%, var(--surface)); }
+.n4 { background: var(--mod-forte, #5a4e80); }
+.pp-mapa i.futuro { visibility: hidden; }
+.pp-legenda { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: .75rem; color: var(--muted); justify-content: flex-end; }

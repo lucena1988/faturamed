@@ -37,7 +37,7 @@
     ].map(fmUi.card).join('');
     $('#fechamentos').innerHTML = lista.map(f => `<tr data-id="${f.id}" tabindex="0">
         <td>${f.id}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td><td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td>
-        <td>${fmUi.etapas(ETAPAS, f.status)}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})${f.nfArquivoNome ? `<br><a class="text-button" href="/api/hospital-portal/fechamentos/${f.id}/nf">Baixar NF</a>` : ''}` : '—'}</td>
+        <td>${fmUi.etapas(ETAPAS, f.status)}${f.diasParaPrazo != null ? `<div class="hp-prazo">${fmUi.prazo(f.diasParaPrazo)}</div>` : ''}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})${f.nfArquivoNome ? `<br><a class="text-button" href="/api/hospital-portal/fechamentos/${f.id}/nf">Baixar NF</a>` : ''}` : '—'}</td>
         <td><button type="button" class="${f.status === 'AGUARDANDO' ? 'primary-button' : 'secondary-button'}" data-abrir="${f.id}">${f.status === 'AGUARDANDO' ? 'Conferir' : 'Ver'}</button></td></tr>`).join('')
       || fmUi.vazio(7, {titulo: 'Nenhum fechamento recebido ainda', texto: 'Quando a FaturaMed enviar um fechamento de produção, ele aparece aqui para conferência.', icone: 'fechamento'});
   }
@@ -59,7 +59,8 @@
     const f = detalhe.fechamento;
     const aberto = f.status === 'AGUARDANDO';
     $('#conf-titulo').textContent = `Fechamento nº ${f.id}`;
-    $('#conf-sub').textContent = `${data(f.dataInicio)} a ${data(f.dataFim)}${f.observacao ? ' · ' + f.observacao : ''}`;
+    $('#conf-sub').innerHTML = `${data(f.dataInicio)} a ${data(f.dataFim)}${f.observacao ? ' · ' + esc(f.observacao) : ''}`
+      + (aberto && f.prazoConferencia ? ` · prazo para conferir: <b>${data(f.prazoConferencia)}</b> ${fmUi.prazo(f.diasParaPrazo)}` : '');
     $('#conf-etapas').innerHTML = fmUi.etapas(ETAPAS, f.status);
     const contestadas = detalhe.etiquetas.filter(e => e.contestacao === 'PENDENTE' || e.situacao === 'RETIRADA');
     $('#conf-cards').innerHTML = [
@@ -67,7 +68,7 @@
       {icone: 'check', rotulo: 'Lotes conferidos', valor: `${lotes.filter(l => l.conferidoEm).length} de ${lotes.length}`, sub: 'marque cada lote abaixo'},
       {icone: 'relogio', rotulo: 'Etiquetas contestadas', valor: String(contestadas.length), sub: aberto ? 'saem do valor ao aprovar' : 'em análise pela FaturaMed', zerado: !contestadas.length}
     ].map(fmUi.card).join('');
-    $('#conf-resumo').innerHTML = detalhe.resumo.map(r => `<tr><td>${esc(r.medico)}</td><td class="fm-num">${r.agendas}</td><td class="fm-num">${r.exames}</td><td class="fp-valor">${brl(r.total)}</td></tr>`).join('')
+    $('#conf-resumo').innerHTML = detalhe.resumo.map(r => `<tr><td>${window.fmTatil ? fmTatil.pessoa(r.medico) : esc(r.medico)}</td><td class="fm-num">${r.agendas}</td><td class="fm-num">${r.exames}</td><td class="fp-valor">${brl(r.total)}</td></tr>`).join('')
       + `<tr><th>Total</th><th></th><th></th><th class="fp-valor">${brl(f.total)}</th></tr>`;
     const temContestacao = l => detalhe.etiquetas.some(e => e.loteId === l.loteId && (e.contestacao === 'PENDENTE' || e.situacao === 'RETIRADA'));
     const pendentes = lotes.filter(l => !l.conferidoEm);
@@ -188,6 +189,7 @@
     const pronto = fmUi.carregando($('#btn-aprovar'), 'Liberando…');
     try { await api(`/api/hospital-portal/fechamentos/${f.id}/aprovar`, {method: 'POST'}); } finally { pronto(); }
     msg('Fechamento aprovado e liberado para a emissão da NF.');
+    window.fmTatil?.confete();
     await recarregar();
   }));
 

@@ -75,7 +75,7 @@
     renderCards(lotes, p.toString() !== '');
     $('#lotes').innerHTML = lotes.length ? lotes.map(l => `<tr data-id="${l.id}" tabindex="0">
       <td>${new Date(l.dataProducao + 'T00:00').toLocaleDateString('pt-BR')}</td><td>${PERIODOS[l.periodo] || l.periodo}</td>
-      <td>${esc(l.hospital)}</td><td>${esc(l.medicos)}</td><td>${esc(l.exames)}</td><td class="fm-num">${l.itens}</td>
+      <td>${esc(l.hospital)}</td><td>${window.fmTatil ? fmTatil.pessoas(l.medicos) : esc(l.medicos)}</td><td>${esc(l.exames)}</td><td class="fm-num">${l.itens}</td>
       <td class="fm-num">${l.pendentes ? fmUi.status(l.pendentes, 'ambar') : '0'}</td><td>${fmUi.status(STATUS[l.status], COR_STATUS[l.status])}</td></tr>`).join('')
       : fmUi.vazio(8, p.toString()
         ? {titulo: 'Nenhum lote com esses filtros', texto: 'Ajuste o período, hospital ou status.', icone: 'busca'}
@@ -292,7 +292,9 @@
     rotulo.querySelector('.fm-ico').replaceWith(Object.assign(document.createElement('span'), {className: 'fm-spinner'}));
     $('#foto').disabled = true;
     try {
-      const r = await api('/api/producao/ocr', {method: 'POST', body: fd});
+      const fecharCubo = window.fmTatil?.carregando('Lendo as etiquetas da foto…');
+      let r;
+      try { r = await api('/api/producao/ocr', {method: 'POST', body: fd}); } finally { fecharCubo?.(); }
       preencherCabecalho(r.cabecalho);
       for (const it of r.itens) it.exameId = sugerirExame(it.procedimento) || sugerirExame(r.cabecalho?.tipoAgenda);
       itens.push(...r.itens);
