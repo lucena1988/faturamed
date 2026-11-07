@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fechamento de produção | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261106-5"><link rel="stylesheet" href="fechamento-producao.css?v=20261106-1"><script src="tema.js?v=20261009-1"></script></head>
+<body><main class="account-workspace prod-pagina">
+  <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Fechamento de produção</h1></div><div class="session-actions"><a href="producao.html">Folhas de produção</a><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div></header>
+
+  <nav class="fp-abas" role="tablist">
+    <button type="button" role="tab" class="fp-aba ativa" data-aba="fechamentos">Fechamentos</button>
+    <button type="button" role="tab" class="fp-aba" data-aba="regras">Regras de valor</button>
+  </nav>
+
+  <section id="aba-fechamentos">
+    <form id="form-previa" class="prod-filtros">
+      <label>Hospital<select name="hospitalId" data-hospitais required><option value="">Selecione</option></select></label>
+      <label>De<input type="date" name="inicio" required></label>
+      <label>Até<input type="date" name="fim" required></label>
+      <button class="secondary-button" type="submit">Calcular prévia</button>
+    </form>
+    <p class="prod-dica">Entram as folhas <strong>conferidas</strong> do hospital no período que ainda não estão em outro fechamento. Agenda = folha × médico.</p>
+
+    <div id="previa" hidden>
+      <div id="previa-alerta" class="prod-problemas" hidden></div>
+      <h2>Prévia <span id="previa-total" class="fp-total"></span></h2>
+      <div class="account-table"><table><thead><tr><th>Médico</th><th>Agendas</th><th>Exames</th><th>Valor bruto</th></tr></thead><tbody id="previa-resumo"></tbody></table></div>
+      <details class="fp-detalhe"><summary>Cálculo por agenda</summary>
+        <div class="account-table"><table><thead><tr><th>Médico</th><th>Data</th><th>Período</th><th>Regra</th><th>Exames</th><th>Pontos</th><th>Valor</th></tr></thead><tbody id="previa-calculo"></tbody></table></div>
+      </details>
+      <label class="prod-largo">Observação do fechamento<input id="obs-fechamento" maxlength="500"></label>
+      <div class="session-actions prod-acoes"><button class="primary-button" type="button" id="btn-fechar">Gerar fechamento e enviar ao hospital</button></div>
+    </div>
+
+    <h2>Fechamentos</h2>
+    <div class="account-table"><table><thead><tr><th>Nº</th><th>Hospital</th><th>Período</th><th>Etiquetas</th><th>Total</th><th>Status</th><th>Aprovação</th><th>NF</th><th>Ações</th></tr></thead><tbody id="fechamentos"></tbody></table></div>
+  </section>
+
+  <section id="aba-regras" hidden>
+    <div class="prod-filtros">
+      <label>Hospital<select id="regras-hospital" data-hospitais><option value="">Todos</option></select></label>
+      <button class="primary-button" type="button" id="btn-nova-regra">+ Nova regra</button>
+    </div>
+    <div class="account-table"><table><thead><tr><th>Hospital</th><th>Regra</th><th>Tipo</th><th>Exames (peso)</th><th>Valor</th><th>Vigência</th><th>Situação</th><th></th></tr></thead><tbody id="regras"></tbody></table></div>
+
+    <dialog id="dlg-regra" class="fp-dialogo">
+      <form id="form-regra" class="stack-form" method="dialog">
+        <h2 id="regra-titulo">Nova regra</h2>
+        <div class="fp-grade">
+          <label>Hospital<select name="hospitalId" data-hospitais required><option value="">Selecione</option></select></label>
+          <label>Nome da regra<input name="nome" required maxlength="120" placeholder="Ex.: Eco cardio"></label>
+          <label>Tipo<select name="tipo" id="regra-tipo">
+            <option value="POR_EXAME">Por exame (valor × quantidade)</option>
+            <option value="POR_AGENDA">Fixo por agenda</option>
+            <option value="TABELA_AGENDA">Tabela por quantidade na agenda</option>
+            <option value="MENSAL_MEDICO">Fixo mensal por médico</option>
+          </select></label>
+          <label data-campo-tipo="POR_EXAME POR_AGENDA MENSAL_MEDICO">Valor (R$)<input name="valor" type="number" step="0.01" min="0" value="0"></label>
+          <label data-campo-tipo="POR_EXAME">Mínimo de exames por agenda<input name="minimoPorAgenda" type="number" min="0" value="0"></label>
+          <label data-campo-tipo="TABELA_AGENDA">Acréscimo por ponto acima da tabela (R$)<input name="incremento" type="number" step="0.01" min="0" value="0"></label>
+          <label data-campo-tipo="MENSAL_MEDICO">Médico<select name="medicoId" data-medicos><option value="">Selecione</option></select></label>
+          <label>Vigência início<input name="vigenciaInicio" type="date" required></label>
+          <label>Vigência fim<input name="vigenciaFim" type="date"></label>
+          <label class="fp-check"><input name="ativo" type="checkbox" checked> Ativa</label>
+        </div>
+        <fieldset data-campo-tipo="POR_EXAME POR_AGENDA TABELA_AGENDA" class="fp-exames">
+          <legend>Exames da regra <span class="prod-dica">(peso = quantos pontos o exame conta na tabela; ex.: eco estresse = 2)</span></legend>
+          <div id="regra-exames"></div>
+        </fieldset>
+        <label data-campo-tipo="TABELA_AGENDA">Tabela de faixas — uma linha por faixa: quantidade e valor (pode colar da planilha)
+          <textarea name="faixas" rows="8" placeholder="11 EXAMES   R$ 1.170,21&#10;12 EXAMES   R$ 1.276,61&#10;13 EXAMES   R$ 1.383,01"></textarea>
+          <span class="prod-dica">Até a primeira quantidade vale o primeiro valor (mínimo). Acima da última, soma o acréscimo por ponto.</span>
+        </label>
+        <label>Observação<input name="observacao" maxlength="300"></label>
+        <p id="regra-msg" class="prod-alerta" hidden></p>
+        <div class="session-actions"><button class="primary-button" type="button" id="btn-salvar-regra">Salvar regra</button><button class="text-button" type="button" id="btn-cancelar-regra">Cancelar</button></div>
+      </form>
+    </dialog>
+  </section>
+  <p id="mensagem" role="status" aria-live="polite"></p>
+</main><script src="sidebar.js?v=20261106-fechamento"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script><script src="fechamento-producao.js?v=20261106-1"></script></body></html>

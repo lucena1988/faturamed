@@ -110,7 +110,7 @@
     const bloqueado = st === 'ENVIADO';
     document.querySelectorAll('#cabecalho input, #cabecalho select, #cabecalho button, #rapido input, #rapido button, #foto, #btn-salvar').forEach(e => e.disabled = bloqueado);
     $('#btn-conferir').hidden = !lote || st !== 'RASCUNHO';
-    $('#btn-enviar').hidden = !lote || st !== 'CONFERIDO';
+    $('#btn-enviar').hidden = true; // o envio acontece pelo Fechamento de produção
     $('#btn-reabrir').hidden = !lote || st === 'RASCUNHO';
     $('#btn-excluir').hidden = !lote || bloqueado;
     renderItens();

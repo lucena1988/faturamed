@@ -108,7 +108,7 @@ public class ProducaoService {
                     txt(c.tipoAgenda()), txt(c.auxiliar()), txt(c.observacao()), usuario);
         } else {
             Lote atual = buscar(id);
-            if ("ENVIADO".equals(atual.status())) throw new ConflitoRevisaoException("Lote ja enviado ao faturamento nao pode ser alterado");
+            if ("ENVIADO".equals(atual.status())) throw new ConflitoRevisaoException("Folha ja incluida em fechamento nao pode ser alterada");
             if (jdbc.update("""
                     update producao_lote set hospital_id=?,data_producao=?,periodo=?,tipo_agenda=?,auxiliar=?,observacao=?,
                     atualizado_em=now(),versao=versao+1 where id=? and versao=?""", c.hospitalId(), c.dataProducao(), periodo,
@@ -143,6 +143,9 @@ public class ProducaoService {
         String s = status == null ? "" : status.toUpperCase(Locale.ROOT);
         if (!STATUS.contains(s)) throw new IllegalArgumentException("Status invalido");
         Lote lote = buscar(id);
+        Long fechamento = jdbc.queryForObject("select fechamento_id from producao_lote where id=?", Long.class, id);
+        if (fechamento != null) throw new ConflitoRevisaoException("Folha incluida no fechamento n. " + fechamento + ". Cancele o fechamento para altera-la");
+        if ("ENVIADO".equals(s)) throw new IllegalArgumentException("O envio ao hospital e feito pelo Fechamento de producao");
         if (!"RASCUNHO".equals(s)) {
             if (lote.itens().isEmpty()) throw new IllegalArgumentException("Lote sem itens");
             List<String> problemas = new ArrayList<>();
