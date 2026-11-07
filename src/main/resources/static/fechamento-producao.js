@@ -11,7 +11,9 @@
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
   const brl = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
   const data = d => d ? new Date(d + 'T00:00').toLocaleDateString('pt-BR') : '—';
-  const msg = (t, erro) => { const m = $('#mensagem'); m.textContent = t || ''; m.style.color = erro ? '#b02a37' : ''; };
+  const msg = (t, erro) => { if (t) fmUi.toast(t, erro ? 'erro' : 'sucesso'); };
+  const COR_STATUS = {AGUARDANDO: 'ambar', APROVADO: 'azul', NF_EMITIDA: 'verde'};
+  const hoje = () => new Date().toISOString().slice(0, 10);
   async function api(url, opcoes = {}) {
     const r = await fetch(url, opcoes);
     if (r.status === 204) return null;
@@ -54,7 +56,7 @@
         <td>${valor}</td><td>${data(r.vigenciaInicio)} a ${r.vigenciaFim ? data(r.vigenciaFim) : 'atual'}</td>
         <td>${r.ativo ? 'Ativa' : 'Inativa'}</td>
         <td><button type="button" class="text-button" data-editar="${r.id}">Editar</button><button type="button" class="text-button" data-copiar="${r.id}" title="Copiar para outro hospital ou nova vigência">Copiar</button><button type="button" class="text-button prod-perigo" data-excluir="${r.id}">Excluir</button></td></tr>`;
-    }).join('') || '<tr><td colspan="8" class="prod-vazio">Nenhuma regra cadastrada.</td></tr>';
+    }).join('') || fmUi.vazio(8, {titulo: 'Nenhuma regra cadastrada', texto: 'Cadastre como cada hospital remunera os exames (por exame, por agenda ou por tabela).', icone: 'regra', acao: '<button type="button" class="primary-button" data-nova-regra>+ Nova regra</button>'});
   }
 
   function ajustarCamposTipo() {
@@ -134,52 +136,73 @@
     previaAtual = await api('/api/producao/fechamentos/previa?' + p);
     const pv = previaAtual;
     $('#previa').hidden = false;
-    $('#previa-total').textContent = `${pv.lotes} folha(s) · ${pv.etiquetas} etiqueta(s) · total ${brl(pv.total)}`;
+    $('#previa-total').textContent = `${pv.lotes} lote(s) · ${pv.etiquetas} etiqueta(s) · total ${brl(pv.total)}`;
     $('#previa-resumo').innerHTML = pv.resumo.map(r => `<tr><td>${esc(r.medico)}</td><td>${r.agendas}</td><td>${r.exames}</td><td class="fp-valor">${brl(r.total)}</td></tr>`).join('')
-      + (pv.resumo.length ? `<tr><th>Total</th><th></th><th></th><th class="fp-valor">${brl(pv.total)}</th></tr>` : '<tr><td colspan="4" class="prod-vazio">Nenhuma folha conferida neste período.</td></tr>');
+      + (pv.resumo.length ? `<tr><th>Total</th><th></th><th></th><th class="fp-valor">${brl(pv.total)}</th></tr>` : fmUi.vazio(4, {titulo: 'Nenhum lote conferido neste período', texto: 'Confira os lotes do hospital em Lotes de produção e calcule de novo.', icone: 'busca'}));
     $('#previa-calculo').innerHTML = pv.calculos.map(c => `<tr><td>${esc(c.medico)}</td><td>${data(c.data)}</td><td>${PERIODOS[c.periodo] || ''}</td>
       <td>${esc(c.descricao)}</td><td>${c.exames}</td><td>${c.pontos}</td><td class="fp-valor">${brl(c.valor)}</td></tr>`).join('');
     const alerta = $('#previa-alerta');
     alerta.hidden = !pv.semRegra.length;
     alerta.innerHTML = pv.semRegra.length ? `<strong>${pv.semRegra.length} etiqueta(s) sem regra de valor ou sem médico — o fechamento fica bloqueado:</strong>
       <ul>${pv.semRegra.map(s => `<li>${data(s.data)} · ${esc(s.medico || 'sem médico')} · ${esc(s.exame || 'sem exame')} · atend. ${esc(s.nrAtendimento)} ${esc(s.paciente)}</li>`).join('')}</ul>
-      Cadastre a regra na aba "Regras de valor" ou corrija a folha.` : '';
+      Cadastre a regra na aba "Regras de valor" ou corrija o lote.` : '';
     $('#btn-fechar').disabled = !pv.etiquetas || pv.semRegra.length > 0;
   }
 
   async function gerarFechamento() {
     const f = $('#form-previa');
-    if (!confirm(`Gerar o fechamento de ${brl(previaAtual.total)}? As folhas incluídas ficam bloqueadas para edição.`)) return;
-    const d = await api('/api/producao/fechamentos', json('POST', {hospitalId: +f.elements.hospitalId.value, inicio: f.elements.inicio.value,
-      fim: f.elements.fim.value, observacao: $('#obs-fechamento').value}));
+    if (!(await fmUi.confirmar({titulo: `Gerar fechamento de ${brl(previaAtual.total)}?`, texto: `${previaAtual.lotes} lote(s) e ${previaAtual.etiquetas} etiqueta(s) serão incluídas e ficarão bloqueadas para edição até o fechamento ser cancelado.`, confirmar: 'Gerar fechamento'}))) return;
+    const pronto = fmUi.carregando($('#btn-fechar'), 'Gerando…');
+    let d;
+    try { d = await api('/api/producao/fechamentos', json('POST', {hospitalId: +f.elements.hospitalId.value, inicio: f.elements.inicio.value,
+      fim: f.elements.fim.value, observacao: $('#obs-fechamento').value})); } finally { pronto(); }
     $('#previa').hidden = true;
     msg(`Fechamento nº ${d.fechamento.id} gerado. Baixe a planilha e envie ao hospital.`);
     await listarFechamentos();
   }
 
   async function listarFechamentos() {
+    $('#fechamentos').innerHTML = fmUi.esqueleto(9, 2);
     const lista = await api('/api/producao/fechamentos');
+    renderCards(lista);
     $('#fechamentos').innerHTML = lista.map(f => `<tr><td>${f.id}</td><td>${esc(f.hospital)}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td>
-      <td>${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td><span class="fp-status ${f.status}">${STATUS[f.status]}</span></td>
+      <td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td>${fmUi.status(STATUS[f.status], COR_STATUS[f.status])}</td>
       <td>${f.aprovadoPor ? `${esc(f.aprovadoPor)} em ${data(f.aprovadoEm)}` : '—'}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})` : '—'}</td>
-      <td><a class="text-button" href="/api/producao/fechamentos/${f.id}/planilha">Planilha</a>
+      <td><a class="text-button" href="/api/producao/fechamentos/${f.id}/planilha">Planilha</a><button type="button" class="text-button" data-historico="${f.id}">Histórico</button>
         ${f.status === 'AGUARDANDO' ? `<button type="button" class="text-button" data-aprovar="${f.id}">Registrar ok do hospital</button><button type="button" class="text-button prod-perigo" data-cancelar="${f.id}">Cancelar</button>` : ''}
         ${f.status === 'APROVADO' ? `<button type="button" class="text-button" data-nf="${f.id}">Registrar NF</button>` : ''}</td></tr>`).join('')
-      || '<tr><td colspan="9" class="prod-vazio">Nenhum fechamento ainda.</td></tr>';
+      || fmUi.vazio(9, {titulo: 'Nenhum fechamento ainda', texto: 'Escolha o hospital e o período acima e clique em "Calcular prévia".', icone: 'fechamento'});
+  }
+
+  function renderCards(lista) {
+    const soma = st => lista.filter(f => f.status === st).reduce((t, f) => t + Number(f.total), 0);
+    const qtd = st => lista.filter(f => f.status === st).length;
+    const mes = hoje().slice(0, 7);
+    const nfMes = lista.filter(f => f.status === 'NF_EMITIDA' && (f.nfData || '').startsWith(mes));
+    $('#cards').innerHTML = [
+      ['Aguardando ok do hospital', brl(soma('AGUARDANDO')), `${qtd('AGUARDANDO')} fechamento(s)`],
+      ['Aprovado, aguardando NF', brl(soma('APROVADO')), `${qtd('APROVADO')} fechamento(s)`],
+      ['NF emitida neste mês', brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), `${nfMes.length} nota(s)`]
+    ].map(([r, v, s]) => `<div class="fm-card"><span>${r}</span><strong>${v}</strong><small>${s}</small></div>`).join('');
   }
 
   $('#fechamentos').addEventListener('click', proteger(async e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.historico) { await fmUi.mostrarHistorico(`Histórico do fechamento nº ${b.dataset.historico}`, `/api/producao/historico/fechamento/${b.dataset.historico}`); return; }
     if (b.dataset.aprovar) {
-      const quem = prompt('Quem aprovou no hospital (nome / e-mail)?'); if (!quem) return;
-      await api(`/api/producao/fechamentos/${b.dataset.aprovar}/aprovar`, json('POST', {aprovadoPor: quem}));
+      const r = await fmUi.perguntar({titulo: 'Registrar ok do hospital', texto: 'Informe quem conferiu e aprovou a produção no hospital.', confirmar: 'Registrar aprovação',
+        campos: [{nome: 'aprovadoPor', rotulo: 'Aprovado por (nome ou e-mail)', obrigatorio: true}, {nome: 'data', rotulo: 'Data da aprovação', tipo: 'date', valor: hoje(), obrigatorio: true}]});
+      if (!r) return;
+      await api(`/api/producao/fechamentos/${b.dataset.aprovar}/aprovar`, json('POST', r));
       msg('Aprovação registrada. Agora é possível registrar a NF.');
     } else if (b.dataset.nf) {
-      const numero = prompt('Número da NF emitida:'); if (!numero) return;
-      await api(`/api/producao/fechamentos/${b.dataset.nf}/nf`, json('POST', {numero}));
+      const r = await fmUi.perguntar({titulo: 'Registrar nota fiscal', texto: 'Informe a NF emitida para este fechamento.', confirmar: 'Registrar NF',
+        campos: [{nome: 'numero', rotulo: 'Número da NF', obrigatorio: true}, {nome: 'data', rotulo: 'Data de emissão', tipo: 'date', valor: hoje(), obrigatorio: true}]});
+      if (!r) return;
+      await api(`/api/producao/fechamentos/${b.dataset.nf}/nf`, json('POST', r));
       msg('NF registrada.');
     } else if (b.dataset.cancelar) {
-      if (!confirm('Cancelar este fechamento? As folhas voltam a ficar conferidas e disponíveis para um novo fechamento.')) return;
+      if (!(await fmUi.confirmar({titulo: 'Cancelar este fechamento?', texto: 'Os lotes voltam a ficar conferidos e disponíveis para um novo fechamento.', confirmar: 'Cancelar fechamento', cancelar: 'Voltar', perigo: true}))) return;
       await api(`/api/producao/fechamentos/${b.dataset.cancelar}`, {method: 'DELETE'});
       msg('Fechamento cancelado.');
     }
@@ -192,7 +215,8 @@
     const regra = regras.find(r => r.id === id);
     if (b.dataset.editar) abrirRegra(regra, false);
     else if (b.dataset.copiar) abrirRegra(regra, true);
-    else if (b.dataset.excluir && confirm(`Excluir a regra "${regra.nome}"?`)) { await api(`/api/producao/regras/${id}`, {method: 'DELETE'}); await listarRegras(); }
+    else if (b.dataset.excluir && await fmUi.confirmar({titulo: `Excluir a regra "${regra.nome}"?`, texto: 'Regras já usadas em fechamento não podem ser excluídas; nesse caso encerre a vigência.', confirmar: 'Excluir regra', perigo: true})) { await api(`/api/producao/regras/${id}`, {method: 'DELETE'}); msg('Regra excluída.'); await listarRegras(); }
+    else if (b.dataset.novaRegra !== undefined) abrirRegra(null, false);
   }));
 
   $('#regra-tipo').addEventListener('change', ajustarCamposTipo);

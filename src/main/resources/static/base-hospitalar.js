@@ -48,7 +48,7 @@
       if (file.relatorio_id) {
         actions.append(link('Abrir conciliação', `/conciliacao.html?relatorio=${file.relatorio_id}`));
         actions.append(button('Atualizar conciliação', async () => {
-          if (busy || !confirm('Criar uma nova versão com as visitas hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
+          if (busy || !await fmConfirmar('Criar uma nova versão com as visitas hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
           await perform(async () => {
             const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
             const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});

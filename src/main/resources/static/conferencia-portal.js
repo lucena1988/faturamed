@@ -27,7 +27,7 @@
     catch(e){if(token===generation){state=null;$('conference-message').textContent=e.message+' Atualize a conferência antes de tentar novamente.';}}
     finally{busy=false;controls();}
   }
-  $('conference-science').onclick=()=>{if(state&&confirm(`Registrar ciencia da publicação #${state.publicacao}? Isto não confirma pagamento nem aprovacao dos valores.`))send('ciencia',{publicacao:state.publicacao});};
+  $('conference-science').onclick=async()=>{if(state&&await (window.fmConfirmar||(t=>Promise.resolve(confirm(t))))(`Registrar ciencia da publicação #${state.publicacao}? Isto não confirma pagamento nem aprovacao dos valores.`))send('ciencia',{publicacao:state.publicacao});};
   form.onsubmit=e=>{e.preventDefault();if(state)send('solicitacoes',{publicacao:state.publicacao,linha:Number(form.elements.linha.value),motivo:form.elements.motivo.value});};
   $('conference-refresh').onclick=()=>load(report);
   form.elements.linha.onchange=()=>{const v=state?.visitas.find(v=>v.linhaMedico===Number(form.elements.linha.value));$('conference-visit').textContent=v?`${v.status} | Repasse: ${v.repasse==null?'Nao informado':Number(v.repasse).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} | ${v.motivo||''}`:'';};

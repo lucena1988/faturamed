@@ -40,7 +40,8 @@ public class FechamentoProducaoService {
     public record Detalhe(Fechamento fechamento, List<Calculo> calculos, List<ResumoMedico> resumo, List<Etiqueta> etiquetas) {}
 
     private final JdbcTemplate jdbc;
-    public FechamentoProducaoService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final HistoricoProducao historico;
+    public FechamentoProducaoService(JdbcTemplate jdbc, HistoricoProducao historico) { this.jdbc = jdbc; this.historico = historico; }
 
     // ================= regras =================
     @Transactional(readOnly = true)
@@ -157,7 +158,7 @@ public class FechamentoProducaoService {
     @Transactional
     public Detalhe fechar(long hospitalId, LocalDate inicio, LocalDate fim, String observacao, String usuario) {
         Previa p = previa(hospitalId, inicio, fim);
-        if (p.etiquetas() == 0) throw new IllegalArgumentException("Nenhuma folha conferida neste hospital e periodo");
+        if (p.etiquetas() == 0) throw new IllegalArgumentException("Nenhum lote conferido neste hospital e periodo");
         if (!p.semRegra().isEmpty())
             throw new IllegalArgumentException(p.semRegra().size() + " etiqueta(s) sem regra de valor ou sem medico. Ajuste antes de fechar");
         long id = jdbc.queryForObject("""
@@ -170,9 +171,14 @@ public class FechamentoProducaoService {
         jdbc.update("""
                 insert into producao_fechamento_item(fechamento_id,item_id) select ?, i.id from producao_item i join producao_lote l on l.id=i.lote_id
                 where l.hospital_id=? and l.data_producao between ? and ? and l.status='CONFERIDO' and l.fechamento_id is null""", id, hospitalId, inicio, fim);
+        List<Long> lotes = jdbc.queryForList("""
+                select id from producao_lote where hospital_id=? and data_producao between ? and ? and status='CONFERIDO' and fechamento_id is null""",
+                Long.class, hospitalId, inicio, fim);
         jdbc.update("""
                 update producao_lote set fechamento_id=?, status='ENVIADO', atualizado_em=now(), versao=versao+1
                 where hospital_id=? and data_producao between ? and ? and status='CONFERIDO' and fechamento_id is null""", id, hospitalId, inicio, fim);
+        historico.fechamento(id, "GERADO", "Fechamento gerado com " + lotes.size() + " lote(s) e " + p.etiquetas() + " etiqueta(s), total R$ " + p.total(), usuario);
+        for (Long lote : lotes) historico.lote(lote, "ENVIADA", "Incluído no fechamento nº " + id, usuario);
         return detalhe(id);
     }
 
@@ -217,27 +223,32 @@ public class FechamentoProducaoService {
 
     /** AGUARDANDO (enviado ao hospital) -> APROVADO (hospital deu ok) -> NF_EMITIDA. */
     @Transactional
-    public Detalhe aprovar(long id, String aprovadoPor, LocalDate em) {
+    public Detalhe aprovar(long id, String aprovadoPor, LocalDate em, String usuario) {
         if (aprovadoPor == null || aprovadoPor.isBlank()) throw new IllegalArgumentException("Informe quem aprovou no hospital");
         exigirStatus(id, "AGUARDANDO");
         jdbc.update("update producao_fechamento set status='APROVADO', aprovado_por=?, aprovado_em=? where id=?",
                 aprovadoPor.trim(), em == null ? LocalDate.now() : em, id);
+        historico.fechamento(id, "APROVADO", "Ok do hospital registrado: aprovado por " + aprovadoPor.trim(), usuario);
         return detalhe(id);
     }
 
     @Transactional
-    public Detalhe registrarNf(long id, String numero, LocalDate data) {
+    public Detalhe registrarNf(long id, String numero, LocalDate data, String usuario) {
         if (numero == null || numero.isBlank()) throw new IllegalArgumentException("Informe o numero da NF");
         exigirStatus(id, "APROVADO");
         jdbc.update("update producao_fechamento set status='NF_EMITIDA', nf_numero=?, nf_data=? where id=?", numero.trim(),
                 data == null ? LocalDate.now() : data, id);
+        historico.fechamento(id, "NF_EMITIDA", "NF " + numero.trim() + " registrada", usuario);
         return detalhe(id);
     }
 
     /** Desfaz um fechamento ainda nao aprovado: as folhas voltam a ficar conferidas e disponiveis. */
     @Transactional
-    public void cancelar(long id) {
+    public void cancelar(long id, String usuario) {
         exigirStatus(id, "AGUARDANDO");
+        for (Long lote : jdbc.queryForList("select id from producao_lote where fechamento_id=?", Long.class, id))
+            historico.lote(lote, "RETIRADA", "Fechamento nº " + id + " cancelado: lote voltou para conferido", usuario);
+        historico.fechamento(id, "CANCELADO", "Fechamento cancelado", usuario);
         jdbc.update("update producao_lote set fechamento_id=null, status='CONFERIDO', atualizado_em=now(), versao=versao+1 where fechamento_id=?", id);
         jdbc.update("delete from producao_fechamento where id=?", id);
     }

@@ -48,7 +48,7 @@
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
       try { await request('/api/auth/logout', {method: 'POST'}); location.replace('/login.html'); }
-      catch(error) { button.disabled = false; alert(error.message); }
+      catch(error) { button.disabled = false; (window.fmAvisar || alert)(error.message); }
     }));
   });
 })();

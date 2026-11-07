@@ -1,0 +1,167 @@
+/* Componentes visuais globais do FaturaMed (carregado pelo sidebar.js em todas as paginas administrativas). */
+
+/* ---------- botoes: tres tipos padronizados ---------- */
+.secondary-button,
+.page-content button:not([class]),
+.page-content input[type="submit"]:not([class]),
+.page-content input[type="button"]:not([class]) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 38px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  font: inherit; font-weight: 700; font-size: .92rem; line-height: 1.2; text-decoration: none;
+  color: var(--primary-strong); background: var(--surface); border: 1px solid var(--line);
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.secondary-button:hover,
+.page-content button:not([class]):hover { background: var(--primary-soft); border-color: var(--primary-soft-line); }
+.primary-button, .text-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font: inherit; font-weight: 700; text-decoration: none; transition: background-color .15s, border-color .15s; }
+.primary-button { font-weight: 800; }
+.text-button:hover { background: var(--primary-soft); filter: brightness(.97); }
+:is(.primary-button, .secondary-button, .text-button, button):disabled { opacity: .55; cursor: not-allowed; }
+.page-content :is(.text-button.prod-perigo, .prod-perigo.text-button) { color: var(--danger-fg, #b02a37); }
+
+/* ---------- cabecalho: trilha de navegacao e links discretos ---------- */
+.fm-trilha { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; font-size: .82rem; color: var(--muted); }
+.fm-trilha a { color: var(--muted); text-decoration: none; }
+.fm-trilha a:hover { color: var(--primary-strong); text-decoration: underline; }
+.fm-trilha-sep { opacity: .6; }
+.fm-trilha-grupo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--mod-forte, var(--primary-strong)); }
+.fm-trilha-grupo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--mod-cor, var(--primary)); }
+:is(.account-heading, .conciliation-heading) h1 { margin: 0; }
+:is(.account-heading, .conciliation-heading) > a,
+:is(.account-heading, .conciliation-heading) .session-actions > a {
+  color: var(--primary-strong); text-decoration: none; font-weight: 600; font-size: .9rem;
+  padding: 7px 12px; border-radius: 8px; border: 1px solid transparent;
+}
+:is(.account-heading, .conciliation-heading) > a:hover,
+:is(.account-heading, .conciliation-heading) .session-actions > a:hover { background: var(--primary-soft); border-color: var(--primary-soft-line); }
+
+/* ---------- menu do usuario ---------- */
+.fm-usuario { position: relative; }
+.fm-usuario-botao { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.fm-usuario-botao:hover { background: var(--primary-soft); }
+.fm-avatar { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--primary-fill); color: var(--on-primary, #fff); font-size: .78rem; font-weight: 800; letter-spacing: .02em; }
+.fm-usuario-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 220px; padding: 6px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0,0,0,.16); }
+.fm-usuario-menu[hidden] { display: none; }
+.fm-usuario-info { padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.fm-usuario-info strong { display: block; font-size: .9rem; }
+.fm-usuario-info small { color: var(--muted); font-size: .78rem; }
+.fm-usuario-menu :is(a, button) { display: flex; width: 100%; align-items: center; gap: 8px; padding: 9px 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--text); font: inherit; font-size: .9rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; min-height: 0; }
+.fm-usuario-menu :is(a, button):hover { background: var(--primary-soft); }
+.fm-usuario-menu [data-logout] { color: var(--danger-fg, #b02a37); }
+
+/* ---------- etiquetas de status ---------- */
+.fm-status { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.fm-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .8; }
+.fm-status.cinza { background: var(--surface-soft, #eef3f4); color: var(--muted); }
+.fm-status.azul { background: #e3edfb; color: #1f4f8f; }
+.fm-status.verde { background: #e1f3e8; color: #1f6b3d; }
+.fm-status.ambar { background: #fff3cd; color: #7a5a00; }
+:root[data-theme="dark"] .fm-status.azul { background: rgba(120,160,230,.18); color: #b9cff2; }
+:root[data-theme="dark"] .fm-status.verde { background: rgba(110,190,140,.18); color: #b4e0c3; }
+:root[data-theme="dark"] .fm-status.ambar { background: rgba(230,190,90,.18); color: #f0d79a; }
+
+/* ---------- numeros e tabelas ---------- */
+.page-content table { font-variant-numeric: tabular-nums; }
+.fm-num, .fp-valor { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- avisos flutuantes ---------- */
+.fm-toasts { position: fixed; right: 20px; bottom: 20px; z-index: 1000; display: grid; gap: 8px; max-width: min(420px, calc(100vw - 40px)); }
+.fm-toast { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-left: 4px solid var(--primary); box-shadow: 0 10px 28px rgba(0,0,0,.18); font-size: .92rem;
+  animation: fm-entra .2s ease-out; }
+.fm-toast.sucesso { border-left-color: #2e8b57; }
+.fm-toast.erro { border-left-color: var(--danger-fg, #b02a37); }
+.fm-toast.saindo { opacity: 0; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+.fm-toast button { margin-left: auto; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 2px; min-height: 0; }
+@keyframes fm-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- janelas proprias ---------- */
+.fm-dialogo { width: min(460px, 94vw); border: 0; border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); box-shadow: 0 24px 60px rgba(0,0,0,.3); }
+.fm-dialogo::backdrop { background: rgba(10, 20, 25, .45); }
+.fm-dialogo form { display: grid; gap: 14px; padding: 22px; }
+.fm-dialogo h2 { margin: 0; font-size: 1.15rem; }
+.fm-dialogo p { margin: 0; color: var(--muted); line-height: 1.45; }
+.fm-dialogo label { display: grid; gap: 4px; font-size: .88rem; font-weight: 600; }
+.fm-dialogo input { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.fm-dialogo-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.fm-dialogo .perigo { background: var(--danger-fg, #b02a37); border-color: var(--danger-fg, #b02a37); }
+
+/* ---------- carregamento ---------- */
+.fm-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: fm-gira .7s linear infinite; }
+@keyframes fm-gira { to { transform: rotate(360deg); } }
+.fm-esqueleto td { padding: 12px 8px; }
+.fm-esqueleto span { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-soft, #eef3f4) 25%, var(--line) 50%, var(--surface-soft, #eef3f4) 75%);
+  background-size: 200% 100%; animation: fm-brilho 1.2s infinite; }
+@keyframes fm-brilho { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- tela vazia ---------- */
+.fm-vazio td { padding: 36px 16px !important; text-align: center; }
+.fm-vazio-icone { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--mod-suave, var(--primary-soft)); color: var(--mod-forte, var(--primary-strong)); margin-bottom: 8px; }
+.fm-vazio-icone svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fm-vazio strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+.fm-vazio p { margin: 0 0 12px; color: var(--muted); }
+
+/* ---------- cards de resumo ---------- */
+.fm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 4px 0 18px; }
+.fm-card { padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--mod-cor, var(--primary)); }
+.fm-card span { display: block; color: var(--muted); font-size: .82rem; font-weight: 600; }
+.fm-card strong { display: block; margin-top: 4px; font-size: 1.45rem; font-variant-numeric: tabular-nums; color: var(--text); }
+.fm-card small { color: var(--muted); font-size: .78rem; }
+.fm-card.clicavel { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.fm-card.clicavel:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+
+/* ---------- barra de acoes fixa ---------- */
+.fm-barra-fixa { position: sticky; bottom: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px -8px 0; padding: 12px 8px;
+  background: color-mix(in srgb, var(--bg, var(--surface)) 92%, transparent); backdrop-filter: blur(6px); border-top: 1px solid var(--line); }
+.fm-barra-fixa .fm-barra-resumo { margin-right: auto; color: var(--muted); font-size: .88rem; }
+
+/* ---------- foco visivel em tudo que e clicavel ---------- */
+:is(summary, [tabindex], .fm-card.clicavel):focus-visible { outline: 3px solid var(--focus, var(--primary)); outline-offset: 2px; }
+
+/* ---------- icones de traco (mesmo estilo do menu) ---------- */
+.fm-ico { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- escala tipografica unica ---------- */
+.page-content h1 { font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem); line-height: 1.2; font-weight: 800; letter-spacing: -.01em; }
+.page-content h2 { font-size: 1.15rem; line-height: 1.3; font-weight: 700; margin: 24px 0 10px; }
+.page-content h3 { font-size: 1rem; line-height: 1.35; font-weight: 700; margin: 16px 0 8px; }
+.page-content :is(p, td, li, label) { line-height: 1.45; }
+.page-content :is(small, .prod-dica) { font-size: .82rem; }
+.page-content th { font-size: .74rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+
+/* ---------- linha do tempo (historico) ---------- */
+.fm-dialogo-largo { width: min(560px, 94vw); }
+.fm-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; max-height: 60vh; overflow: auto; }
+.fm-timeline li { position: relative; display: flex; gap: 12px; padding: 0 0 14px 0; }
+.fm-timeline li:not(:last-child)::before { content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--line); }
+.fm-timeline-marca { flex: 0 0 12px; height: 12px; margin-top: 4px; border-radius: 50%; background: var(--mod-cor, var(--primary)); box-shadow: 0 0 0 3px var(--mod-suave, var(--primary-soft)); }
+.fm-timeline :is(.acao-CANCELADO, .acao-RETIRADA, .acao-REABERTA) .fm-timeline-marca { background: var(--muted); box-shadow: 0 0 0 3px var(--surface-soft, #eee); }
+.fm-timeline :is(.acao-NF_EMITIDA, .acao-APROVADO, .acao-CONFERIDA) .fm-timeline-marca { background: #2e8b57; box-shadow: 0 0 0 3px #e1f3e8; }
+.fm-timeline strong { display: block; font-size: .92rem; font-weight: 600; }
+.fm-timeline small { color: var(--muted); font-size: .8rem; }
+.fm-historico { margin-top: 18px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; background: var(--surface); }
+.fm-historico summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.fm-historico[open] summary { margin-bottom: 12px; }
+
+/* ---------- busca global ---------- */
+.fm-busca-botao { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); font: inherit; font-size: .88rem; cursor: pointer; }
+.fm-busca-botao:hover { color: var(--primary-strong); background: var(--primary-soft); }
+.fm-busca-botao kbd, .fm-busca kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface-soft, #f3f6f7); font: 600 .72rem/1.4 inherit; color: var(--muted); }
+.fm-busca { width: min(640px, 94vw); margin-top: 10vh; border: 0; border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); box-shadow: 0 24px 70px rgba(0,0,0,.35); }
+.fm-busca::backdrop { background: rgba(10, 20, 25, .45); }
+.fm-busca-campo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.fm-busca-campo .fm-ico { width: 20px; height: 20px; color: var(--muted); }
+.fm-busca-campo input { flex: 1; border: 0; outline: none; background: none; font: inherit; font-size: 1.05rem; color: var(--text); }
+.fm-busca-lista { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.fm-busca-lista li { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.fm-busca-lista li.ativo, .fm-busca-lista li[data-i]:hover { background: var(--primary-soft); }
+.fm-busca-tipo { flex: 0 0 84px; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.fm-busca-texto strong { display: block; font-weight: 600; font-size: .95rem; }
+.fm-busca-texto small { color: var(--muted); font-size: .8rem; }
+.fm-busca-vazio { color: var(--muted); justify-content: center; cursor: default !important; }
+.fm-busca-dica { margin: 0; padding: 8px 16px; border-top: 1px solid var(--line); font-size: .75rem; color: var(--muted); }
+@media (max-width: 700px) { .fm-busca-botao span, .fm-busca-botao kbd { display: none; } }

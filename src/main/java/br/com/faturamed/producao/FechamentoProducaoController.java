@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/producao")
 public class FechamentoProducaoController {
+    private static String nome(Principal p) { return p == null ? null : p.getName(); }
     private final FechamentoProducaoService service;
     private final ExportadorFechamentoProducao exportador;
     public FechamentoProducaoController(FechamentoProducaoService service, ExportadorFechamentoProducao exportador) {
@@ -42,11 +43,11 @@ public class FechamentoProducaoController {
     }
     @GetMapping("/fechamentos/{id}") public FechamentoProducaoService.Detalhe detalhe(@PathVariable long id) { return service.detalhe(id); }
     @PostMapping("/fechamentos/{id}/aprovar")
-    public FechamentoProducaoService.Detalhe aprovar(@PathVariable long id, @RequestBody Aprovacao a) { return service.aprovar(id, a.aprovadoPor(), a.data()); }
+    public FechamentoProducaoService.Detalhe aprovar(@PathVariable long id, @RequestBody Aprovacao a, Principal p) { return service.aprovar(id, a.aprovadoPor(), a.data(), nome(p)); }
     @PostMapping("/fechamentos/{id}/nf")
-    public FechamentoProducaoService.Detalhe nf(@PathVariable long id, @RequestBody NotaFiscal nf) { return service.registrarNf(id, nf.numero(), nf.data()); }
+    public FechamentoProducaoService.Detalhe nf(@PathVariable long id, @RequestBody NotaFiscal nf, Principal p) { return service.registrarNf(id, nf.numero(), nf.data(), nome(p)); }
     @DeleteMapping("/fechamentos/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void cancelar(@PathVariable long id) { service.cancelar(id); }
+    public void cancelar(@PathVariable long id, Principal p) { service.cancelar(id, nome(p)); }
 
     @GetMapping("/fechamentos/{id}/planilha")
     public ResponseEntity<byte[]> planilha(@PathVariable long id) {

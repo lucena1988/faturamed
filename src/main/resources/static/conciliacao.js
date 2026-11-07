@@ -321,7 +321,7 @@ async function openReview(line) {
       const cell = node('td'); const button = node('button', visit.linhaMedico === line ? 'Em revisão' : 'Revisar');
       button.type = 'button'; button.disabled = visit.linhaMedico === line;
       button.setAttribute('aria-label', `Revisar visita do grupo linha ${visit.linhaMedico}`);
-      button.addEventListener('click', () => { if (!reviewSaving && confirm('Trocar de visita? Alterações não salvas serao descartadas.')) openReview(visit.linhaMedico); });
+      button.addEventListener('click', async () => { if (!reviewSaving && await fmConfirmar('Trocar de visita? Alterações não salvas serao descartadas.')) openReview(visit.linhaMedico); });
       cell.append(button); row.append(cell); document.querySelector('#review-group').append(row);
     }
     for (const [id, value] of [['edit-date', current.data], ['edit-attendance', current.atendimento],

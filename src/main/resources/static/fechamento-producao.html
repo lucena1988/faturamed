@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fechamento de produção | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261106-5"><link rel="stylesheet" href="fechamento-producao.css?v=20261106-1"><script src="tema.js?v=20261009-1"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fechamento e envio | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="producao.css?v=20261106-5"><link rel="stylesheet" href="fechamento-producao.css?v=20261106-1"><script src="tema.js?v=20261009-1"></script></head>
 <body><main class="account-workspace prod-pagina">
-  <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Fechamento de produção</h1></div><div class="session-actions"><a href="producao.html">Folhas de produção</a><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div></header>
+  <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Fechamento e envio</h1></div><div class="session-actions"><a href="producao.html">Lotes de produção</a><a href="conta.html">Minha conta</a><button type="button" class="text-button" data-logout>Sair</button></div></header>
 
   <nav class="fp-abas" role="tablist">
     <button type="button" role="tab" class="fp-aba ativa" data-aba="fechamentos">Fechamentos</button>
@@ -10,13 +10,14 @@
   </nav>
 
   <section id="aba-fechamentos">
+    <div id="cards" class="fm-cards" aria-label="Resumo dos fechamentos"></div>
     <form id="form-previa" class="prod-filtros">
       <label>Hospital<select name="hospitalId" data-hospitais required><option value="">Selecione</option></select></label>
       <label>De<input type="date" name="inicio" required></label>
       <label>Até<input type="date" name="fim" required></label>
       <button class="secondary-button" type="submit">Calcular prévia</button>
     </form>
-    <p class="prod-dica">Entram as folhas <strong>conferidas</strong> do hospital no período que ainda não estão em outro fechamento. Agenda = folha × médico.</p>
+    <p class="prod-dica">Entram os lotes <strong>conferidos</strong> do hospital no período que ainda não estão em outro fechamento. Agenda = lote × médico.</p>
 
     <div id="previa" hidden>
       <div id="previa-alerta" class="prod-problemas" hidden></div>
@@ -75,4 +76,4 @@
     </dialog>
   </section>
   <p id="mensagem" role="status" aria-live="polite"></p>
-</main><script src="sidebar.js?v=20261106-fechamento"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script><script src="fechamento-producao.js?v=20261106-1"></script></body></html>
+</main><script src="sidebar.js?v=20261107-envio"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261103-empresas"></script><script src="ui.js?v=20261107-3"></script><script src="fechamento-producao.js?v=20261107-3"></script></body></html>

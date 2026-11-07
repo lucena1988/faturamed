@@ -15,7 +15,8 @@
 
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
   const sem = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const msg = (t, erro) => { const m = $('#mensagem'); m.textContent = t || ''; m.style.color = erro ? '#b02a37' : ''; };
+  const msg = (t, erro) => { if (t) fmUi.toast(t, erro ? 'erro' : 'sucesso'); };
+  const COR_STATUS = {RASCUNHO: 'cinza', CONFERIDO: 'azul', ENVIADO: 'verde'};
   async function api(url, opcoes = {}) {
     const r = await fetch(url, opcoes);
     if (r.status === 204) return null;
@@ -69,15 +70,31 @@
 
   async function listar() {
     const p = new URLSearchParams([...new FormData($('#filtros'))].filter(([, v]) => v));
+    $('#lotes').innerHTML = fmUi.esqueleto(8, 3);
     const lotes = await api('/api/producao/lotes?' + p);
-    $('#lotes').innerHTML = lotes.length ? lotes.map(l => `<tr data-id="${l.id}">
+    renderCards(lotes, p.toString() !== '');
+    $('#lotes').innerHTML = lotes.length ? lotes.map(l => `<tr data-id="${l.id}" tabindex="0">
       <td>${new Date(l.dataProducao + 'T00:00').toLocaleDateString('pt-BR')}</td><td>${PERIODOS[l.periodo] || l.periodo}</td>
-      <td>${esc(l.hospital)}</td><td>${esc(l.medicos)}</td><td>${esc(l.exames)}</td><td>${l.itens}</td>
-      <td>${l.pendentes ? `<strong>${l.pendentes}</strong>` : '0'}</td><td>${STATUS[l.status]}</td></tr>`).join('')
-      : '<tr><td colspan="8" class="prod-vazio">Nenhum lote encontrado.</td></tr>';
+      <td>${esc(l.hospital)}</td><td>${esc(l.medicos)}</td><td>${esc(l.exames)}</td><td class="fm-num">${l.itens}</td>
+      <td class="fm-num">${l.pendentes ? fmUi.status(l.pendentes, 'ambar') : '0'}</td><td>${fmUi.status(STATUS[l.status], COR_STATUS[l.status])}</td></tr>`).join('')
+      : fmUi.vazio(8, p.toString()
+        ? {titulo: 'Nenhum lote com esses filtros', texto: 'Ajuste o período, hospital ou status.', icone: 'busca'}
+        : {titulo: 'Nenhum lote lançado ainda', texto: 'Lance o primeiro lote com as etiquetas recebidas do hospital.', acao: '<button type="button" class="primary-button" data-novo-lote>+ Novo lote</button>'});
   }
 
-  function mostrar(view) { $('#view-lista').hidden = view !== 'lista'; $('#view-lote').hidden = view !== 'lote'; msg(''); }
+  function renderCards(lotes, filtrado) {
+    const soma = (lista, f) => lista.reduce((t, l) => t + f(l), 0);
+    const por = s => lotes.filter(l => l.status === s);
+    const cards = [
+      ['RASCUNHO', 'Em rascunho', por('RASCUNHO').length, `${soma(por('RASCUNHO'), l => l.pendentes)} etiqueta(s) pendente(s)`],
+      ['CONFERIDO', 'Conferidos, aguardando fechamento', por('CONFERIDO').length, `${soma(por('CONFERIDO'), l => l.itens)} etiqueta(s)`],
+      ['ENVIADO', 'Enviados em fechamento', por('ENVIADO').length, `${soma(por('ENVIADO'), l => l.itens)} etiqueta(s)`],
+      ['', 'Total de etiquetas', soma(lotes, l => l.itens), `${lotes.length} lote(s)${filtrado ? ' no filtro' : ''}`]];
+    $('#cards').innerHTML = cards.map(([st, rotulo, valor, sub]) =>
+      `<div class="fm-card${st ? ' clicavel' : ''}" ${st ? `data-status="${st}" tabindex="0" role="button" title="Filtrar por este status"` : ''}><span>${rotulo}</span><strong>${valor}</strong><small>${sub}</small></div>`).join('');
+  }
+
+  function mostrar(view) { if (view === 'lista') sujo = false; $('#view-lista').hidden = view !== 'lista'; $('#view-lote').hidden = view !== 'lote'; msg(''); }
 
   async function abrir(id) {
     const f = $('#cabecalho');
@@ -99,18 +116,75 @@
     }
     renderMedicos(); renderExames();
     mostrar('lote');
+    sujo = false;
+    await oferecerRascunho(id);
     atualizarEstado();
     await verificarDuplicidades();
     $('#rapido input').focus();
   }
 
+  // ---------- alteracoes nao salvas e rascunho automatico (neste navegador) ----------
+  let sujo = false;
+  let timerRascunho = null;
+  const chaveRascunho = id => `faturamed-rascunho-folha-${id || 'nova'}`;
+  function marcarSujo() {
+    if (lote?.status === 'ENVIADO') return;
+    sujo = true;
+    clearTimeout(timerRascunho);
+    timerRascunho = setTimeout(guardarRascunho, 800);
+  }
+  function guardarRascunho() {
+    if (!sujo) return;
+    const f = $('#cabecalho').elements;
+    const dados = {quando: Date.now(), versao: lote?.versao ?? 0, itens, medicos: [...selMedicos], exames: [...selExames],
+      cabecalho: Object.fromEntries(['hospitalId', 'dataProducao', 'periodo', 'auxiliar', 'observacao'].map(k => [k, f[k].value]))};
+    try { localStorage.setItem(chaveRascunho(lote?.id), JSON.stringify(dados)); } catch (_) {}
+  }
+  function descartarRascunho(id) { try { localStorage.removeItem(chaveRascunho(id)); } catch (_) {} }
+  async function oferecerRascunho(id) {
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem(chaveRascunho(id))); } catch (_) {}
+    if (!r || !Array.isArray(r.itens)) return;
+    if (id && r.versao !== lote?.versao) { descartarRascunho(id); return; } // a folha mudou no servidor depois do rascunho
+    const quando = new Date(r.quando).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+    const restaurar = await fmUi.confirmar({titulo: 'Recuperar alterações não salvas?',
+      texto: `Encontramos um rascunho deste lote de ${quando}, com ${r.itens.length} etiqueta(s), que não foi salvo.`,
+      confirmar: 'Recuperar rascunho', cancelar: 'Descartar'});
+    if (!restaurar) { descartarRascunho(id); return; }
+    const f = $('#cabecalho').elements;
+    for (const [k, v] of Object.entries(r.cabecalho || {})) if (f[k]) f[k].value = v;
+    selMedicos.clear(); (r.medicos || []).forEach(m => selMedicos.add(m));
+    selExames.clear(); (r.exames || []).forEach(e => selExames.add(e));
+    itens = r.itens;
+    renderMedicos(); renderExames();
+    sujo = true;
+    msg('Rascunho recuperado. Confira e salve o lote.');
+  }
+  async function podeSair() {
+    if (!sujo) return true;
+    const sair = await fmUi.confirmar({titulo: 'Sair sem salvar?', texto: 'Este lote tem alterações não salvas. Um rascunho fica guardado neste navegador e será oferecido quando você abrir o lote de novo.',
+      confirmar: 'Sair sem salvar', cancelar: 'Continuar editando'});
+    if (sair) { guardarRascunho(); sujo = false; }
+    return sair;
+  }
+  window.addEventListener('beforeunload', e => { if (sujo) { guardarRascunho(); e.preventDefault(); e.returnValue = ''; } });
+
+  async function carregarHistorico() {
+    const caixa = $('#historico');
+    caixa.hidden = !lote;
+    if (!lote) return;
+    const r = await fetch(`/api/producao/historico/lote/${lote.id}`, {cache: 'no-store'});
+    $('#historico-lista').innerHTML = fmUi.linhaDoTempo(r.ok ? await r.json() : []);
+  }
+
   function atualizarEstado() {
+    carregarHistorico().catch(() => {});
     const st = lote?.status || 'RASCUNHO';
-    $('#lote-status').textContent = lote ? STATUS[st] : 'Novo (não salvo)';
+    $('#lote-status').innerHTML = lote ? fmUi.status(STATUS[st], COR_STATUS[st]) : fmUi.status('Novo (não salvo)', 'cinza');
     const bloqueado = st === 'ENVIADO';
     document.querySelectorAll('#cabecalho input, #cabecalho select, #cabecalho button, #rapido input, #rapido button, #foto, #btn-salvar').forEach(e => e.disabled = bloqueado);
     $('#btn-conferir').hidden = !lote || st !== 'RASCUNHO';
-    $('#btn-enviar').hidden = true; // o envio acontece pelo Fechamento de produção
+    $('#btn-enviar').hidden = true; // o envio acontece pelo Fechamento e envio
     $('#btn-reabrir').hidden = !lote || st === 'RASCUNHO';
     $('#btn-excluir').hidden = !lote || bloqueado;
     renderItens();
@@ -143,12 +217,13 @@
       const semVinculo = !it.medicoId || (selExames.size && !it.exameId);
       const classes = [it.pendenteRevisao ? 'pendente' : '', duplicados.has(it.nrAtendimento) ? 'duplicado' : '', n > 1 ? 'repetido' : '', semVinculo ? 'sem-vinculo' : ''].join(' ');
       const dup = duplicados.get(it.nrAtendimento);
-      return `<tr class="${classes}" data-i="${i}" title="${dup ? esc('Já lançado em: ' + dup.join('; ')) : ''}"><td>${i + 1}</td>
+      return `<tr class="${classes}" data-i="${i}" title="${dup ? esc('Já lançado em: ' + dup.join('; ')) : ''}"><td>${i + 1}${n > 1 ? `<small class="prod-rep" title="Atendimento repetido neste lote: ${n}ª etiqueta">${n}ª</small>` : ''}</td>
+        <td${falta(i, 'nrAtendimento')}><input data-campo="nrAtendimento" value="${esc(it.nrAtendimento)}" ${dis}></td>
         <td${falta(i, 'medicoId')}><select data-vinculo="medicoId" ${dis}>${opcoesVinculo(selMedicos, nomeMedico, it.medicoId)}</select></td>
         <td${falta(i, 'exameId')}><select data-vinculo="exameId" ${dis}>${opcoesVinculo(selExames, nomeExame, it.exameId)}</select></td>
-        ${CAMPOS.map(c => `<td${falta(i, c)}><input data-campo="${c}" value="${esc(it[c])}" ${dis}></td>`).join('')}
-        <td>${bloqueado ? '' : `${it.pendenteRevisao ? '<button type="button" class="text-button" data-ok title="Marcar como revisado">✓</button>' : ''}<button type="button" class="text-button prod-perigo" data-remover title="Remover etiqueta">✕</button>`}</td></tr>`;
-    }).join('') || '<tr><td colspan="16" class="prod-vazio">Nenhuma etiqueta. Leia a foto da folha ou digite o nº de atendimento.</td></tr>';
+        ${CAMPOS.filter(c => c !== 'nrAtendimento').map(c => `<td${falta(i, c)}><input data-campo="${c}" value="${esc(it[c])}" ${dis}></td>`).join('')}
+        <td>${bloqueado ? '' : `${it.pendenteRevisao ? `<button type="button" class="text-button" data-ok title="Marcar como conferida com a foto" aria-label="Marcar como conferida">${fmUi.icone('ok')}</button>` : ''}<button type="button" class="text-button prod-perigo" data-remover title="Remover etiqueta" aria-label="Remover etiqueta">${fmUi.icone('fechar')}</button>`}</td></tr>`;
+    }).join('') || fmUi.vazio(16, {titulo: 'Nenhuma etiqueta neste lote', texto: 'Leia a foto da folha ou digite o nº de atendimento no campo acima.'});
     const pend = itens.filter(i => i.pendenteRevisao).length;
     $('#contagem').textContent = `${itens.length} etiqueta(s) em ${vistos.size} atendimento(s)${pend ? ` · ${pend} pendente(s)` : ''}`;
     if (exibirFaltas) mostrarProblemas(problemas());
@@ -206,6 +281,11 @@
     const img = $('#foto-preview'); img.src = URL.createObjectURL(arquivo); img.hidden = false;
     const fd = new FormData(); fd.append('arquivo', arquivo);
     $('#ocr-aviso').textContent = 'Lendo etiquetas da foto… isso pode levar até um minuto.';
+    const rotulo = $('#btn-foto');
+    rotulo.classList.add('carregando');
+    rotulo.querySelector('span').textContent = 'Lendo foto…';
+    rotulo.querySelector('.fm-ico').replaceWith(Object.assign(document.createElement('span'), {className: 'fm-spinner'}));
+    $('#foto').disabled = true;
     try {
       const r = await api('/api/producao/ocr', {method: 'POST', body: fd});
       preencherCabecalho(r.cabecalho);
@@ -216,6 +296,14 @@
       await verificarDuplicidades();
     } catch (err) {
       $('#ocr-aviso').textContent = err.message + ' Você pode digitar as etiquetas ao lado.';
+      msg(err.message, true);
+    } finally {
+      rotulo.classList.remove('carregando');
+      rotulo.querySelector('.fm-spinner')?.insertAdjacentHTML('afterend', fmUi.icone('camera'));
+      rotulo.querySelector('.fm-spinner')?.remove();
+      rotulo.querySelector('span').textContent = 'Ler foto da folha';
+      $('#foto').disabled = false;
+      $('#foto').value = '';
     }
   }
 
@@ -255,6 +343,9 @@
     }
     itens = l.itens;
     atualizarEstado();
+    descartarRascunho(null);
+    descartarRascunho(l.id);
+    sujo = false;
     msg('Lote salvo.');
     return l;
   }
@@ -268,7 +359,7 @@
       if (!(it.paciente || '').trim()) p.push({campo: 'paciente', txt: 'sem paciente'});
       if (!it.medicoId) p.push({campo: 'medicoId', txt: 'sem médico'});
       if (selExames.size && !it.exameId) p.push({campo: 'exameId', txt: 'sem exame'});
-      if (it.pendenteRevisao) p.push({campo: null, txt: 'não conferida com a foto (clique ✓ na linha)'});
+      if (it.pendenteRevisao) p.push({campo: null, txt: 'não conferida com a foto (use o botão de conferir na linha)'});
       if (p.length) lista.push({i, p});
     });
     return lista;
@@ -279,7 +370,7 @@
     if (!lista.length) { box.hidden = true; box.innerHTML = ''; return; }
     const soRevisao = lista.every(x => x.p.length === 1 && !x.p[0].campo);
     box.innerHTML = `<strong>Não é possível conferir: ${lista.length} etiqueta(s) com problema</strong>
-      ${soRevisao ? '<button type="button" class="secondary-button" data-revisar-todas>✓ Já conferi todas com a foto</button>' : ''}
+      ${soRevisao ? `<button type="button" class="secondary-button" data-revisar-todas>${fmUi.icone('ok')} Já conferi todas com a foto</button>` : ''}
       <ul>${lista.map(x => `<li><a href="#" data-ir="${x.i}">Linha ${x.i + 1}${itens[x.i].paciente ? ` (${esc(itens[x.i].paciente)})` : ''}</a>: ${x.p.map(p => esc(p.txt)).join(', ')}</li>`).join('')}</ul>`;
     box.hidden = false;
   }
@@ -299,6 +390,23 @@
     msg(`Lote ${STATUS[status].toLowerCase()}.`);
   }
 
+  // colunas opcionais da tabela de etiquetas (lembradas neste navegador)
+  function configurarColunas() {
+    const OPCIONAIS = [[5, 'Data/hora'], [7, 'Nascimento'], [8, 'Prontuário'], [10, 'Plano'], [11, 'Carteirinha'], [12, 'Guia'], [13, 'Senha'], [14, 'Procedimento'], [15, 'Solicitante']];
+    const chave = 'faturamed-producao-colunas-ocultas';
+    let ocultas;
+    try { ocultas = new Set(JSON.parse(localStorage.getItem(chave)) ?? [12, 13]); } catch (_) { ocultas = new Set([12, 13]); }
+    const estilo = document.createElement('style');
+    document.head.append(estilo);
+    const aplicar = () => {
+      estilo.textContent = [...ocultas].map(n => `.prod-tabela :is(th, td):nth-child(${n}) { display: none; }`).join('\n');
+      try { localStorage.setItem(chave, JSON.stringify([...ocultas])); } catch (_) {}
+    };
+    $('#colunas').innerHTML = OPCIONAIS.map(([n, nome]) => `<label><input type="checkbox" value="${n}" ${ocultas.has(n) ? '' : 'checked'}>${nome}</label>`).join('');
+    $('#colunas').addEventListener('change', e => { const n = +e.target.value; e.target.checked ? ocultas.delete(n) : ocultas.add(n); aplicar(); });
+    aplicar();
+  }
+
   const proteger = fn => async (...a) => { try { await fn(...a); } catch (e) { msg(e.message, true); } };
 
   ligarMulti($('#sel-medicos'), selMedicos, renderMedicos);
@@ -308,7 +416,13 @@
   $('#filtros').addEventListener('submit', proteger(async e => { e.preventDefault(); await listar(); }));
   $('#lotes').addEventListener('click', proteger(async e => { const tr = e.target.closest('tr[data-id]'); if (tr) await abrir(+tr.dataset.id); }));
   $('#btn-novo').addEventListener('click', proteger(() => abrir(null)));
-  $('#btn-voltar').addEventListener('click', proteger(async () => { mostrar('lista'); await listar(); }));
+  $('#btn-voltar').addEventListener('click', proteger(async () => { if (!(await podeSair())) return; mostrar('lista'); await listar(); }));
+  // qualquer edicao na folha marca alteracao nao salva
+  ['input', 'change', 'submit'].forEach(ev => $('#view-lote').addEventListener(ev, e => {
+    if (e.target.closest('#colunas, [data-busca], #novo-exame')) return;
+    marcarSujo();
+  }));
+  $('#view-lote').addEventListener('click', e => { if (e.target.closest('[data-remover], [data-ok], [data-revisar-todas]')) marcarSujo(); });
   $('#rapido').addEventListener('submit', proteger(adicionarRapido));
   $('#foto').addEventListener('change', proteger(lerFoto));
   $('#foto-preview').addEventListener('click', e => e.target.classList.toggle('ampliada'));
@@ -345,14 +459,26 @@
   $('#btn-enviar').addEventListener('click', proteger(() => mudarStatus('ENVIADO')));
   $('#btn-reabrir').addEventListener('click', proteger(() => mudarStatus('RASCUNHO')));
   $('#btn-excluir').addEventListener('click', proteger(async () => {
-    if (!confirm('Excluir este lote e todas as etiquetas?')) return;
+    if (!(await fmUi.confirmar({titulo: 'Excluir este lote?', texto: 'O lote e todas as etiquetas lançadas nele serão apagados. Não é possível desfazer.', confirmar: 'Excluir lote', perigo: true}))) return;
     await api(`/api/producao/lotes/${lote.id}`, {method: 'DELETE'});
     mostrar('lista'); await listar();
   }));
 
+  $('#cards').addEventListener('click', proteger(async e => {
+    const c = e.target.closest('[data-status]'); if (!c) return;
+    $('#filtros').elements.status.value = c.dataset.status;
+    await listar();
+  }));
+  $('#cards').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset.status) { e.preventDefault(); e.target.click(); } });
+  $('#lotes').addEventListener('click', proteger(async e => { if (e.target.closest('[data-novo-lote]')) await abrir(null); }));
+  $('#lotes').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('tr[data-id]')) e.target.click(); });
+  configurarColunas();
+
   proteger(async () => {
     await carregarCadastros();
     const ocr = await api('/api/producao/ocr/status');
+    const folha = new URLSearchParams(location.search).get('folha');
+    if (folha) await abrir(+folha);
     if (!ocr.disponivel) $('#ocr-aviso').textContent = 'Leitura automática desligada: o Tesseract não está instalado no servidor. Lance as etiquetas manualmente.';
     await listar();
   })();

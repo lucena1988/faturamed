@@ -36,7 +36,8 @@ public class ProducaoService {
     public record Exame(long id, String nome, boolean ativo) {}
 
     private final JdbcTemplate jdbc;
-    public ProducaoService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final HistoricoProducao historico;
+    public ProducaoService(JdbcTemplate jdbc, HistoricoProducao historico) { this.jdbc = jdbc; this.historico = historico; }
 
     private static final String SELECT_LOTE = """
             select l.*, h.nome hospital, (l.foto is not null) tem_foto,
@@ -96,9 +97,9 @@ public class ProducaoService {
         if (medicos.isEmpty()) throw new IllegalArgumentException("Selecione ao menos um medico");
         for (Item i : dados.itens()) {
             if (i.medicoId() != null && !medicos.contains(i.medicoId()))
-                throw new IllegalArgumentException("Etiqueta " + i.nrAtendimento() + " aponta para medico fora da folha");
+                throw new IllegalArgumentException("Etiqueta " + i.nrAtendimento() + " aponta para medico fora do lote");
             if (i.exameId() != null && !exames.contains(i.exameId()))
-                throw new IllegalArgumentException("Etiqueta " + i.nrAtendimento() + " aponta para exame fora da folha");
+                throw new IllegalArgumentException("Etiqueta " + i.nrAtendimento() + " aponta para exame fora do lote");
         }
         if (id == null) {
             if (c.versao() != 0) throw new IllegalArgumentException("Versao inicial invalida");
@@ -106,9 +107,10 @@ public class ProducaoService {
                     insert into producao_lote(hospital_id,data_producao,periodo,tipo_agenda,auxiliar,observacao,criado_por)
                     values(?,?,?,?,?,?,?) returning id""", Long.class, c.hospitalId(), c.dataProducao(), periodo,
                     txt(c.tipoAgenda()), txt(c.auxiliar()), txt(c.observacao()), usuario);
+            historico.lote(id, "CRIADA", "Lote criado com " + dados.itens().size() + " etiqueta(s)", usuario);
         } else {
             Lote atual = buscar(id);
-            if ("ENVIADO".equals(atual.status())) throw new ConflitoRevisaoException("Folha ja incluida em fechamento nao pode ser alterada");
+            if ("ENVIADO".equals(atual.status())) throw new ConflitoRevisaoException("Lote ja incluido em fechamento nao pode ser alterado");
             if (jdbc.update("""
                     update producao_lote set hospital_id=?,data_producao=?,periodo=?,tipo_agenda=?,auxiliar=?,observacao=?,
                     atualizado_em=now(),versao=versao+1 where id=? and versao=?""", c.hospitalId(), c.dataProducao(), periodo,
@@ -117,6 +119,8 @@ public class ProducaoService {
             jdbc.update("delete from producao_item where lote_id=?", id);
             jdbc.update("delete from producao_lote_medico where lote_id=?", id);
             jdbc.update("delete from producao_lote_exame where lote_id=?", id);
+            int antes = atual.itens().size(), depois = dados.itens().size();
+            historico.lote(id, "ALTERADA", "Lote salvo: " + depois + " etiqueta(s)" + (antes != depois ? " (antes " + antes + ")" : ""), usuario);
         }
         for (Long m : medicos) jdbc.update("insert into producao_lote_medico(lote_id,medico_id) values(?,?)", id, m);
         for (Long e : exames) jdbc.update("insert into producao_lote_exame(lote_id,exame_id) values(?,?)", id, e);
@@ -139,13 +143,13 @@ public class ProducaoService {
     }
 
     @Transactional
-    public Lote alterarStatus(long id, String status) {
+    public Lote alterarStatus(long id, String status, String usuario) {
         String s = status == null ? "" : status.toUpperCase(Locale.ROOT);
         if (!STATUS.contains(s)) throw new IllegalArgumentException("Status invalido");
         Lote lote = buscar(id);
         Long fechamento = jdbc.queryForObject("select fechamento_id from producao_lote where id=?", Long.class, id);
-        if (fechamento != null) throw new ConflitoRevisaoException("Folha incluida no fechamento n. " + fechamento + ". Cancele o fechamento para altera-la");
-        if ("ENVIADO".equals(s)) throw new IllegalArgumentException("O envio ao hospital e feito pelo Fechamento de producao");
+        if (fechamento != null) throw new ConflitoRevisaoException("Lote incluido no fechamento n. " + fechamento + ". Cancele o fechamento para altera-la");
+        if ("ENVIADO".equals(s)) throw new IllegalArgumentException("O envio ao hospital e feito pela tela Fechamento e envio");
         if (!"RASCUNHO".equals(s)) {
             if (lote.itens().isEmpty()) throw new IllegalArgumentException("Lote sem itens");
             List<String> problemas = new ArrayList<>();
@@ -164,6 +168,8 @@ public class ProducaoService {
                         + (problemas.size() > 10 ? " e mais " + (problemas.size() - 10) + " etiqueta(s)" : ""));
         }
         jdbc.update("update producao_lote set status=?,atualizado_em=now(),versao=versao+1 where id=?", s, id);
+        historico.lote(id, "CONFERIDO".equals(s) ? "CONFERIDA" : "REABERTA",
+                "CONFERIDO".equals(s) ? "Lote marcado como conferido (" + lote.itens().size() + " etiqueta(s))" : "Lote reaberto para edição", usuario);
         return buscar(id);
     }
 
@@ -175,9 +181,10 @@ public class ProducaoService {
     }
 
     @Transactional
-    public void salvarFoto(long id, byte[] foto, String tipo) {
+    public void salvarFoto(long id, byte[] foto, String tipo, String usuario) {
         buscar(id);
         jdbc.update("update producao_lote set foto=?,foto_tipo=? where id=?", foto, tipo, id);
+        historico.lote(id, "FOTO", "Foto da folha anexada", usuario);
     }
 
     @Transactional(readOnly = true)

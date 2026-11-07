@@ -12,8 +12,8 @@
 .prod-tabela input { width: 100%; min-width: 90px; font-size: .85rem; padding: 4px; border: 1px solid transparent; background: transparent; color: inherit; }
 .prod-tabela input:focus { border-color: currentColor; }
 .prod-tabela tr.pendente { background: rgba(255, 193, 7, .22); }
-.prod-tabela tr.duplicado td:nth-child(4) input { font-weight: 700; color: #b02a37; }
-.prod-tabela tr.repetido td:nth-child(1)::after { content: " ↻"; }
+.prod-tabela tr.duplicado td:nth-child(2) input { font-weight: 700; color: #b02a37; }
+.prod-rep { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 6px; background: var(--mod-suave, #eee); color: var(--mod-forte, inherit); font-size: .7rem; font-weight: 700; }
 .prod-acoes { margin-top: 16px; }
 .prod-perigo { color: #b02a37; }
 #lotes tr { cursor: pointer; }
@@ -24,7 +24,7 @@
 .prod-tabela td:last-child { display: table-cell; white-space: nowrap; }
 .prod-tabela td.prod-vazio { white-space: normal; text-align: left; padding: 16px; }
 .prod-tabela select { font-size: .85rem; max-width: 180px; }
-.prod-tabela tr.sem-vinculo td:nth-child(2) select, .prod-tabela tr.sem-vinculo td:nth-child(3) select { outline: 2px solid #ffc107; }
+.prod-tabela tr.sem-vinculo td:nth-child(3) select, .prod-tabela tr.sem-vinculo td:nth-child(4) select { outline: 2px solid #ffc107; }
 .prod-multi { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; position: relative; min-width: 240px; }
 .prod-multi summary { list-style: none; cursor: pointer; padding: 10px 14px; border: 1px solid var(--line, #ccd); border-radius: 8px; background: var(--surface, #fff); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prod-multi summary::after { content: " ▾"; float: right; }
@@ -46,3 +46,20 @@ main.account-workspace.prod-pagina { max-width: none; width: auto; margin-left: 
 .prod-problemas a { color: inherit; font-weight: 600; }
 .prod-problemas button { margin-left: 12px; }
 .prod-tabela td.prod-falta input, .prod-tabela td.prod-falta select { outline: 2px solid #dc3545; background: #fff0f1; }
+
+/* colunas # e Atendimento fixas na rolagem lateral */
+.prod-tabela :is(th, td):nth-child(1) { position: sticky; left: 0; z-index: 2; width: 44px; min-width: 44px; background: var(--surface); }
+.prod-tabela :is(th, td):nth-child(2) { position: sticky; left: 44px; z-index: 2; min-width: 120px; background: var(--surface); box-shadow: 2px 0 0 var(--line); }
+.prod-tabela thead th:nth-child(-n+2) { background: var(--surface-soft, var(--surface)); z-index: 3; }
+.prod-tabela tr.pendente td:nth-child(-n+2) { background: #faf1d6; }
+:root[data-theme="dark"] .prod-tabela tr.pendente td:nth-child(-n+2) { background: #3d3a2a; }
+.prod-tabela td input[data-campo="dataHoraAtendimento"] { min-width: 140px; }
+.prod-tabela td input[data-campo="paciente"], .prod-tabela td input[data-campo="procedimento"] { min-width: 200px; }
+.prod-barra-tabela { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.prod-colunas { position: relative; }
+.prod-colunas summary { list-style: none; min-height: 32px; padding: 5px 12px; font-size: .85rem; }
+.prod-colunas summary::-webkit-details-marker { display: none; }
+.prod-colunas .prod-multi-lista { right: 0; left: auto; width: 220px; }
+.prod-colunas label { display: flex; flex-direction: row; gap: 8px; align-items: center; padding: 4px 2px; font-size: .9rem; cursor: pointer; }
+.prod-upload.carregando { pointer-events: none; opacity: .8; }
+#lotes tr[data-id]:focus-visible { outline: 3px solid var(--focus, var(--primary)); outline-offset: -3px; }

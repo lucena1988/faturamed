@@ -23,7 +23,7 @@
       const actions = document.createElement('td'); actions.dataset.label='Ações';
       const toggle = document.createElement('button'); toggle.type='button'; toggle.className='text-button'; toggle.textContent=user.ativo?'Desativar':'Ativar';
       toggle.addEventListener('click',async()=>{
-        if (!confirm(`${toggle.textContent} o acesso de ${user.nome}?`)) return;
+        if (!await fmConfirmar(`${toggle.textContent} o acesso de ${user.nome}?`)) return;
         toggle.disabled=true;
         try {await api(`/api/usuarios/${user.id}/situacao`,json('PUT',{ativo:!user.ativo,versao:user.versao})); await load();message.textContent='Situação atualizada.';}
         catch(error){message.textContent=error.message;toggle.disabled=false;}
