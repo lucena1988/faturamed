@@ -1,0 +1,94 @@
+/* Efeitos visuais modernos do FaturaMed: transicao entre paginas, brilho que segue o mouse, borda de atencao,
+   graos, check de sucesso, bento grid e modo foco. Todos respeitam "reduzir animacoes". */
+
+/* ---------- 1) transicao entre paginas (View Transitions, navegadores recentes) ---------- */
+@view-transition { navigation: auto; }
+.page-content h1 { view-transition-name: fm-titulo; }
+.fm-cards, .kpi-grid { view-transition-name: fm-cards; }
+.sidebar { view-transition-name: fm-menu; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; }
+::view-transition-old(fm-titulo) { animation: fm-vt-sai .18s ease-in both; }
+::view-transition-new(fm-titulo) { animation: fm-vt-entra .25s ease-out both; }
+@keyframes fm-vt-sai { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes fm-vt-entra { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---------- 4) brilho que segue o mouse ---------- */
+.fm-spot { position: relative; isolation: isolate; }
+.fm-spot > .fm-luz {
+  position: absolute !important; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0 !important; opacity: 0; transition: opacity .25s;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--mod-cor, var(--primary)) 18%, transparent), transparent 70%);
+}
+.fm-spot:hover > .fm-luz { opacity: 1; }
+.fm-spot > :not(.fm-luz) { position: relative; z-index: 1; }
+
+/* ---------- 5) borda com gradiente animado (card que pede atencao) ---------- */
+@property --fm-angulo { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.fm-card.atencao {
+  border: 1.5px solid transparent !important;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    conic-gradient(from var(--fm-angulo), var(--mod-cor, var(--primary)), #e0a24b, color-mix(in srgb, var(--mod-cor, var(--primary)) 40%, transparent), var(--mod-cor, var(--primary))) border-box !important;
+  animation: fm-gira-borda 6s linear infinite;
+}
+@keyframes fm-gira-borda { to { --fm-angulo: 360deg; } }
+:root[data-aparencia="vidro"] .fm-card.atencao { background: linear-gradient(var(--vidro-forte), var(--vidro-forte)) padding-box,
+  conic-gradient(from var(--fm-angulo), var(--mod-cor, var(--primary)), #e0a24b, transparent, var(--mod-cor, var(--primary))) border-box !important; }
+
+/* ---------- 6) textura de grao nos temas com degrade ---------- */
+:root:is([data-aparencia="vidro"], [data-aparencia="aurora"]) body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .045; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root:is([data-aparencia="vidro"], [data-aparencia="aurora"]) .app-shell { position: relative; z-index: 1; }
+
+/* ---------- 3) microinteracao de sucesso ---------- */
+.fm-toast.sucesso::before {
+  content: ""; flex: 0 0 20px; height: 20px; border-radius: 50%; background: #2e8b57 center / 12px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E");
+  animation: fm-pop .35s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+@keyframes fm-pop { from { transform: scale(0); } }
+.fm-pulso { animation: fm-pulso .9s ease-out; }
+@keyframes fm-pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mod-cor, #2e8b57) 55%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+tr.fm-pulso td { animation: fm-linha-ok 1.2s ease-out; }
+@keyframes fm-linha-ok { 0% { background: color-mix(in srgb, #2e8b57 22%, transparent); } 100% { background: transparent; } }
+
+/* ---------- 7) bento grid nos cards de resumo ---------- */
+@media (min-width: 1100px) {
+  .fm-cards.bento { grid-template-columns: 1.6fr 1fr 1fr; grid-auto-rows: minmax(110px, auto); }
+  .fm-cards.bento .fm-card:first-child { grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; }
+  .fm-cards.bento .fm-card:first-child strong { font-size: 2.6rem; }
+  .fm-cards.bento:has(.fm-card:nth-child(4)) { grid-template-columns: 1.6fr 1fr 1fr; }
+  .fm-cards.bento:has(.fm-card:nth-child(4)) .fm-card:nth-child(4) { grid-column: span 2; }
+}
+
+/* ---------- 8) minigraficos ---------- */
+.fm-spark { display: block; width: 100%; height: 38px; margin-top: 8px; overflow: visible; }
+.fm-spark path.linha { fill: none; stroke: var(--mod-cor, var(--primary)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fm-spark path.area { fill: color-mix(in srgb, var(--mod-cor, var(--primary)) 14%, transparent); stroke: none; }
+.fm-spark circle { fill: var(--surface); stroke: var(--mod-cor, var(--primary)); stroke-width: 2; }
+.fm-tendencia { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+.fm-tendencia.sobe { background: #e1f3e8; color: #1f6b3d; }
+.fm-tendencia.desce { background: #fbe4e6; color: #8e2430; }
+:root[data-theme="dark"] .fm-tendencia.sobe { background: rgba(110,190,140,.18); color: #b4e0c3; }
+:root[data-theme="dark"] .fm-tendencia.desce { background: rgba(220,120,130,.18); color: #f0b9bf; }
+
+/* ---------- 9) modo foco ---------- */
+:root.fm-foco .sidebar, :root.fm-foco main :is(.account-heading, .conciliation-heading, .topbar), :root.fm-foco #cards { display: none !important; }
+:root.fm-foco .app-shell { grid-template-columns: minmax(0, 1fr) !important; }
+:root.fm-foco .page-content { padding-top: 12px; }
+.fm-foco-aviso { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 70; padding: 6px 14px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0,0,0,.14); font-size: .82rem; color: var(--muted); }
+.fm-foco-aviso button { margin-left: 8px; border: 0; background: none; color: var(--primary-strong); font: inherit; font-weight: 700; cursor: pointer; min-height: 0; padding: 0; }
+
+/* ---------- 10) resposta do assistente na busca ---------- */
+.fm-busca-resposta { margin: 6px; padding: 12px 14px; border-radius: 10px; background: linear-gradient(135deg, var(--mod-suave, var(--primary-soft)), transparent);
+  border: 1px solid var(--line); }
+.fm-busca-resposta small { display: block; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.fm-busca-resposta strong { display: block; font-size: 1.05rem; }
+.fm-busca-resposta p { margin: 4px 0 0; color: var(--muted); font-size: .85rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-card.atencao { animation: none; }
+  @view-transition { navigation: none; }
+}

@@ -90,7 +90,14 @@
       ['CONFERIDO', 'check', 'Conferidos, aguardando fechamento', por('CONFERIDO').length, `${soma(por('CONFERIDO'), l => l.itens)} etiqueta(s)`],
       ['ENVIADO', 'enviado', 'Enviados em fechamento', por('ENVIADO').length, `${soma(por('ENVIADO'), l => l.itens)} etiqueta(s)`],
       ['', 'etiqueta', 'Total de etiquetas', soma(lotes, l => l.itens), `${lotes.length} lote(s)${filtrado ? ' no filtro' : ''}`]];
+    const ef = window.fmEfeitos;
+    const etiquetasMes = ef ? ef.porMes(lotes, l => l.dataProducao, l => l.itens) : [];
+    const pendentes = soma(por('RASCUNHO'), l => l.pendentes);
+    $('#cards').classList.add('bento');
     $('#cards').innerHTML = cards.map(([st, icone, rotulo, valor, sub]) => fmUi.card({icone, rotulo, valor: String(valor), sub, zerado: !valor,
+      classe: st === 'RASCUNHO' && pendentes ? 'atencao' : '',
+      extra: !st && ef ? ef.sparkline(etiquetasMes) : '',
+      selo: !st && ef ? ef.tendencia(etiquetasMes.at(-1), etiquetasMes.at(-2)) : '',
       atributos: st ? `data-status="${st}" tabindex="0" role="button" title="Filtrar por este status"` : ''})).join('')
       .replaceAll('<div class="fm-card" data-status', '<div class="fm-card clicavel" data-status').replaceAll('<div class="fm-card zerado" data-status', '<div class="fm-card zerado clicavel" data-status');
   }
@@ -348,6 +355,7 @@
     descartarRascunho(l.id);
     sujo = false;
     msg('Lote salvo.');
+    window.fmEfeitos?.pulso($('#lote-status'));
     return l;
   }
 
@@ -389,6 +397,7 @@
     lote = {id: l.id, versao: l.versao, status: l.status};
     atualizarEstado();
     msg(`Lote ${STATUS[status].toLowerCase()}.`);
+    window.fmEfeitos?.pulso($('#lote-status'));
   }
 
   // colunas opcionais da tabela de etiquetas (lembradas neste navegador)
@@ -474,11 +483,15 @@
   $('#lotes').addEventListener('click', proteger(async e => { if (e.target.closest('[data-novo-lote]')) await abrir(null); }));
   $('#lotes').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('tr[data-id]')) e.target.click(); });
   configurarColunas();
+  $('#btn-foco').addEventListener('click', () => window.fmEfeitos?.foco());
 
   proteger(async () => {
     await carregarCadastros();
     const ocr = await api('/api/producao/ocr/status');
-    const folha = new URLSearchParams(location.search).get('folha');
+    const params = new URLSearchParams(location.search);
+    for (const k of ['status', 'hospitalId', 'medicoId']) if (params.get(k)) $('#filtros').elements[k].value = params.get(k);
+    if (['status', 'hospitalId', 'medicoId'].some(k => params.get(k))) await listar();
+    const folha = params.get('folha');
     if (folha) await abrir(+folha);
     if (!ocr.disponivel) $('#ocr-aviso').textContent = 'Leitura automática desligada: o Tesseract não está instalado no servidor. Lance as etiquetas manualmente.';
     await listar();

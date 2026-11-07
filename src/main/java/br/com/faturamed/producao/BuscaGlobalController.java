@@ -11,7 +11,15 @@ public class BuscaGlobalController {
     public record Resultado(String tipo, String titulo, String detalhe, String url) {}
 
     private final JdbcTemplate jdbc;
-    public BuscaGlobalController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final AssistenteBusca assistente;
+    public BuscaGlobalController(JdbcTemplate jdbc, AssistenteBusca assistente) { this.jdbc = jdbc; this.assistente = assistente; }
+
+    /** Pergunta em portugues ("quanto o Morumbi faturou em outubro?"). 204 quando nao ha resposta. */
+    @GetMapping("/pergunta")
+    public org.springframework.http.ResponseEntity<AssistenteBusca.Resposta> pergunta(@RequestParam String q) {
+        return assistente.responder(q).map(org.springframework.http.ResponseEntity::ok)
+                .orElse(org.springframework.http.ResponseEntity.noContent().build());
+    }
 
     @GetMapping
     public List<Resultado> buscar(@RequestParam String q) {

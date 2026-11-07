@@ -167,7 +167,7 @@
     $('#fechamentos').innerHTML = fmUi.esqueleto(9, 2);
     const lista = await api('/api/producao/fechamentos');
     renderCards(lista);
-    $('#fechamentos').innerHTML = lista.map(f => `<tr><td>${f.id}</td><td>${esc(f.hospital)}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td>
+    $('#fechamentos').innerHTML = lista.map(f => `<tr data-id="${f.id}"><td>${f.id}</td><td>${esc(f.hospital)}</td><td>${data(f.dataInicio)} a ${data(f.dataFim)}</td>
       <td class="fm-num">${f.etiquetas}</td><td class="fp-valor">${brl(f.total)}</td><td>${fmUi.etapas(ETAPAS, f.status)}</td>
       <td>${f.aprovadoPor ? `${esc(f.aprovadoPor)} em ${data(f.aprovadoEm)}` : '—'}</td><td>${f.nfNumero ? `${esc(f.nfNumero)} (${data(f.nfData)})` : '—'}</td>
       <td><div class="fm-celula-acoes">
@@ -186,15 +186,23 @@
     const qtd = st => lista.filter(f => f.status === st).length;
     const mes = hoje().slice(0, 7);
     const nfMes = lista.filter(f => f.status === 'NF_EMITIDA' && (f.nfData || '').startsWith(mes));
+    const ef = window.fmEfeitos;
+    const nfPorMes = ef ? ef.porMes(lista.filter(f => f.status === 'NF_EMITIDA'), f => f.nfData, f => f.total) : [];
+    const geradoPorMes = ef ? ef.porMes(lista, f => f.dataFim, f => f.total) : [];
+    $('#cards').classList.add('bento');
     $('#cards').innerHTML = [
-      {icone: 'relogio', rotulo: 'Aguardando ok do hospital', valor: brl(soma('AGUARDANDO')), sub: `${qtd('AGUARDANDO')} fechamento(s)`, zerado: !qtd('AGUARDANDO')},
+      {icone: 'relogio', rotulo: 'Aguardando ok do hospital', valor: brl(soma('AGUARDANDO')), sub: `${qtd('AGUARDANDO')} fechamento(s)`, zerado: !qtd('AGUARDANDO'),
+        classe: qtd('AGUARDANDO') ? 'atencao' : '', extra: ef ? ef.sparkline(geradoPorMes) : '',
+        selo: ef ? ef.tendencia(geradoPorMes.at(-1), geradoPorMes.at(-2)) : ''},
       {icone: 'check', rotulo: 'Aprovado, aguardando NF', valor: brl(soma('APROVADO')), sub: `${qtd('APROVADO')} fechamento(s)`, zerado: !qtd('APROVADO')},
-      {icone: 'nota', rotulo: 'NF emitida neste mês', valor: brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), sub: `${nfMes.length} nota(s)`, zerado: !nfMes.length}
+      {icone: 'nota', rotulo: 'NF emitida neste mês', valor: brl(nfMes.reduce((t, f) => t + Number(f.total), 0)), sub: `${nfMes.length} nota(s)`, zerado: !nfMes.length,
+        selo: ef ? ef.tendencia(nfPorMes.at(-1), nfPorMes.at(-2)) : ''}
     ].map(fmUi.card).join('');
   }
 
   $('#fechamentos').addEventListener('click', proteger(async e => {
     const b = e.target.closest('button'); if (!b || !(b.dataset.historico || b.dataset.aprovar || b.dataset.nf || b.dataset.cancelar)) return;
+    let pulsar = null;
     if (b.dataset.historico) { await fmUi.mostrarHistorico(`Histórico do fechamento nº ${b.dataset.historico}`, `/api/producao/historico/fechamento/${b.dataset.historico}`); return; }
     if (b.dataset.aprovar) {
       const r = await fmUi.perguntar({titulo: 'Registrar ok do hospital', texto: 'Informe quem conferiu e aprovou a produção no hospital.', confirmar: 'Registrar aprovação',
@@ -202,18 +210,21 @@
       if (!r) return;
       await api(`/api/producao/fechamentos/${b.dataset.aprovar}/aprovar`, json('POST', r));
       msg('Aprovação registrada. Agora é possível registrar a NF.');
+      pulsar = b.dataset.aprovar;
     } else if (b.dataset.nf) {
       const r = await fmUi.perguntar({titulo: 'Registrar nota fiscal', texto: 'Informe a NF emitida para este fechamento.', confirmar: 'Registrar NF',
         campos: [{nome: 'numero', rotulo: 'Número da NF', obrigatorio: true}, {nome: 'data', rotulo: 'Data de emissão', tipo: 'date', valor: hoje(), obrigatorio: true}]});
       if (!r) return;
       await api(`/api/producao/fechamentos/${b.dataset.nf}/nf`, json('POST', r));
       msg('NF registrada.');
+      pulsar = b.dataset.nf;
     } else if (b.dataset.cancelar) {
       if (!(await fmUi.confirmar({titulo: 'Cancelar este fechamento?', texto: 'Os lotes voltam a ficar conferidos e disponíveis para um novo fechamento.', confirmar: 'Cancelar fechamento', cancelar: 'Voltar', perigo: true}))) return;
       await api(`/api/producao/fechamentos/${b.dataset.cancelar}`, {method: 'DELETE'});
       msg('Fechamento cancelado.');
     }
     await listarFechamentos();
+    if (pulsar) window.fmEfeitos?.pulso(document.querySelector(`#fechamentos tr[data-id="${pulsar}"]`));
   }));
 
   $('#regras').addEventListener('click', proteger(async e => {
@@ -240,6 +251,9 @@
     const f = $('#form-previa').elements;
     f.inicio.value = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().slice(0, 10);
     f.fim.value = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0, 10);
+    const params = new URLSearchParams(location.search);
+    if (params.get('hospitalId')) { $('#regras-hospital').value = params.get('hospitalId'); $('#form-previa').elements.hospitalId.value = params.get('hospitalId'); }
     await Promise.all([listarFechamentos(), listarRegras()]);
+    if (params.get('aba') === 'regras') document.querySelector('.fp-aba[data-aba=regras]').click();
   })();
 })();

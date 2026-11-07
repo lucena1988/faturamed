@@ -4,6 +4,8 @@
   const key = 'faturamed-barra-recolhida';
   const root = document.documentElement;
   try { root.classList.toggle('sidebar-recolhida', localStorage.getItem(key) === '1'); } catch (_) {}
+  // aparencia escolhida no menu do usuario (Classica ou Vidro), aplicada antes de desenhar a pagina
+  try { const a = localStorage.getItem('faturamed-aparencia'); if (['vidro', 'aurora', 'papel', 'contraste'].includes(a)) root.dataset.aparencia = a; } catch (_) {}
 
   const page = location.pathname.split('/').pop() || 'index.html';
   const onIndex = page === 'index.html';
@@ -75,15 +77,20 @@
     : Promise.resolve(window.prompt(texto));
 
   // Estilos globais (componentes e cores por modulo) e grupo da pagina atual (usado na trilha do cabecalho)
-  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261107-4']) {
+  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261107-9', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1']) {
     if (document.querySelector(`link[href^="${href.split('?')[0]}"]`)) continue;
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = href;
     document.head.append(css);
   }
+  if (!document.querySelector('script[src^="efeitos.js"]')) {
+    const ef = document.createElement('script');
+    ef.src = 'efeitos.js?v=20261107-1';
+    document.head.append(ef);
+  }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261107-5';
+    js.src = 'ui.js?v=20261107-10';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view]) => ({label, grupo: titulo, url: href || `index.html#${view}`})));

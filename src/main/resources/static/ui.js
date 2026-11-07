@@ -102,9 +102,9 @@
     enviado: '<path d="M3 11 21 3l-6 18-3-8z"/><path d="m12 13 9-10"/>',
     etiqueta: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'
   };
-  const card = ({icone, rotulo, valor, sub = '', zerado = false, atributos = ''}) =>
-    `<div class="fm-card${zerado ? ' zerado' : ''}" ${atributos}><span class="fm-card-topo"><span>${esc(rotulo)}</span>${icone ? `<svg class="fm-card-icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES_CARD[icone] || ''}</svg>` : ''}</span>
-      <strong>${esc(valor)}</strong><small>${esc(sub)}</small></div>`;
+  const card = ({icone, rotulo, valor, sub = '', zerado = false, atributos = '', classe = '', extra = '', selo = ''}) =>
+    `<div class="fm-card${zerado ? ' zerado' : ''}${classe ? ' ' + classe : ''}" ${atributos}><span class="fm-card-topo"><span>${esc(rotulo)}</span>${icone ? `<svg class="fm-card-icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES_CARD[icone] || ''}</svg>` : ''}</span>
+      <strong>${esc(valor)}</strong><small>${esc(sub)}${selo}</small>${extra}</div>`;
 
   // ---------- linha de etapas (ex.: Enviado -> Aprovado -> NF) ----------
   const etapas = (passos, atual) => {
@@ -131,7 +131,7 @@
 
   // ---------- cabecalho: trilha + menu do usuario ----------
   function montarCabecalho() {
-    const header = document.querySelector('main :is(.account-heading, .conciliation-heading)');
+    const header = document.querySelector('main :is(.account-heading, .conciliation-heading, .topbar)');
     if (!header) return;
     const marca = header.querySelector('.company-name');
     const grupo = window.fmNavAtual;
@@ -153,8 +153,48 @@
       <div class="fm-usuario-menu" role="menu" hidden><div class="fm-usuario-info"><strong>…</strong><small></small></div></div>`;
     const menu = caixa.querySelector('.fm-usuario-menu');
     if (conta) { conta.textContent = 'Minha conta'; conta.setAttribute('role', 'menuitem'); menu.append(conta); }
+    // escolha de aparencia (lembrada neste navegador)
+    const TEMAS = [['classica', 'Clássica'], ['vidro', 'Vidro'], ['aurora', 'Aurora'], ['papel', 'Papel'], ['contraste', 'Alto contraste']];
+    const aparencia = document.createElement('div');
+    aparencia.className = 'fm-aparencia';
+    aparencia.setAttribute('role', 'group');
+    aparencia.setAttribute('aria-label', 'Aparência');
+    const pintar = () => {
+      const atual = document.documentElement.dataset.aparencia || 'classica';
+      const escuro = document.documentElement.dataset.theme === 'dark';
+      aparencia.innerHTML = `<span class="fm-aparencia-titulo">Modo</span>
+        <div class="fm-modo" role="radiogroup" aria-label="Modo claro ou escuro">
+          <button type="button" role="menuitemradio" aria-checked="${!escuro}" data-modo="light" class="${escuro ? '' : 'on'}"><svg class="fm-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Claro</button>
+          <button type="button" role="menuitemradio" aria-checked="${escuro}" data-modo="dark" class="${escuro ? 'on' : ''}"><svg class="fm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></svg>Escuro</button>
+        </div>
+        <span class="fm-aparencia-titulo">Aparência</span><div class="fm-aparencia-lista">${TEMAS.map(([v, nome]) =>
+        `<button type="button" role="menuitemradio" aria-checked="${v === atual}" data-tema="${v}" class="${v === atual ? 'on' : ''}"><i class="fm-tema-amostra t-${v}"></i>${nome}</button>`).join('')}</div>`;
+    };
+    aparencia.addEventListener('click', e => {
+      const modo = e.target.closest('[data-modo]');
+      if (modo) {
+        e.stopPropagation();
+        // usa o botao do tema.js (agora escondido) para manter o modo salvo e sincronizado entre abas
+        if ((document.documentElement.dataset.theme || 'light') !== modo.dataset.modo) document.querySelector('[data-theme-toggle]')?.click();
+        if ((document.documentElement.dataset.theme || 'light') !== modo.dataset.modo) {
+          document.documentElement.dataset.theme = modo.dataset.modo;
+          try { localStorage.setItem('faturamed-tema', modo.dataset.modo); } catch (_) {}
+        }
+        pintar();
+        return;
+      }
+      const b = e.target.closest('[data-tema]'); if (!b) return;
+      e.stopPropagation();
+      if (b.dataset.tema === 'classica') delete document.documentElement.dataset.aparencia;
+      else document.documentElement.dataset.aparencia = b.dataset.tema;
+      try { localStorage.setItem('faturamed-aparencia', b.dataset.tema); } catch (_) {}
+      pintar();
+    });
+    pintar();
+    menu.append(aparencia);
     if (sair) { sair.className = ''; sair.textContent = 'Sair'; sair.setAttribute('role', 'menuitem'); menu.append(sair); }
     acoes.append(caixa);
+    header.classList.add('fm-com-menu-usuario');
     const botao = caixa.querySelector('.fm-usuario-botao');
     const abrir = aberto => { menu.hidden = !aberto; botao.setAttribute('aria-expanded', String(aberto)); };
     botao.addEventListener('click', e => { e.stopPropagation(); abrir(menu.hidden); });
@@ -178,7 +218,7 @@
     paleta = document.createElement('dialog');
     paleta.className = 'fm-busca';
     paleta.innerHTML = `<div class="fm-busca-campo"><svg class="fm-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-      <input type="search" placeholder="Buscar atendimento, paciente, médico, hospital, fechamento ou página…" aria-label="Buscar" autocomplete="off">
+      <input type="search" placeholder="Busque ou pergunte: “quanto o Morumbi faturou em outubro?”, “lotes pendentes”…" aria-label="Buscar" autocomplete="off">
       <kbd>Esc</kbd></div><ul class="fm-busca-lista" role="listbox"></ul>
       <p class="fm-busca-dica">↑ ↓ para navegar · Enter para abrir</p>`;
     document.body.append(paleta);
@@ -186,22 +226,32 @@
     const lista = paleta.querySelector('ul');
     let resultados = [], ativo = 0, geracao = 0, timer = null;
     const desenhar = () => {
-      lista.innerHTML = resultados.length ? resultados.map((r, i) => `<li role="option" aria-selected="${i === ativo}" data-i="${i}" class="${i === ativo ? 'ativo' : ''}">
+      lista.innerHTML = resultados.length ? resultados.map((r, i) => r.resposta
+        ? `<li role="option" aria-selected="${i === ativo}" data-i="${i}" class="fm-busca-resposta ${i === ativo ? 'ativo' : ''}"><span class="fm-busca-texto"><small>Resposta</small><strong>${esc(r.titulo)}</strong><p>${esc(r.detalhe || '')}</p></span></li>`
+        : `<li role="option" aria-selected="${i === ativo}" data-i="${i}" class="${i === ativo ? 'ativo' : ''}">
           <span class="fm-busca-tipo">${esc(r.tipo)}</span><span class="fm-busca-texto"><strong>${esc(r.titulo)}</strong><small>${esc(r.detalhe || '')}</small></span></li>`).join('')
         : `<li class="fm-busca-vazio">${input.value.trim().length < 2 ? 'Digite ao menos 2 letras ou números.' : 'Nada encontrado.'}</li>`;
       lista.querySelector('.ativo')?.scrollIntoView({block: 'nearest'});
     };
     const paginas = termo => (window.fmNavItens || []).filter(p => sem(p.label + ' ' + p.grupo).includes(sem(termo)))
       .slice(0, 5).map(p => ({tipo: 'Página', titulo: p.label, detalhe: p.grupo, url: p.url}));
+    let resposta = null;
+    const ehPergunta = t => t.split(/\s+/).length >= 2 && /(\?$|^(quanto|quantos|quantas|quais|qual|lotes?|regras?|fechamentos?|total|valor)\b)/i.test(t);
     const buscar = () => {
       const termo = input.value.trim();
       const minha = ++geracao;
+      resposta = null;
+      if (ehPergunta(termo)) {
+        fetch('/api/busca/pergunta?q=' + encodeURIComponent(termo), {cache: 'no-store'}).then(r => r.status === 200 ? r.json() : null)
+          .then(dados => { if (minha !== geracao || !dados) return; resposta = dados; resultados = [{tipo: 'Resposta', titulo: dados.titulo, detalhe: dados.detalhe, url: dados.url, resposta: true}, ...resultados.filter(r => !r.resposta)]; ativo = 0; desenhar(); })
+          .catch(() => {});
+      }
       resultados = termo ? paginas(termo) : (window.fmNavItens || []).slice(0, 6).map(p => ({tipo: 'Página', titulo: p.label, detalhe: p.grupo, url: p.url}));
       ativo = 0; desenhar();
       if (termo.length < 2) return;
       clearTimeout(timer);
       timer = setTimeout(() => fetch('/api/busca?q=' + encodeURIComponent(termo), {cache: 'no-store'}).then(r => r.ok ? r.json() : [])
-        .then(dados => { if (minha !== geracao) return; resultados = [...dados, ...paginas(termo)]; ativo = 0; desenhar(); }).catch(() => {}), 200);
+        .then(dados => { if (minha !== geracao) return; resultados = [...(resposta ? [{tipo: 'Resposta', titulo: resposta.titulo, detalhe: resposta.detalhe, url: resposta.url, resposta: true}] : []), ...dados, ...paginas(termo)]; ativo = 0; desenhar(); }).catch(() => {}), 200);
     };
     const ir = i => { const r = resultados[i]; if (r) { paleta.close(); location.href = r.url.startsWith('/') ? r.url : '/' + r.url; } };
     input.addEventListener('input', buscar);
@@ -223,7 +273,7 @@
   window.fmUi.abrirBusca = abrirBusca;
 
   function botaoBusca() {
-    const header = document.querySelector('main :is(.account-heading, .conciliation-heading) .session-actions, main .topbar');
+    const header = document.querySelector('main :is(.account-heading, .conciliation-heading, .topbar) .session-actions');
     if (!header || header.querySelector('.fm-busca-botao')) return;
     const b = document.createElement('button');
     b.type = 'button';
