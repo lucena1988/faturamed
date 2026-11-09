@@ -26,8 +26,8 @@ public class ProducaoController {
     public List<ProducaoService.Resumo> listar(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate,
             @RequestParam(required = false) Long hospitalId, @RequestParam(required = false) Long medicoId,
-            @RequestParam(required = false) String status) {
-        return service.listar(de, ate, hospitalId, medicoId, status);
+            @RequestParam(required = false) Long exameId, @RequestParam(required = false) String status) {
+        return service.listar(de, ate, hospitalId, medicoId, exameId, status);
     }
     @GetMapping("/lotes/{id}") public ProducaoService.Lote buscar(@PathVariable long id) {
         var lote = service.buscar(id);

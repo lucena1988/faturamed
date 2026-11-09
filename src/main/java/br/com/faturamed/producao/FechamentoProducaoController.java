@@ -46,6 +46,12 @@ public class FechamentoProducaoController {
         if (n.hospitalId() == null || n.inicio() == null || n.fim() == null) throw new IllegalArgumentException("Informe hospital e periodo");
         return service.fechar(n.hospitalId(), n.inicio(), n.fim(), n.observacao(), p == null ? null : p.getName());
     }
+    public record EnvioLotes(List<Long> loteIds, String observacao) {}
+    @PostMapping("/fechamentos/por-lotes") @ResponseStatus(HttpStatus.CREATED)
+    public FechamentoProducaoService.Detalhe fecharLotes(@RequestBody EnvioLotes e, Principal p) {
+        return service.fecharLotes(e.loteIds(), e.observacao(), nome(p));
+    }
+
     @GetMapping("/fechamentos/{id}") public FechamentoProducaoService.Detalhe detalhe(@PathVariable long id) {
         acessos.registrar("ABRIU_FECHAMENTO", "FECHAMENTO", id, "");
         return service.detalhe(id);

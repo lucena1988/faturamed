@@ -67,3 +67,13 @@ main.account-workspace.prod-pagina { max-width: none; width: auto; margin-left: 
 /* dados sensiveis mascarados ate o usuario pedir para mostrar */
 .fm-sensivel-oculto input.fm-sensivel:not(:focus) { -webkit-text-security: disc; text-security: disc; letter-spacing: .08em; }
 .prod-barra-tabela { gap: 8px; }
+
+/* selecao de lotes para envio */
+.pl-sel { width: 36px; text-align: center; }
+.pl-sel input { width: 17px; height: 17px; accent-color: var(--mod-cor, var(--primary)); cursor: pointer; }
+#lotes tr.pl-marcado td { background: var(--mod-suave, var(--primary-soft)); }
+.pl-planilha { min-height: 30px !important; padding: 4px 10px !important; font-size: .82rem !important; }
+.pl-barra { position: sticky; bottom: 12px; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 16px;
+  border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 12px 30px rgba(0,0,0,.16); animation: fm-entra .2s ease-out; }
+.pl-barra #sel-resumo { margin-right: auto; }
+.pl-aviso { color: #a12b36; font-weight: 700; }
