@@ -23,11 +23,21 @@ public class AssistenteBusca {
     private static final Set<String> IGNORAR = Set.of("hospital", "hospitais", "sao", "luiz", "santa", "santo", "medico", "medica",
             "doutor", "doutora", "dr", "dra", "sem", "atendimento", "teste", "rede");
 
+    private static final int MAX_PERGUNTA = 200;
+    private static final Pattern LOTE = Pattern.compile("\\b(lote|lotes|folha|folhas)\\b");
+    private static final Pattern PENDENTE = Pattern.compile("\\b(pendente|pendentes|rascunho|rascunhos|aberto|abertos)\\b");
+    private static final Pattern CONFERIDO = Pattern.compile("\\bconferid");
+    private static final Pattern ENVIADO = Pattern.compile("\\b(enviad|fechad)");
+    private static final Pattern VALOR = Pattern.compile("\\b(quanto|quantos|valor|total|faturou|faturamento|fechou|fechamento|fechamentos|deve|nf)\\b");
+    private static final List<Pattern> PADROES_MES = MESES.stream().map(m -> Pattern.compile("\\b" + m + "\\b")).toList();
+
     private final JdbcTemplate jdbc;
     public AssistenteBusca(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    private static boolean tem(Pattern p, String q) { return p.matcher(q).find(); }
+
     public Optional<Resposta> responder(String pergunta) {
-        String q = normalizar(pergunta);
+        String q = normalizar(pergunta == null ? "" : pergunta.length() > MAX_PERGUNTA ? pergunta.substring(0, MAX_PERGUNTA) : pergunta);
         if (q.split(" ").length < 2) return Optional.empty();
         Optional<Map.Entry<Long, String>> hospital = melhor(q, "select id, nome from hospital_cadastro where ativo");
         Optional<Map.Entry<Long, String>> medico = melhor(q, "select id, nome from medico_cadastro where ativo");
@@ -37,9 +47,8 @@ public class AssistenteBusca {
                     "Abrir as regras cadastradas" + hospital.map(h -> " deste hospital").orElse(""),
                     "fechamento-producao.html?aba=regras" + hospital.map(h -> "&hospitalId=" + h.getKey()).orElse("")));
         }
-        if (q.matches(".*\\b(lote|lotes|folha|folhas)\\b.*")) {
-            String status = q.matches(".*\\b(pendente|pendentes|rascunho|rascunhos|aberto|abertos)\\b.*") ? "RASCUNHO"
-                    : q.matches(".*\\bconferid.*") ? "CONFERIDO" : q.matches(".*\\b(enviad|fechad).*") ? "ENVIADO" : "";
+        if (tem(LOTE, q)) {
+            String status = tem(PENDENTE, q) ? "RASCUNHO" : tem(CONFERIDO, q) ? "CONFERIDO" : tem(ENVIADO, q) ? "ENVIADO" : "";
             List<Object> args = new ArrayList<>();
             StringBuilder sql = new StringBuilder("select count(*) lotes, coalesce(sum((select count(*) from producao_item i where i.lote_id=l.id)),0) etiquetas from producao_lote l where 1=1");
             if (!status.isEmpty()) { sql.append(" and l.status=?"); args.add(status); }
@@ -54,7 +63,7 @@ public class AssistenteBusca {
                     medico.map(m -> "medicoId=" + m.getKey()).orElse("")).stream().filter(s -> !s.isEmpty()).toList());
             return Optional.of(new Resposta(r.get("lotes") + " lote(s)" + rotulo, r.get("etiquetas") + " etiqueta(s)" + filtro, url));
         }
-        if (q.matches(".*\\b(quanto|quantos|valor|total|faturou|faturamento|fechou|fechamento|fechamentos|deve|nf)\\b.*")) {
+        if (tem(VALOR, q)) {
             YearMonth mes = mes(q);
             List<Object> args = new ArrayList<>(List.of(mes.atDay(1), mes.atEndOfMonth()));
             String filtroHospital = "";
@@ -94,7 +103,7 @@ public class AssistenteBusca {
         if (q.contains("mes passado") || q.contains("ultimo mes")) return atual.minusMonths(1);
         Matcher ano = Pattern.compile("\\b(20\\d{2})\\b").matcher(q);
         for (int i = 0; i < MESES.size(); i++)
-            if (q.matches(".*\\b" + MESES.get(i) + "\\b.*")) {
+            if (tem(PADROES_MES.get(i), q)) {
                 YearMonth m = YearMonth.of(ano.find() ? Integer.parseInt(ano.group(1)) : atual.getYear(), i + 1);
                 return m.isAfter(atual) && !ano.reset().find() ? m.minusYears(1) : m;
             }

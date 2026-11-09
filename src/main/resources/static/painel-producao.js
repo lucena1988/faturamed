@@ -17,8 +17,10 @@
     nota: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
     check: '<circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'
   };
-  const tarefa = (icone, valor, texto, url, urgente) =>
-    `<a class="pp-tarefa${urgente && valor ? ' urgente' : ''}${valor ? '' : ' zero'}" href="${url}"><svg class="fm-card-icone" data-icone="${icone}" viewBox="0 0 24 24" aria-hidden="true">${ICONES[icone]}</svg>
+  // destinos permitidos dos atalhos (a URL nunca vem de texto da pagina)
+  const DESTINOS = {fechamento: 'fechamento-producao.html', rascunhos: 'producao.html?status=RASCUNHO'};
+  const tarefa = (icone, valor, texto, destino, urgente) =>
+    `<a class="pp-tarefa${urgente && valor ? ' urgente' : ''}${valor ? '' : ' zero'}" data-destino="${destino}" href="${DESTINOS[destino]}"><svg class="fm-card-icone" data-icone="${icone}" viewBox="0 0 24 24" aria-hidden="true">${ICONES[icone]}</svg>
       <div><strong>${valor}</strong><span>${esc(texto)}</span></div></a>`;
 
   function saudacao(nome) {
@@ -30,13 +32,13 @@
   function desenhar(p) {
     const t = p.tarefas;
     const itens = [
-      ['alerta', t.atrasados, 'conferência(s) de hospital com prazo vencido', 'fechamento-producao.html', true],
-      ['relogio', t.venceHoje, 'conferência(s) vencendo hoje', 'fechamento-producao.html', true],
-      ['etiqueta', t.contestacoes, 'contestação(ões) de hospital para responder', 'fechamento-producao.html', true],
-      ['rascunho', t.lotesRascunho, `lote(s) em rascunho · ${t.etiquetasPendentes} etiqueta(s) a revisar`, 'producao.html?status=RASCUNHO', false],
-      ['enviado', t.etiquetasParaFechar, 'etiqueta(s) conferidas prontas para fechar', 'fechamento-producao.html', false],
-      ['nota', t.aprovadosSemNf, 'fechamento(s) aprovados aguardando NF', 'fechamento-producao.html', false],
-      ['check', t.aguardandoHospital, 'fechamento(s) aguardando o hospital', 'fechamento-producao.html', false]
+      ['alerta', t.atrasados, 'conferência(s) de hospital com prazo vencido', 'fechamento', true],
+      ['relogio', t.venceHoje, 'conferência(s) vencendo hoje', 'fechamento', true],
+      ['etiqueta', t.contestacoes, 'contestação(ões) de hospital para responder', 'fechamento', true],
+      ['rascunho', t.lotesRascunho, `lote(s) em rascunho · ${t.etiquetasPendentes} etiqueta(s) a revisar`, 'rascunhos', false],
+      ['enviado', t.etiquetasParaFechar, 'etiqueta(s) conferidas prontas para fechar', 'fechamento', false],
+      ['nota', t.aprovadosSemNf, 'fechamento(s) aprovados aguardando NF', 'fechamento', false],
+      ['check', t.aguardandoHospital, 'fechamento(s) aguardando o hospital', 'fechamento', false]
     ];
     const comAlgo = itens.filter(i => i[1]);
     $('#tarefas').innerHTML = comAlgo.length
@@ -55,7 +57,7 @@
     $('#prazos').innerHTML = p.prazos.length ? p.prazos.map(a => {
       const classe = a.diasUteis < 0 ? 'vencido' : a.diasUteis <= 1 ? 'perto' : 'ok';
       const rotulo = a.diasUteis < 0 ? `<b>${-a.diasUteis}</b>dia(s) atrasado` : a.diasUteis === 0 ? '<b>hoje</b>vence' : `<b>${a.diasUteis}</b>dia(s) útil(eis)`;
-      return `<a class="pp-prazo" href="fechamento-producao.html"><span class="pp-contador ${classe}">${rotulo}</span>
+      return `<a class="pp-prazo" data-destino="fechamento" href="fechamento-producao.html"><span class="pp-contador ${classe}">${rotulo}</span>
         <div><strong>${esc(a.hospital)} · nº ${a.fechamentoId}</strong><small>${brl(a.total)} · prazo ${data(a.prazo)} · ${a.vistoPeloHospital ? 'já aberto pelo hospital' : 'ainda não aberto pelo hospital'}</small></div></a>`;
     }).join('') : fmUi.vazio(1, {titulo: 'Nenhum fechamento aguardando o hospital', icone: 'fechamento'}).replace(/<\/?t[rd][^>]*>/g, '');
 
@@ -80,21 +82,25 @@
 
   // filtro por hospital: lembrado na URL (?hospitalId=) e neste navegador
   const CHAVE = 'faturamed-painel-hospital';
-  let hospitalId = new URLSearchParams(location.search).get('hospitalId') || (() => { try { return localStorage.getItem(CHAVE) || ''; } catch (_) { return ''; } })();
-  const comHospital = url => hospitalId ? url + (url.includes('?') ? '&' : '?') + 'hospitalId=' + hospitalId : url;
+  const soNumero = v => /^\d{1,12}$/.test(String(v ?? '')) ? String(v) : '';
+  let hospitalId = soNumero(new URLSearchParams(location.search).get('hospitalId')) || soNumero((() => { try { return localStorage.getItem(CHAVE); } catch (_) { return ''; } })());
+  const comHospital = url => hospitalId ? url + (url.includes('?') ? '&' : '?') + 'hospitalId=' + encodeURIComponent(hospitalId) : url;
 
   async function carregar() {
-    const r = await fetch('/api/producao/painel' + (hospitalId ? '?hospitalId=' + hospitalId : ''));
+    const r = await fetch('/api/producao/painel' + (hospitalId ? '?hospitalId=' + encodeURIComponent(hospitalId) : ''));
     if (!r.ok) throw new Error('Não foi possível carregar o painel');
     desenhar(await r.json());
     // os atalhos das tarefas e prazos levam o filtro junto
-    document.querySelectorAll('.pp-tarefa, .pp-prazo').forEach(a => { a.href = comHospital(a.getAttribute('href').split('?hospitalId')[0].replace(/[?&]hospitalId=\d+/, '')); });
+    document.querySelectorAll('.pp-tarefa[data-destino], .pp-prazo[data-destino]').forEach(a => {
+      const destino = DESTINOS[a.dataset.destino];
+      if (destino) a.href = comHospital(destino);
+    });
   }
 
   $('#filtro-hospital').addEventListener('change', async e => {
-    hospitalId = e.target.value;
+    hospitalId = soNumero(e.target.value);
     try { localStorage.setItem(CHAVE, hospitalId); } catch (_) {}
-    history.replaceState(null, '', hospitalId ? '?hospitalId=' + hospitalId : location.pathname);
+    history.replaceState(null, '', hospitalId ? '?hospitalId=' + encodeURIComponent(hospitalId) : location.pathname);
     try { await carregar(); } catch (err) { fmUi.toast(err.message, 'erro'); }
   });
 

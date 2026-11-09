@@ -21,4 +21,12 @@ class AssistenteBuscaTest {
     void normalizaAcentosEPontuacao() {
         assertEquals("quanto o sao luiz faturou em marco", AssistenteBusca.normalizar("Quanto o São Luiz faturou em março?"));
     }
+
+    @Test
+    void textoGigantePassaRapidoPelasExpressoes() {
+        String longo = "lote ".repeat(50_000) + "x";
+        long inicio = System.nanoTime();
+        assertNotNull(AssistenteBusca.mes(longo));
+        assertTrue((System.nanoTime() - inicio) / 1_000_000 < 2000, "sem retrocesso excessivo");
+    }
 }
