@@ -37,7 +37,10 @@ public class ProducaoService {
 
     private final JdbcTemplate jdbc;
     private final HistoricoProducao historico;
-    public ProducaoService(JdbcTemplate jdbc, HistoricoProducao historico) { this.jdbc = jdbc; this.historico = historico; }
+    private final CriptografiaDados cripto;
+    public ProducaoService(JdbcTemplate jdbc, HistoricoProducao historico, CriptografiaDados cripto) {
+        this.jdbc = jdbc; this.historico = historico; this.cripto = cripto;
+    }
 
     private static final String SELECT_LOTE = """
             select l.*, h.nome hospital, (l.foto is not null) tem_foto,
@@ -81,7 +84,7 @@ public class ProducaoService {
         return jdbc.query("select * from producao_item where lote_id=? order by ordem, id", (r, n) -> new Item(r.getLong("id"),
                 r.getString("nr_atendimento"), r.getString("data_hora_atendimento"), r.getString("paciente"), r.getString("prontuario"),
                 r.getString("data_nascimento"), r.getString("filiacao"), r.getString("convenio"), r.getString("convenio_codigo"),
-                r.getString("plano"), r.getString("carteirinha"), r.getString("guia"), r.getString("senha"), r.getString("nr_prescricao"),
+                r.getString("plano"), cripto.decifrar(r.getString("carteirinha")), cripto.decifrar(r.getString("guia")), cripto.decifrar(r.getString("senha")), r.getString("nr_prescricao"),
                 r.getString("procedimento"), r.getString("medico_solicitante"), r.getString("origem"), r.getBoolean("pendente_revisao"),
                 (Long) r.getObject("medico_id", Long.class), (Long) r.getObject("exame_id", Long.class)), loteId);
     }
@@ -137,7 +140,7 @@ public class ProducaoService {
                     convenio,convenio_codigo,plano,carteirinha,guia,senha,nr_prescricao,procedimento,medico_solicitante,origem,pendente_revisao,
                     medico_id,exame_id) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", id, ordem++, i.nrAtendimento().replaceAll("\\s", ""),
                     txt(i.dataHoraAtendimento()), txt(i.paciente()), txt(i.prontuario()), txt(i.dataNascimento()), txt(i.filiacao()),
-                    txt(i.convenio()), txt(i.convenioCodigo()), txt(i.plano()), txt(i.carteirinha()), txt(i.guia()), txt(i.senha()),
+                    txt(i.convenio()), txt(i.convenioCodigo()), txt(i.plano()), cripto.cifrar(txt(i.carteirinha())), cripto.cifrar(txt(i.guia())), cripto.cifrar(txt(i.senha())),
                     txt(i.nrPrescricao()), txt(i.procedimento()), txt(i.medicoSolicitante()), origem, i.pendenteRevisao(),
                     i.medicoId() != null ? i.medicoId() : medicoUnico, i.exameId() != null ? i.exameId() : exameUnico);
         }
@@ -185,7 +188,7 @@ public class ProducaoService {
     @Transactional
     public void salvarFoto(long id, byte[] foto, String tipo, String usuario) {
         buscar(id);
-        jdbc.update("update producao_lote set foto=?,foto_tipo=? where id=?", foto, tipo, id);
+        jdbc.update("update producao_lote set foto=?,foto_tipo=?,foto_removida_em=null where id=?", cripto.cifrarArquivo(foto), tipo, id);
         historico.lote(id, "FOTO", "Foto da folha anexada", usuario);
     }
 
@@ -193,7 +196,9 @@ public class ProducaoService {
     public Map<String, Object> foto(long id) {
         List<Map<String, Object>> r = jdbc.queryForList("select foto,foto_tipo from producao_lote where id=? and foto is not null", id);
         if (r.isEmpty()) throw new RecursoNaoEncontradoException("Lote sem foto");
-        return r.get(0);
+        Map<String, Object> foto = new HashMap<>(r.get(0));
+        foto.put("foto", cripto.decifrarArquivo((byte[]) foto.get("foto")));
+        return foto;
     }
 
     @Transactional(readOnly = true)

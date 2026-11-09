@@ -63,3 +63,7 @@ main.account-workspace.prod-pagina { max-width: none; width: auto; margin-left: 
 .prod-colunas label { display: flex; flex-direction: row; gap: 8px; align-items: center; padding: 4px 2px; font-size: .9rem; cursor: pointer; }
 .prod-upload.carregando { pointer-events: none; opacity: .8; }
 #lotes tr[data-id]:focus-visible { outline: 3px solid var(--focus, var(--primary)); outline-offset: -3px; }
+
+/* dados sensiveis mascarados ate o usuario pedir para mostrar */
+.fm-sensivel-oculto input.fm-sensivel:not(:focus) { -webkit-text-security: disc; text-security: disc; letter-spacing: .08em; }
+.prod-barra-tabela { gap: 8px; }

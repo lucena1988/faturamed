@@ -49,8 +49,9 @@ public class FechamentoProducaoService {
     private final HistoricoProducao historico;
     private final AvisoHospitalEmail aviso;
     private final PrazoConferencia prazo;
-    public FechamentoProducaoService(JdbcTemplate jdbc, HistoricoProducao historico, AvisoHospitalEmail aviso, PrazoConferencia prazo) {
-        this.jdbc = jdbc; this.historico = historico; this.aviso = aviso; this.prazo = prazo;
+    private final CriptografiaDados cripto;
+    public FechamentoProducaoService(JdbcTemplate jdbc, HistoricoProducao historico, AvisoHospitalEmail aviso, PrazoConferencia prazo, CriptografiaDados cripto) {
+        this.jdbc = jdbc; this.historico = historico; this.aviso = aviso; this.prazo = prazo; this.cripto = cripto;
     }
 
     // ================= regras =================
@@ -254,7 +255,7 @@ public class FechamentoProducaoService {
                 where fi.fechamento_id=? order by m.nome, l.data_producao, i.nr_atendimento""", (r, n) -> new Etiqueta(
                 r.getObject("data_producao", LocalDate.class), r.getString("periodo"), Objects.toString(r.getString("medico"), ""),
                 Objects.toString(r.getString("exame"), ""), r.getString("nr_atendimento"), r.getString("paciente"), r.getString("convenio"),
-                r.getString("plano"), r.getString("carteirinha"), r.getString("guia"), r.getLong("item_id"), r.getLong("lote_id"),
+                r.getString("plano"), cripto.decifrar(r.getString("carteirinha")), cripto.decifrar(r.getString("guia")), r.getLong("item_id"), r.getLong("lote_id"),
                 r.getString("situacao"), r.getString("contestacao"), r.getString("contestacao_motivo"), r.getString("contestacao_resposta")), id);
         return new Detalhe(f.get(0), calculos, resumir(calculos), etiquetas);
     }

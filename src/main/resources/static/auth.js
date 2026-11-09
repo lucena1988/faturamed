@@ -47,7 +47,12 @@
     }
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
-      try { await request('/api/auth/logout', {method: 'POST'}); location.replace('/login.html'); }
+      try {
+        await request('/api/auth/logout', {method: 'POST'});
+        // dados de pacientes em rascunho nao ficam no navegador depois de sair
+        try { for (const s of [sessionStorage, localStorage]) Object.keys(s).filter(k => k.startsWith('faturamed-rascunho-')).forEach(k => s.removeItem(k)); } catch (_) {}
+        location.replace('/login.html');
+      }
       catch(error) { button.disabled = false; (window.fmAvisar || alert)(error.message); }
     }));
   });

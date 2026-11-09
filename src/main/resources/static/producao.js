@@ -2,6 +2,7 @@
   const $ = s => document.querySelector(s);
   const CAMPOS = ['nrAtendimento', 'dataHoraAtendimento', 'paciente', 'dataNascimento', 'prontuario', 'convenio', 'plano', 'carteirinha', 'guia', 'senha', 'procedimento', 'medicoSolicitante'];
   const STATUS = {RASCUNHO: 'Rascunho', CONFERIDO: 'Conferido', ENVIADO: 'Enviado'};
+  const SENSIVEIS = new Set(['carteirinha', 'guia', 'senha']);
   const PERIODOS = {MANHA: 'Manhã', TARDE: 'Tarde', NOITE: 'Noite', INTEGRAL: 'Integral'};
   let lote = null; // {id, versao, status}
   let itens = [];
@@ -122,6 +123,8 @@
     renderMedicos(); renderExames();
     mostrar('lote');
     sujo = false;
+    revelado = false;
+    aplicarMascara();
     await oferecerRascunho(id);
     atualizarEstado();
     await verificarDuplicidades();
@@ -143,12 +146,13 @@
     const f = $('#cabecalho').elements;
     const dados = {quando: Date.now(), versao: lote?.versao ?? 0, itens, medicos: [...selMedicos], exames: [...selExames],
       cabecalho: Object.fromEntries(['hospitalId', 'dataProducao', 'periodo', 'auxiliar', 'observacao'].map(k => [k, f[k].value]))};
-    try { localStorage.setItem(chaveRascunho(lote?.id), JSON.stringify(dados)); } catch (_) {}
+    // rascunho fica so nesta aba (sessionStorage): some ao fechar o navegador e ao sair do sistema
+    try { sessionStorage.setItem(chaveRascunho(lote?.id), JSON.stringify(dados)); } catch (_) {}
   }
-  function descartarRascunho(id) { try { localStorage.removeItem(chaveRascunho(id)); } catch (_) {} }
+  function descartarRascunho(id) { try { sessionStorage.removeItem(chaveRascunho(id)); localStorage.removeItem(chaveRascunho(id)); } catch (_) {} }
   async function oferecerRascunho(id) {
     let r = null;
-    try { r = JSON.parse(localStorage.getItem(chaveRascunho(id))); } catch (_) {}
+    try { r = JSON.parse(sessionStorage.getItem(chaveRascunho(id))); localStorage.removeItem(chaveRascunho(id)); } catch (_) {}
     if (!r || !Array.isArray(r.itens)) return;
     if (id && r.versao !== lote?.versao) { descartarRascunho(id); return; } // a folha mudou no servidor depois do rascunho
     const quando = new Date(r.quando).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
@@ -178,8 +182,20 @@
     const caixa = $('#historico');
     caixa.hidden = !lote;
     if (!lote) return;
-    const r = await fetch(`/api/producao/historico/lote/${lote.id}`, {cache: 'no-store'});
-    $('#historico-lista').innerHTML = fmUi.linhaDoTempo(r.ok ? await r.json() : []);
+    const [r, a] = await Promise.all([fetch(`/api/producao/historico/lote/${lote.id}`, {cache: 'no-store'}),
+      fetch(`/api/producao/acessos/lote/${lote.id}`, {cache: 'no-store'})]);
+    const acessos = a.ok ? await a.json() : [];
+    const ACAO = {ABRIU_LOTE: 'Abriu o lote', VIU_FOTO: 'Viu a foto da folha', REVELOU_DADOS: 'Exibiu dados sensíveis'};
+    $('#historico-lista').innerHTML = fmUi.linhaDoTempo(r.ok ? await r.json() : [])
+      + `<h4 class="fm-acessos-titulo">Quem acessou os dados deste lote</h4>`
+      + fmUi.linhaDoTempo(acessos.slice(0, 30).map(x => ({acao: 'ACESSO', descricao: (ACAO[x.acao] || x.acao) + (x.detalhe ? ` · ${x.detalhe}` : ''), usuario: x.usuario, quando: x.quando})));
+  }
+
+  // dados sensiveis (carteirinha, guia, senha) mascarados; mostrar fica registrado
+  let revelado = false;
+  function aplicarMascara() {
+    $('.prod-tabela').classList.toggle('fm-sensivel-oculto', !revelado);
+    $('#btn-revelar').textContent = revelado ? 'Ocultar dados sensíveis' : 'Mostrar dados sensíveis';
   }
 
   function atualizarEstado() {
@@ -226,7 +242,7 @@
         <td${falta(i, 'nrAtendimento')}><input data-campo="nrAtendimento" value="${esc(it.nrAtendimento)}" ${dis}></td>
         <td${falta(i, 'medicoId')}><select data-vinculo="medicoId" ${dis}>${opcoesVinculo(selMedicos, nomeMedico, it.medicoId)}</select></td>
         <td${falta(i, 'exameId')}><select data-vinculo="exameId" ${dis}>${opcoesVinculo(selExames, nomeExame, it.exameId)}</select></td>
-        ${CAMPOS.filter(c => c !== 'nrAtendimento').map(c => `<td${falta(i, c)}><input data-campo="${c}" value="${esc(it[c])}" ${dis}></td>`).join('')}
+        ${CAMPOS.filter(c => c !== 'nrAtendimento').map(c => `<td${falta(i, c)}><input data-campo="${c}" value="${esc(it[c])}" ${dis}${SENSIVEIS.has(c) ? ' class="fm-sensivel" autocomplete="off"' : ''}></td>`).join('')}
         <td>${bloqueado ? '' : `${it.pendenteRevisao ? `<button type="button" class="text-button" data-ok title="Marcar como conferida com a foto" aria-label="Marcar como conferida">${fmUi.icone('ok')}</button>` : ''}<button type="button" class="text-button prod-perigo" data-remover title="Remover etiqueta" aria-label="Remover etiqueta">${fmUi.icone('fechar')}</button>`}</td></tr>`;
     }).join('') || fmUi.vazio(16, {titulo: 'Nenhuma etiqueta neste lote', texto: 'Leia a foto da folha ou digite o nº de atendimento no campo acima.'});
     const pend = itens.filter(i => i.pendenteRevisao).length;
@@ -482,6 +498,12 @@
   $('#lotes').addEventListener('click', proteger(async e => { if (e.target.closest('[data-novo-lote]')) await abrir(null); }));
   $('#lotes').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('tr[data-id]')) e.target.click(); });
   configurarColunas();
+  $('#btn-revelar').addEventListener('click', proteger(async () => {
+    if (!revelado && lote) await api('/api/producao/acessos/revelar', json('POST', {entidade: 'LOTE', id: lote.id}));
+    revelado = !revelado;
+    aplicarMascara();
+    if (revelado) carregarHistorico().catch(() => {});
+  }));
   $('#btn-foco').addEventListener('click', () => window.fmEfeitos?.foco());
 
   proteger(async () => {

@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Fluxo completo: fechamento -> conferencia do hospital -> contestacao -> aprovacao recalculada -> reinclusao. */
-@SpringBootTest(properties = "ADMIN_INITIAL_PASSWORD=TesteIntegracaoSomente123")
+@SpringBootTest(properties = {"ADMIN_INITIAL_PASSWORD=TesteIntegracaoSomente123", "faturamed.dados.chave=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
 @EnabledIfEnvironmentVariable(named = "BASE_HOSPITALAR_TEST_DB", matches = "true")
 @Transactional
 class PortalHospitalIntegracaoTest {
@@ -41,6 +41,12 @@ class PortalHospitalIntegracaoTest {
         var lote = producao.salvar(null, new ProducaoService.Salvar(new ProducaoService.Cabecalho(hospital, List.of(medico), List.of(exame), dia,
                 "MANHA", "", "", "", 0L), itens), "operador");
         producao.alterarStatus(lote.id(), "CONFERIDO", "operador");
+
+        // dados sensiveis criptografados no banco, legiveis pelo sistema
+        String bruto = jdbc.queryForObject("select carteirinha from producao_item where lote_id=? and nr_atendimento='12345671'", String.class, lote.id());
+        assertTrue(bruto.startsWith("enc:v1:"), "carteirinha gravada criptografada");
+        assertEquals("CART12345671", producao.buscar(lote.id()).itens().get(0).carteirinha());
+        assertTrue(jdbc.queryForObject("select senha from producao_item where lote_id=? limit 1", String.class, lote.id()).startsWith("enc:v1:"));
 
         var f = fechamentos.fechar(hospital, dia, dia, "", "operador").fechamento();
         assertEquals(new BigDecimal("144.00"), f.total());
@@ -91,6 +97,6 @@ class PortalHospitalIntegracaoTest {
     }
 
     private static ProducaoService.Item item(String nr, long medico, long exame) {
-        return new ProducaoService.Item(null, nr, "", "Paciente " + nr, "", "", "", "Convenio", "", "", "", "", "", "", "", "", "MANUAL", false, medico, exame);
+        return new ProducaoService.Item(null, nr, "", "Paciente " + nr, "", "", "", "Convenio", "", "", "CART" + nr, "G" + nr, "S" + nr, "", "", "", "MANUAL", false, medico, exame);
     }
 }

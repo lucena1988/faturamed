@@ -17,6 +17,8 @@
   const proteger = fn => async (...a) => { try { await fn(...a); } catch (e) { msg(e.message, true); } };
   let atual = null; // conferencia aberta
   let filtro = 'pendentes';
+  let revelado = false;
+  const mascarar = v => { const s = String(v || ''); return s ? '•••• ' + esc(s.slice(-4)) : ''; };
   let salvoEm = null;
   const marcarSalvo = () => { salvoEm = new Date(); pintarSalvo(); };
   const pintarSalvo = () => {
@@ -49,6 +51,7 @@
     atual = await api(`/api/hospital-portal/fechamentos/${id}`);
     filtro = 'pendentes';
     salvoEm = null;
+    revelado = false;
     mostrar('conf');
     desenhar();
     scrollTo({top: 0, behavior: 'smooth'});
@@ -97,7 +100,7 @@
             : `<button type="button" class="text-button hp-contestar" data-contestar="${e.itemId}" data-nr="${esc(e.nrAtendimento)}">Contestar</button>`;
           return `<tr class="${contestada ? 'contestada' : ''} ${e.situacao === 'RETIRADA' ? 'retirada' : ''}"><td>${esc(e.nrAtendimento)}${motivo}</td>
             <td>${data(e.data)}<br><small>${esc(e.medico)}</small></td><td>${esc(e.paciente)}</td><td>${esc(e.exame)}</td>
-            <td>${esc(e.convenio)}${e.plano ? `<br><small>${esc(e.plano)}</small>` : ''}</td><td>${esc(e.carteirinha)}</td><td>${acao}</td></tr>`;
+            <td>${esc(e.convenio)}${e.plano ? `<br><small>${esc(e.plano)}</small>` : ''}</td><td>${(revelado ? esc(e.carteirinha) : mascarar(e.carteirinha))}</td><td>${acao}</td></tr>`;
         }).join('')}</tbody></table></div></details>`;
     }).join('');
     const conferidos = lotes.filter(l => l.conferidoEm).length;
@@ -160,6 +163,12 @@
     const b = e.target.closest('[data-filtro]'); if (!b) return;
     filtro = b.dataset.filtro; desenhar();
   });
+  $('#btn-revelar-dados').addEventListener('click', proteger(async () => {
+    if (!revelado) await api(`/api/hospital-portal/fechamentos/${atual.detalhe.fechamento.id}/revelar`, {method: 'POST'});
+    revelado = !revelado;
+    $('#btn-revelar-dados').textContent = revelado ? 'Ocultar carteirinhas' : 'Mostrar carteirinhas';
+    desenhar();
+  }));
   $('#btn-conferir-todos').addEventListener('click', proteger(async () => {
     const faltam = atual.lotes.filter(l => !l.conferidoEm).length;
     const ok = await fmUi.confirmar({titulo: `Marcar ${faltam} lote(s) como conferidos?`,
