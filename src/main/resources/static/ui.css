@@ -273,3 +273,5 @@ main .topbar > .session-actions > a { text-decoration: none; }
 
 .fm-status.vermelho { background: #fbe4e6; color: #8e2430; }
 :root[data-theme="dark"] .fm-status.vermelho { background: rgba(220,120,130,.2); color: #f0b9bf; }
+
+.fm-acessos-titulo { margin: 16px 0 8px; font-size: .9rem; color: var(--muted); }

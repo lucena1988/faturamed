@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProducaoController {
     private static final Set<String> TIPOS_IMAGEM = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
     private final ProducaoService service;
+    @org.springframework.beans.factory.annotation.Autowired private RegistroAcesso acessos;
     private final ExtratorEtiquetasOcr ocr;
     private final HistoricoProducao historico;
     public ProducaoController(ProducaoService service, ExtratorEtiquetasOcr ocr, HistoricoProducao historico) {
@@ -28,7 +29,27 @@ public class ProducaoController {
             @RequestParam(required = false) String status) {
         return service.listar(de, ate, hospitalId, medicoId, status);
     }
-    @GetMapping("/lotes/{id}") public ProducaoService.Lote buscar(@PathVariable long id) { return service.buscar(id); }
+    @GetMapping("/lotes/{id}") public ProducaoService.Lote buscar(@PathVariable long id) {
+        var lote = service.buscar(id);
+        acessos.registrar("ABRIU_LOTE", "LOTE", id, lote.itens().size() + " etiqueta(s)");
+        return lote;
+    }
+
+    /** O usuario pediu para ver carteirinha, guia e senha sem mascara. */
+    public record Revelar(String entidade, Long id) {}
+    @PostMapping("/acessos/revelar") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revelar(@RequestBody Revelar r) {
+        String e = r.entidade() == null ? "" : r.entidade().toUpperCase(Locale.ROOT);
+        if (!Set.of("LOTE", "FECHAMENTO").contains(e)) throw new IllegalArgumentException("Entidade invalida");
+        acessos.registrar("REVELOU_DADOS", e, r.id(), "Exibiu carteirinha, guia e senha sem máscara");
+    }
+
+    @GetMapping("/acessos/{entidade}/{id}")
+    public List<RegistroAcesso.Acesso> acessos(@PathVariable String entidade, @PathVariable long id) {
+        String e = entidade.toUpperCase(Locale.ROOT);
+        if (!Set.of("LOTE", "FECHAMENTO").contains(e)) throw new IllegalArgumentException("Entidade invalida");
+        return acessos.listar(e, id);
+    }
     @PostMapping("/lotes") @ResponseStatus(HttpStatus.CREATED)
     public ProducaoService.Lote criar(@Valid @RequestBody ProducaoService.Salvar dados, Principal p) { return service.salvar(null, dados, nome(p)); }
     @PutMapping("/lotes/{id}")
@@ -44,6 +65,7 @@ public class ProducaoController {
     }
     @GetMapping("/lotes/{id}/foto")
     public ResponseEntity<byte[]> foto(@PathVariable long id) {
+        acessos.registrar("VIU_FOTO", "LOTE", id, "Foto da folha");
         Map<String, Object> f = service.foto(id);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType((String) f.get("foto_tipo"))).body((byte[]) f.get("foto"));
     }

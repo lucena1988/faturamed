@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 public class FechamentoProducaoController {
     private static String nome(Principal p) { return p == null ? null : p.getName(); }
     private final FechamentoProducaoService service;
+    @org.springframework.beans.factory.annotation.Autowired private RegistroAcesso acessos;
     @org.springframework.beans.factory.annotation.Autowired private PainelProducaoService painel;
 
     @GetMapping("/painel") public PainelProducaoService.Painel painel(@RequestParam(required = false) Long hospitalId) { return painel.painel(hospitalId); }
@@ -45,7 +46,10 @@ public class FechamentoProducaoController {
         if (n.hospitalId() == null || n.inicio() == null || n.fim() == null) throw new IllegalArgumentException("Informe hospital e periodo");
         return service.fechar(n.hospitalId(), n.inicio(), n.fim(), n.observacao(), p == null ? null : p.getName());
     }
-    @GetMapping("/fechamentos/{id}") public FechamentoProducaoService.Detalhe detalhe(@PathVariable long id) { return service.detalhe(id); }
+    @GetMapping("/fechamentos/{id}") public FechamentoProducaoService.Detalhe detalhe(@PathVariable long id) {
+        acessos.registrar("ABRIU_FECHAMENTO", "FECHAMENTO", id, "");
+        return service.detalhe(id);
+    }
     @PostMapping("/fechamentos/{id}/aprovar")
     public FechamentoProducaoService.Detalhe aprovar(@PathVariable long id, @RequestBody Aprovacao a, Principal p) { return service.aprovar(id, a.aprovadoPor(), a.data(), nome(p)); }
     @PostMapping("/fechamentos/{id}/nf")
@@ -69,7 +73,10 @@ public class FechamentoProducaoController {
     }
 
     @GetMapping("/fechamentos/{id}/nf/arquivo")
-    public ResponseEntity<byte[]> baixarNf(@PathVariable long id) { return arquivoNf(service.nfArquivo(id)); }
+    public ResponseEntity<byte[]> baixarNf(@PathVariable long id) {
+        acessos.registrar("BAIXOU_NF", "FECHAMENTO", id, "");
+        return arquivoNf(service.nfArquivo(id));
+    }
 
     static ResponseEntity<byte[]> arquivoNf(Map<String, Object> a) {
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename((String) a.get("nf_arquivo_nome")).build().toString())
@@ -78,6 +85,7 @@ public class FechamentoProducaoController {
 
     @GetMapping("/fechamentos/{id}/planilha")
     public ResponseEntity<byte[]> planilha(@PathVariable long id) {
+        acessos.registrar("BAIXOU_PLANILHA", "FECHAMENTO", id, "Planilha com dados das etiquetas");
         var d = service.detalhe(id);
         String nome = "producao-" + d.fechamento().hospital().replaceAll("[^A-Za-z0-9]+", "-").toLowerCase(Locale.ROOT)
                 + "-" + d.fechamento().dataInicio() + "-a-" + d.fechamento().dataFim() + ".xlsx";
