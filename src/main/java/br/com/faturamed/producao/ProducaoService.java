@@ -18,7 +18,7 @@ public class ProducaoService {
     public static final Set<String> STATUS = Set.of("RASCUNHO", "CONFERIDO", "ENVIADO");
 
     public record Resumo(long id, long hospitalId, String hospital, String medicos, String exames, LocalDate dataProducao,
-            String periodo, String status, int itens, int pendentes, boolean temFoto) {}
+            String periodo, String status, int itens, int pendentes, boolean temFoto, Long fechamentoId) {}
     public record Lote(long id, long hospitalId, String hospital, List<Long> medicoIds, List<Long> exameIds, LocalDate dataProducao,
             String periodo, String tipoAgenda, String auxiliar, String observacao, String status, boolean temFoto,
             long versao, List<Item> itens) {}
@@ -53,18 +53,25 @@ public class ProducaoService {
 
     @Transactional(readOnly = true)
     public List<Resumo> listar(LocalDate de, LocalDate ate, Long hospitalId, Long medicoId, String status) {
+        return listar(de, ate, hospitalId, medicoId, null, status);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Resumo> listar(LocalDate de, LocalDate ate, Long hospitalId, Long medicoId, Long exameId, String status) {
         StringBuilder sql = new StringBuilder(SELECT_LOTE).append(" where 1=1");
         List<Object> args = new ArrayList<>();
         if (de != null) { sql.append(" and l.data_producao>=?"); args.add(de); }
         if (ate != null) { sql.append(" and l.data_producao<=?"); args.add(ate); }
         if (hospitalId != null) { sql.append(" and l.hospital_id=?"); args.add(hospitalId); }
         if (medicoId != null) { sql.append(" and exists(select 1 from producao_lote_medico lm where lm.lote_id=l.id and lm.medico_id=?)"); args.add(medicoId); }
+        // exame: lote que tem o exame na folha ou em alguma etiqueta
+        if (exameId != null) { sql.append(" and (exists(select 1 from producao_lote_exame le where le.lote_id=l.id and le.exame_id=?) or exists(select 1 from producao_item i where i.lote_id=l.id and i.exame_id=?))"); args.add(exameId); args.add(exameId); }
         if (status != null && !status.isBlank()) { sql.append(" and l.status=?"); args.add(status); }
         sql.append(" order by l.data_producao desc, l.id desc limit 500");
         return jdbc.query(sql.toString(), (r, n) -> new Resumo(r.getLong("id"), r.getLong("hospital_id"), r.getString("hospital"),
                 Objects.toString(r.getString("medicos"), ""), Objects.toString(r.getString("exames"), ""),
                 r.getObject("data_producao", LocalDate.class), r.getString("periodo"), r.getString("status"),
-                r.getInt("itens"), r.getInt("pendentes"), r.getBoolean("tem_foto")), args.toArray());
+                r.getInt("itens"), r.getInt("pendentes"), r.getBoolean("tem_foto"), (Long) r.getObject("fechamento_id", Long.class)), args.toArray());
     }
 
     @Transactional(readOnly = true)

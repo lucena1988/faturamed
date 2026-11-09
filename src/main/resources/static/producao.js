@@ -33,6 +33,7 @@
     const [hospitais, listaMedicos, listaExames] = await Promise.all([api('/api/hospitais'), api('/api/medicos'), api('/api/producao/exames')]);
     medicos = listaMedicos.filter(m => m.ativo !== false);
     exames = listaExames.filter(e => e.ativo !== false);
+    $('#filtro-exame').insertAdjacentHTML('beforeend', exames.map(e => `<option value="${Number(e.id)}">${esc(e.nome)}</option>`).join(''));
     const opts = lista => lista.filter(x => x.ativo !== false).map(x => `<option value="${x.id}">${esc(x.nome)}</option>`).join('');
     document.querySelectorAll('[data-hospitais]').forEach(s => s.insertAdjacentHTML('beforeend', opts(hospitais)));
     document.querySelectorAll('[data-medicos]').forEach(s => s.insertAdjacentHTML('beforeend', opts(medicos)));
@@ -71,14 +72,18 @@
 
   async function listar() {
     const p = new URLSearchParams([...new FormData($('#filtros'))].filter(([, v]) => v));
-    $('#lotes').innerHTML = fmUi.esqueleto(8, 3);
+    $('#lotes').innerHTML = fmUi.esqueleto(10, 3);
+    selecionados.clear(); atualizarSelecao();
     const lotes = await api('/api/producao/lotes?' + p);
     renderCards(lotes, p.toString() !== '');
+    lotesAtuais = lotes;
     $('#lotes').innerHTML = lotes.length ? lotes.map(l => `<tr data-id="${l.id}" tabindex="0">
+      <td class="pl-sel">${l.status === 'CONFERIDO' ? `<input type="checkbox" data-sel="${l.id}" aria-label="Selecionar lote de ${new Date(l.dataProducao + 'T00:00').toLocaleDateString('pt-BR')}">` : ''}</td>
       <td>${new Date(l.dataProducao + 'T00:00').toLocaleDateString('pt-BR')}</td><td>${PERIODOS[l.periodo] || l.periodo}</td>
       <td>${esc(l.hospital)}</td><td>${window.fmTatil ? fmTatil.pessoas(l.medicos) : esc(l.medicos)}</td><td>${esc(l.exames)}</td><td class="fm-num">${l.itens}</td>
-      <td class="fm-num">${l.pendentes ? fmUi.status(l.pendentes, 'ambar') : '0'}</td><td>${fmUi.status(STATUS[l.status], COR_STATUS[l.status])}</td></tr>`).join('')
-      : fmUi.vazio(8, p.toString()
+      <td class="fm-num">${l.pendentes ? fmUi.status(l.pendentes, 'ambar') : '0'}</td><td>${fmUi.status(STATUS[l.status], COR_STATUS[l.status])}</td>
+      <td>${l.status === 'ENVIADO' && l.fechamentoId ? `<a class="secondary-button pl-planilha" href="/api/producao/fechamentos/${Number(l.fechamentoId)}/planilha" title="Planilha do fechamento nº ${Number(l.fechamentoId)}">Planilha</a>` : ''}</td></tr>`).join('')
+      : fmUi.vazio(10, p.toString()
         ? {titulo: 'Nenhum lote com esses filtros', texto: 'Ajuste o período, hospital ou status.', icone: 'busca'}
         : {titulo: 'Nenhum lote lançado ainda', texto: 'Lance o primeiro lote com as etiquetas recebidas do hospital.', acao: '<button type="button" class="primary-button" data-novo-lote>+ Novo lote</button>'});
   }
@@ -432,6 +437,24 @@
     aplicar();
   }
 
+  // ---------- envio de varios lotes de uma vez ----------
+  let lotesAtuais = [];
+  const selecionados = new Set();
+  function atualizarSelecao() {
+    const escolhidos = lotesAtuais.filter(l => selecionados.has(l.id));
+    const hospitais = new Set(escolhidos.map(l => l.hospitalId));
+    const etiquetas = escolhidos.reduce((t, l) => t + l.itens, 0);
+    $('#barra-envio').hidden = !escolhidos.length;
+    $('#sel-resumo').innerHTML = escolhidos.length
+      ? `<b>${escolhidos.length}</b> lote(s) · ${etiquetas} etiqueta(s)${hospitais.size > 1 ? ' · <span class="pl-aviso">hospitais diferentes: envie um hospital por vez</span>' : ` · ${esc(escolhidos[0].hospital)}`}`
+      : '';
+    $('#btn-enviar-sel').disabled = hospitais.size !== 1;
+    const conferidos = lotesAtuais.filter(l => l.status === 'CONFERIDO');
+    $('#sel-todos').checked = conferidos.length > 0 && conferidos.every(l => selecionados.has(l.id));
+    $('#sel-todos').indeterminate = escolhidos.length > 0 && !$('#sel-todos').checked;
+    document.querySelectorAll('#lotes tr[data-id]').forEach(tr => tr.classList.toggle('pl-marcado', selecionados.has(+tr.dataset.id)));
+  }
+
   const proteger = fn => async (...a) => { try { await fn(...a); } catch (e) { msg(e.message, true); } };
 
   ligarMulti($('#sel-medicos'), selMedicos, renderMedicos);
@@ -439,7 +462,10 @@
   $('#btn-novo-exame').addEventListener('click', proteger(adicionarExame));
   $('#novo-exame').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); proteger(adicionarExame)(); } });
   $('#filtros').addEventListener('submit', proteger(async e => { e.preventDefault(); await listar(); }));
-  $('#lotes').addEventListener('click', proteger(async e => { const tr = e.target.closest('tr[data-id]'); if (tr) await abrir(+tr.dataset.id); }));
+  $('#lotes').addEventListener('click', proteger(async e => {
+    if (e.target.closest('.pl-sel, .pl-planilha')) return; // selecionar ou baixar planilha nao abre o lote
+    const tr = e.target.closest('tr[data-id]'); if (tr) await abrir(+tr.dataset.id);
+  }));
   $('#btn-novo').addEventListener('click', proteger(() => abrir(null)));
   $('#btn-voltar').addEventListener('click', proteger(async () => { if (!(await podeSair())) return; mostrar('lista'); await listar(); }));
   // qualquer edicao na folha marca alteracao nao salva
@@ -498,6 +524,35 @@
   $('#lotes').addEventListener('click', proteger(async e => { if (e.target.closest('[data-novo-lote]')) await abrir(null); }));
   $('#lotes').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('tr[data-id]')) e.target.click(); });
   configurarColunas();
+  $('#lotes').addEventListener('change', e => {
+    const c = e.target.closest('[data-sel]'); if (!c) return;
+    c.checked ? selecionados.add(+c.dataset.sel) : selecionados.delete(+c.dataset.sel);
+    atualizarSelecao();
+  });
+  $('#sel-todos').addEventListener('change', e => {
+    lotesAtuais.filter(l => l.status === 'CONFERIDO').forEach(l => e.target.checked ? selecionados.add(l.id) : selecionados.delete(l.id));
+    document.querySelectorAll('#lotes [data-sel]').forEach(c => { c.checked = selecionados.has(+c.dataset.sel); });
+    atualizarSelecao();
+  });
+  $('#btn-limpar-sel').addEventListener('click', () => {
+    selecionados.clear();
+    document.querySelectorAll('#lotes [data-sel]').forEach(c => { c.checked = false; });
+    atualizarSelecao();
+  });
+  $('#btn-enviar-sel').addEventListener('click', proteger(async () => {
+    const escolhidos = lotesAtuais.filter(l => selecionados.has(l.id));
+    const etiquetas = escolhidos.reduce((t, l) => t + l.itens, 0);
+    const ok = await fmUi.confirmar({titulo: `Enviar ${escolhidos.length} lote(s) ao hospital?`,
+      texto: `Será gerado um fechamento com ${etiquetas} etiqueta(s) para ${escolhidos[0].hospital}. Os lotes ficam bloqueados para edição e o hospital é avisado por e-mail.`,
+      confirmar: 'Gerar fechamento e enviar'});
+    if (!ok) return;
+    const fecharCubo = window.fmTatil?.carregando('Gerando o fechamento…');
+    let d;
+    try { d = await api('/api/producao/fechamentos/por-lotes', json('POST', {loteIds: escolhidos.map(l => l.id)})); } finally { fecharCubo?.(); }
+    msg(`Fechamento nº ${d.fechamento.id} gerado com ${escolhidos.length} lote(s), total ${Number(d.fechamento.total).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}.`);
+    window.fmTatil?.confete();
+    await listar();
+  }));
   $('#btn-revelar').addEventListener('click', proteger(async () => {
     if (!revelado && lote) await api('/api/producao/acessos/revelar', json('POST', {entidade: 'LOTE', id: lote.id}));
     revelado = !revelado;
@@ -510,8 +565,8 @@
     await carregarCadastros();
     const ocr = await api('/api/producao/ocr/status');
     const params = new URLSearchParams(location.search);
-    for (const k of ['status', 'hospitalId', 'medicoId']) if (params.get(k)) $('#filtros').elements[k].value = params.get(k);
-    if (['status', 'hospitalId', 'medicoId'].some(k => params.get(k))) await listar();
+    for (const k of ['status', 'hospitalId', 'medicoId', 'exameId']) if (/^[A-Z0-9_]{1,20}$/.test(params.get(k) || '')) $('#filtros').elements[k].value = params.get(k);
+    if (['status', 'hospitalId', 'medicoId', 'exameId'].some(k => params.get(k))) await listar();
     const folha = params.get('folha');
     if (folha) await abrir(+folha);
     if (!ocr.disponivel) $('#ocr-aviso').textContent = 'Leitura automática desligada: o Tesseract não está instalado no servidor. Lance as etiquetas manualmente.';

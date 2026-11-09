@@ -183,7 +183,34 @@ public class FechamentoProducaoService {
 
     @Transactional
     public Detalhe fechar(long hospitalId, LocalDate inicio, LocalDate fim, String observacao, String usuario) {
-        Previa p = previa(hospitalId, inicio, fim);
+        if (fim.isBefore(inicio)) throw new IllegalArgumentException("Data final antes da inicial");
+        return fecharItens(hospitalId, inicio, fim, itens(DISPONIVEIS, hospitalId, inicio, fim), observacao, usuario);
+    }
+
+    /** Envia de uma vez os lotes escolhidos na tela de lotes (todos do mesmo hospital). */
+    @Transactional
+    public Detalhe fecharLotes(List<Long> loteIds, String observacao, String usuario) {
+        List<Long> ids = loteIds == null ? List.of() : loteIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) throw new IllegalArgumentException("Selecione ao menos um lote");
+        String marcadores = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Map<String, Object>> lotes = jdbc.queryForList("select id, hospital_id, status, data_producao from producao_lote where id in (" + marcadores + ")", ids.toArray());
+        if (lotes.size() != ids.size()) throw new RecursoNaoEncontradoException("Lote nao encontrado");
+        Set<Long> hospitais = new HashSet<>();
+        for (var l : lotes) {
+            hospitais.add(((Number) l.get("hospital_id")).longValue());
+            if (!"CONFERIDO".equals(l.get("status"))) throw new IllegalArgumentException("Somente lotes conferidos podem ser enviados (lote " + l.get("id") + " está " + l.get("status") + ")");
+        }
+        if (hospitais.size() > 1) throw new IllegalArgumentException("Os lotes escolhidos são de hospitais diferentes. Envie um hospital por vez");
+        long hospitalId = hospitais.iterator().next();
+        LocalDate inicio = lotes.stream().map(l -> ((java.sql.Date) l.get("data_producao")).toLocalDate()).min(LocalDate::compareTo).orElseThrow();
+        LocalDate fim = lotes.stream().map(l -> ((java.sql.Date) l.get("data_producao")).toLocalDate()).max(LocalDate::compareTo).orElseThrow();
+        List<Object> args = new ArrayList<>(List.of(hospitalId, inicio, fim));
+        args.addAll(ids);
+        return fecharItens(hospitalId, inicio, fim, itens(DISPONIVEIS + " and l.id in (" + marcadores + ")", args.toArray()), observacao, usuario);
+    }
+
+    private Detalhe fecharItens(long hospitalId, LocalDate inicio, LocalDate fim, List<ItemLinha> incluidos, String observacao, String usuario) {
+        Previa p = calcular(hospitalId, inicio, fim, incluidos);
         if (p.etiquetas() == 0) throw new IllegalArgumentException("Nenhum lote conferido neste hospital e periodo");
         if (!p.semRegra().isEmpty())
             throw new IllegalArgumentException(p.semRegra().size() + " etiqueta(s) sem regra de valor ou sem medico. Ajuste antes de fechar");
@@ -194,7 +221,6 @@ public class FechamentoProducaoService {
             jdbc.update("""
                     insert into producao_fechamento_calculo(fechamento_id,lote_id,data_producao,periodo,medico_id,regra_id,descricao,exames,pontos,valor)
                     values(?,?,?,?,?,?,?,?,?,?)""", id, c.loteId(), c.data(), c.periodo(), c.medicoId(), c.regraId(), c.descricao(), c.exames(), c.pontos(), c.valor());
-        List<ItemLinha> incluidos = itens(DISPONIVEIS, hospitalId, inicio, fim);
         for (ItemLinha i : incluidos) jdbc.update("insert into producao_fechamento_item(fechamento_id,item_id) values(?,?)", id, i.itemId());
         jdbc.update("""
                 update producao_item set contestacao=null where contestacao='REINCLUIR'
