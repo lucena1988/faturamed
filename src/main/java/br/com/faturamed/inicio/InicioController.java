@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Resumo rapido de pendencias exibido na tela de inicio (inicio.html). */
@@ -17,7 +18,9 @@ public class InicioController {
     public InicioController(JdbcTemplate jdbc, RevisaoVisitasService revisoes) { this.jdbc = jdbc; this.revisoes = revisoes; }
 
     @GetMapping("/api/inicio/resumo")
-    public Map<String, Object> resumo() throws Exception {
+    public Map<String, Object> resumo(@RequestParam(required = false) Integer diasVisitas,
+            @RequestParam(defaultValue = "15") int diasProducao) throws Exception {
+        diasProducao = Math.max(1, Math.min(90, diasProducao));
         var r = new LinkedHashMap<String, Object>();
         // mesma regra do Dashboard: visitas nao pagas do relatorio mais recente (com revisoes aplicadas)
         List<Long> ultimo = jdbc.queryForList("select max(id) from conciliacao_visitas", Long.class);
@@ -33,6 +36,7 @@ public class InicioController {
         r.put("visitasAtencao", atencao);
         r.put("visitasDivergentes", divergentes);
         r.put("relatorioHospital", hospital);
+        if (diasVisitas != null) ciclo(r, Math.max(1, Math.min(90, diasVisitas)));
         r.put("chamadosAbertos", contar("select count(*) from chamado_suporte where status in ('ABERTO','EM_ATENDIMENTO','AGUARDANDO_USUARIO')"));
         r.put("chamadosBloqueados", contar("select count(*) from chamado_suporte where bloqueado and status in ('ABERTO','EM_ATENDIMENTO','AGUARDANDO_USUARIO')"));
         r.put("lotesPendentes", contar("select count(*) from producao_lote where status <> 'ENVIADO'"));
@@ -44,12 +48,30 @@ public class InicioController {
         r.put("chamadosPorStatus", agrupar("select status, count(*) from chamado_suporte group by status"));
         r.put("lotesPorDia", jdbc.queryForList("""
                 select to_char(d, 'DD/MM') as dia, count(l.id) as total
-                from generate_series(current_date - 13, current_date, interval '1 day') d
+                from generate_series(current_date - (? - 1), current_date, interval '1 day') d
                 left join producao_lote l on l.data_producao = d::date
-                group by d order by d"""));
+                group by d order by d""", diasProducao));
         return r;
     }
 
+
+    /** Ciclo das visitas somando as versoes atuais dos relatorios gerados nos ultimos N dias. */
+    private void ciclo(Map<String, Object> r, int dias) throws Exception {
+        long pagas = 0, divergentes = 0, outras = 0;
+        var ids = jdbc.queryForList("""
+                select c.id from conciliacao_visitas c
+                where c.criado_em >= current_date - (? - 1)
+                  and not exists (select 1 from conciliacao_visitas n where n.anterior_id = c.id)""", Long.class, dias);
+        for (long id : ids) for (var v : revisoes.carregar(id).atual().visitas()) {
+            if (v.status() == ConciliadorVisitas.Status.PAGA) pagas++;
+            else if (v.status() == ConciliadorVisitas.Status.DIVERGENTE) divergentes++;
+            else outras++;
+        }
+        r.put("visitasPagasPeriodo", pagas);
+        r.put("visitasDivergentesPeriodo", divergentes);
+        r.put("visitasPendentesPeriodo", outras);
+        r.put("relatoriosPeriodo", ids.size());
+    }
     private Map<String, Long> agrupar(String sql) {
         var m = new LinkedHashMap<String, Long>();
         jdbc.query(sql, rs -> { m.put(rs.getString(1), rs.getLong(2)); });

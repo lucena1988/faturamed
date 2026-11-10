@@ -55,13 +55,26 @@
       ['solicitacoes', 'Solicitações dos médicos', r.solicitacoesPendentes, 'solicitacoes-medicos.html', 'aguardando resposta', r.solicitacoesPendentes ? 1 : 0, false]
     ];
     $('#inicio-kpis').innerHTML = cards.map(([tipo, titulo, n, href, detalhe, fracao, alerta], i) => {
-      const c = 2 * Math.PI * 20, parte = Math.max(0, Math.min(1, fracao)) * c;
+
       return `<a class="ini-kpi${alerta ? ' alerta' : ''}" data-tipo="${tipo}" href="${href}" style="--i:${i}">
         <span class="ini-kpi-icone" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES[tipo]}</svg></span>
         <span class="ini-kpi-corpo"><span class="ini-kpi-titulo">${esc(titulo)}</span><strong data-contar="${Number(n || 0)}">0</strong><small>${esc(detalhe)}</small></span>
-        <svg class="ini-kpi-anel" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20"/><circle class="v" cx="24" cy="24" r="20" stroke-dasharray="${parte.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 24 24)"/></svg>
+        ${tipo === 'lotes' ? sparkline(r.lotesPorDia || []) : selo(tipo, n, alerta || (tipo === 'visitas' && r.visitasDivergentes > 0))}
       </a>`;
     }).join('');
+  }
+
+  function selo(tipo, n, critico) {
+    if (!Number(n)) return '<span class="ini-selo ok" title="Nada pendente">Em dia</span>';
+    return `<span class="ini-selo ${critico ? 'critico' : 'pendente'}">${critico ? 'Ação necessária' : 'Pendente'}</span>`;
+  }
+
+  function sparkline(dias) {
+    const v = dias.slice(-7).map(d => Number(d.total) || 0);
+    if (v.length < 2) return '';
+    const max = Math.max(1, ...v), w = 64, h = 28, x = i => (i / (v.length - 1) * w).toFixed(1), y = n => (h - 3 - n / max * (h - 6)).toFixed(1);
+    const d = v.map((n, i) => `${i ? 'L' : 'M'}${x(i)},${y(n)}`).join('');
+    return `<span class="ini-spark" title="Lotes por dia nos últimos 7 dias"><svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}"/><circle cx="${x(v.length - 1)}" cy="${y(v[v.length - 1])}" r="2.6"/></svg><small>7 dias</small></span>`;
   }
 
   function donut(r) {
@@ -74,32 +87,37 @@
       const tam = v / total * c, arco = `<circle cx="70" cy="70" r="54" style="stroke:${cor}" stroke-dasharray="${tam.toFixed(2)} ${(c - tam).toFixed(2)}" stroke-dashoffset="${(-acumulado).toFixed(2)}"/>`;
       acumulado += tam; return v ? arco : '';
     }).join('');
-    const pct = Math.round((r.visitasPagas || 0) / total * 100);
-    $('#inicio-donut').innerHTML = `<svg viewBox="0 0 140 140" role="img" aria-label="${pct}% das visitas pagas"><circle class="trilho" cx="70" cy="70" r="54"/><g transform="rotate(-90 70 70)">${arcos}</g>
-      <text x="70" y="68" class="centro">${pct}%</text><text x="70" y="86" class="legenda">pagas</text></svg>
-      <ul>${partes.map(([nome, v, cor]) => `<li><i style="background:${cor}"></i>${nome}<b>${num(v)}</b></li>`).join('')}</ul>`;
+    const pct = Math.round((r.visitasPagas || 0) / total * 100), div = r.visitasDivergentes || 0;
+    const [valor, rotulo] = div ? [num(div), div === 1 ? 'divergente' : 'divergentes'] : [`${pct}%`, 'pagas'];
+    $('#inicio-donut').innerHTML = `<svg viewBox="0 0 140 140" role="img" aria-label="${valor} ${rotulo}"><circle class="trilho" cx="70" cy="70" r="54"/><g transform="rotate(-90 70 70)">${arcos}</g>
+      <text x="70" y="70" class="centro${div ? ' alerta' : ''}">${valor}</text><text x="70" y="88" class="legenda">${rotulo}</text></svg>
+      <ul>${partes.map(([nome, v, cor]) => `<li><i style="background:${cor}"></i>${nome}<b>${num(v)}</b></li>`).join('')}</ul>
+      <p class="ini-donut-rodape">${pct}% pagas de ${num(total)} visitas${div ? ' · <a href="index.html#dashboard">Revisar divergências →</a>' : ''}</p>`;
   }
 
   function area(r) {
     const dias = r.lotesPorDia || [];
     if (!dias.length) { $('#inicio-area').innerHTML = '<p class="ini-vazio">Sem dados de produção.</p>'; return; }
-    const L = 560, A = 190, mx = 12, topo = 16, base = A - 26, max = Math.max(1, ...dias.map(d => Number(d.total)));
-    const x = i => mx + i * (L - 2 * mx) / Math.max(1, dias.length - 1), y = v => base - v / max * (base - topo);
-    const pts = dias.map((d, i) => [x(i), y(Number(d.total))]);
-    // curva suave entre os pontos
-    const linha = pts.map(([px, py], i) => {
-      if (!i) return `M${px.toFixed(1)},${py.toFixed(1)}`;
-      const [ax, ay] = pts[i - 1], m = (ax + px) / 2;
-      return `C${m.toFixed(1)},${ay.toFixed(1)} ${m.toFixed(1)},${py.toFixed(1)} ${px.toFixed(1)},${py.toFixed(1)}`;
-    }).join(' ');
-    const total = dias.reduce((a, d) => a + Number(d.total), 0);
-    $('#inicio-area').innerHTML = `<svg viewBox="0 0 ${L} ${A}" role="img" aria-label="${total} lotes em 14 dias">
-      <defs><linearGradient id="ini-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient></defs>
-      ${[0, .5, 1].map(f => `<line class="grade" x1="${mx}" x2="${L - mx}" y1="${y(max * f)}" y2="${y(max * f)}"/>`).join('')}
-      <path class="preenchimento" d="${linha} L${pts[pts.length - 1][0]},${base} L${pts[0][0]},${base} Z"/><path class="linha" d="${linha}"/>
-      ${pts.map(([px, py], i) => `<circle class="ponto" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5"><title>${esc(dias[i].dia)}: ${num(dias[i].total)} lote(s)</title></circle>`).join('')}
-      ${dias.map((d, i) => i % 2 ? '' : `<text class="eixo" x="${x(i).toFixed(1)}" y="${A - 6}">${esc(d.dia)}</text>`).join('')}
-    </svg><p class="ini-area-total"><b>${num(total)}</b> lotes no período · pico de <b>${num(max)}</b> em um dia</p>`;
+    const v = dias.map(d => Number(d.total) || 0), max = Math.max(1, ...v), total = v.reduce((a, b) => a + b, 0), media = total / v.length;
+    $('#inicio-area').innerHTML = `<div class="ini-barras" role="img" aria-label="${total} lotes em ${v.length} dias" style="--media:${(media / max).toFixed(3)}">
+      <span class="ini-media" title="Média do período"><em>média ${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</em></span>
+      ${dias.map((d, i) => `<div class="ini-barra${v[i] === max && v[i] ? ' pico' : ''}${v[i] ? '' : ' zero'}" style="--h:${(v[i] / max * 100).toFixed(1)}%;--i:${i}" title="${esc(d.dia)}: ${num(v[i])} lote(s)">
+        <b>${v[i] ? num(v[i]) : ''}</b><span></span><small>${esc(d.dia)}</small></div>`).join('')}
+    </div><p class="ini-area-total"><b>${num(total)}</b> lotes no período · pico de <b>${num(max)}</b> em um dia · média de <b>${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</b> por dia</p>`;
+  }
+
+  async function aplicarPeriodo(base) {
+    const dp = $('#inicio-dias-producao').value, dv = $('#inicio-dias-visitas').value;
+    const r = await FaturamedAuth.request(`/api/inicio/resumo?diasProducao=${dp}${dv ? `&diasVisitas=${dv}` : ''}`);
+    $('#inicio-area-titulo').textContent = `Produção nos últimos ${dp} dias`;
+    area(r);
+    if (dv) {
+      donut({visitasPagas: r.visitasPagasPeriodo, visitasPendentes: r.visitasPendentesPeriodo, visitasDivergentes: r.visitasDivergentesPeriodo,
+        visitasAtencao: r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo});
+      $('#inicio-ciclo-sub').textContent = `Últimos ${dv} dias · ${num(r.relatoriosPeriodo)} relatório(s)`;
+    } else donut(base);
+    if (dv && !(r.visitasPagasPeriodo + r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo))
+      $('#inicio-donut').innerHTML = `<p class="ini-vazio">Nenhum relatório de conciliação nos últimos ${dv} dias.</p>`;
   }
 
   function barras(alvo, dados, etapas) {
@@ -121,19 +139,70 @@
     }).join('');
   }
 
+  // ordem dos cards escolhida pelo usuário (arrastar e soltar), guardada neste navegador
+  const GRUPOS = [['#inicio-kpis', 'data-tipo'], ['.ini-graficos', 'data-card'], ['#inicio-modulos', 'data-modulo']];
+  let usuarioOrdem = 'anonimo';
+  const chaveOrdem = sel => `fm-inicio-ordem:${usuarioOrdem}:${sel}`;
+  function lerOrdem(sel) { try { return JSON.parse(localStorage.getItem(chaveOrdem(sel)) || 'null'); } catch (_) { return null; } }
+  function gravarOrdem(sel, ordem) { try { ordem ? localStorage.setItem(chaveOrdem(sel), JSON.stringify(ordem)) : localStorage.removeItem(chaveOrdem(sel)); } catch (_) {} }
+  function atualizarRestaurar() { $('#inicio-restaurar').hidden = !GRUPOS.some(([sel]) => lerOrdem(sel)); }
+
+  function ordenavel(sel, attr) {
+    const box = $(sel); if (!box) return;
+    const itens = () => [...box.children].filter(el => el.hasAttribute(attr));
+    if (!itens().length) return;
+    if (!box.dataset.padrao) box.dataset.padrao = JSON.stringify(itens().map(el => el.getAttribute(attr)));
+    const salva = lerOrdem(sel);
+    if (salva) salva.forEach(id => { const el = itens().find(e => e.getAttribute(attr) === id); if (el) box.append(el); });
+    itens().forEach(el => { el.draggable = true; el.classList.add('ini-arrastavel'); });
+    if (box.dataset.ordenavel) return;
+    box.dataset.ordenavel = '1';
+    let arrastando = null, moveu = false;
+    box.addEventListener('dragstart', e => {
+      arrastando = e.target.closest(`[${attr}]`); if (!arrastando || arrastando.parentElement !== box) return;
+      if (e.target.closest('select, input, button')) { e.preventDefault(); return; }
+      moveu = false; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', arrastando.getAttribute(attr));
+      requestAnimationFrame(() => arrastando && arrastando.classList.add('arrastando')); box.classList.add('ordenando');
+    });
+    box.addEventListener('dragover', e => {
+      if (!arrastando) return; e.preventDefault();
+      const alvo = e.target.closest(`[${attr}]`);
+      if (!alvo || alvo === arrastando || alvo.parentElement !== box) return;
+      const r = alvo.getBoundingClientRect(), depois = (e.clientY - r.top) / r.height > .5 || (e.clientX - r.left) / r.width > .5;
+      box.insertBefore(arrastando, depois ? alvo.nextSibling : alvo); moveu = true;
+    });
+    box.addEventListener('drop', e => e.preventDefault());
+    box.addEventListener('dragend', () => {
+      if (!arrastando) return;
+      arrastando.classList.remove('arrastando'); box.classList.remove('ordenando'); arrastando = null;
+      const ordem = itens().map(el => el.getAttribute(attr));
+      gravarOrdem(sel, JSON.stringify(ordem) === box.dataset.padrao ? null : ordem); atualizarRestaurar();
+    });
+    box.addEventListener('click', e => { if (moveu) { e.preventDefault(); moveu = false; } }, true);
+  }
+  function aplicarOrdens() { GRUPOS.forEach(([sel, attr]) => ordenavel(sel, attr)); atualizarRestaurar(); }
+  $('#inicio-restaurar').addEventListener('click', () => {
+    GRUPOS.forEach(([sel, attr]) => {
+      gravarOrdem(sel, null); const box = $(sel); if (!box || !box.dataset.padrao) return;
+      JSON.parse(box.dataset.padrao).forEach(id => { const el = box.querySelector(`:scope > [${attr}="${id}"]`); if (el) box.append(el); });
+    });
+    atualizarRestaurar();
+  });
+
   async function carregar() {
     let perfil = null;
     try {
       const eu = await FaturamedAuth.request('/api/auth/me');
-      perfil = eu.perfil;
+      perfil = eu.perfil; usuarioOrdem = String(eu.id || eu.email || eu.login || eu.nome || 'anonimo');
       const nome = (eu.nome || '').trim().split(/\s+/)[0];
       $('#inicio-saudacao').textContent = nome ? `${periodo}, ${nome}` : periodo;
       $('#inicio-perfil').textContent = PERFIS[perfil] || perfil || '';
     } catch (_) { $('#inicio-saudacao').textContent = periodo; }
-    modulos(perfil);
+    modulos(perfil); aplicarOrdens();
     try {
       const r = await FaturamedAuth.request('/api/inicio/resumo');
-      kpis(r); donut(r); area(r);
+      kpis(r); donut(r); area(r); aplicarOrdens();
+      ['#inicio-dias-producao', '#inicio-dias-visitas'].forEach(s => $(s).addEventListener('change', () => aplicarPeriodo(r).catch(() => {})));
       barras('#inicio-esteira', r.lotesPorStatus || {}, [['RASCUNHO', 'Rascunho', 'var(--amber)'], ['CONFERIDO', 'Conferido', 'var(--blue)'], ['ENVIADO', 'Enviado', 'var(--green)']]);
       barras('#inicio-chamados', r.chamadosPorStatus || {}, [['ABERTO', 'Abertos', 'var(--rose)'], ['EM_ATENDIMENTO', 'Em atendimento', 'var(--amber)'], ['AGUARDANDO_USUARIO', 'Aguardando', 'var(--blue)'], ['RESOLVIDO', 'Resolvidos', 'var(--green)'], ['FECHADO', 'Fechados', 'var(--muted)']]);
       const pend = (r.visitasAtencao || 0) + (r.chamadosAbertos || 0) + (r.lotesPendentes || 0) + (r.solicitacoesPendentes || 0);
