@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Início | FaturaMed</title>
+  <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
+  <link rel="stylesheet" href="identidade.css?v=20261103-tema">
+  <link rel="stylesheet" href="tema.css?v=20261103-sino">
+  <link rel="stylesheet" href="inicio.css?v=20261110-5">
+  <script src="tema.js?v=20261009-1"></script>
+</head>
+<body>
+  <main class="inicio">
+    <header class="conciliation-heading ini-topo"><div><a class="company-name" href="inicio.html">FaturaMed</a><h1>Início</h1></div><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+    <section class="ini-hero" aria-labelledby="inicio-saudacao">
+      <div class="ini-hero-grade" aria-hidden="true"></div>
+      <div class="ini-hero-texto">
+        <p class="ini-hero-meta"><span class="ini-online"><i></i>Sistema online</span><span id="inicio-data"></span></p>
+        <h2 id="inicio-saudacao">Olá!</h2>
+        <p class="ini-hero-sub"><span class="ini-perfil" id="inicio-perfil"></span><span id="inicio-frase">Central de comando do faturamento.</span></p>
+      </div>
+      <div class="ini-hero-lado">
+        <div class="ini-relogio" id="inicio-relogio" aria-hidden="true">--:--</div>
+        <a class="ini-botao" href="index.html#dashboard">Abrir Dashboard <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <p id="inicio-msg" role="status" aria-live="polite"></p>
+    <section class="ini-kpis" id="inicio-kpis" aria-label="Pendências"></section>
+
+    <section class="ini-graficos" aria-label="Indicadores">
+      <article class="ini-painel">
+        <div class="ini-cab"><h2>Ciclo das visitas</h2><small id="inicio-ciclo-sub">Último relatório</small></div>
+        <div class="ini-donut" id="inicio-donut"></div>
+      </article>
+      <article class="ini-painel ini-painel-largo">
+        <div class="ini-cab"><h2>Produção nos últimos 14 dias</h2><small>Lotes por data de produção</small></div>
+        <div class="ini-area" id="inicio-area"></div>
+      </article>
+      <article class="ini-painel">
+        <div class="ini-cab"><h2>Esteira de lotes</h2><small>Do rascunho ao envio</small></div>
+        <div id="inicio-esteira"></div>
+        <div class="ini-cab ini-sub-header"><h2>Service Desk</h2><small>Chamados por situação</small></div>
+        <div id="inicio-chamados"></div>
+      </article>
+    </section>
+
+    <section aria-labelledby="inicio-mod-titulo">
+      <h2 class="ini-titulo" id="inicio-mod-titulo">Módulos</h2>
+      <div class="ini-modulos" id="inicio-modulos"></div>
+    </section>
+  </main>
+  <script src="sidebar.js?v=20261110-avisos"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
+  <script src="inicio.js?v=20261110-2"></script>
+</body>
+</html>

@@ -22,6 +22,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Configuration
 @EnableWebSecurity
 public class SegurancaConfig {
+    /** Pagina inicial da equipe interna apos o login (null para perfis com portal proprio). */
+    public static String destinoInterno(String perfil) {
+        return switch (perfil) { case "ADMIN", "OPERADOR", "DEV" -> "/inicio.html"; default -> null; };
+    }
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
     @Bean SecurityFilterChain security(HttpSecurity http, UsuarioService users, br.com.faturamed.conciliacao.MedicoCadastroService medicos) throws Exception {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
@@ -63,8 +67,7 @@ public class SegurancaConfig {
                 .successHandler((request,response,authentication) -> {
                     var user=(UsuarioAutenticado)Objects.requireNonNull(authentication.getPrincipal()); users.sucesso(user.id());
                     String destino = switch (user.perfil()) {
-                        case "ADMIN", "OPERADOR" -> "/";
-                        case "DEV" -> "/chamados.html";
+                        case "ADMIN", "OPERADOR", "DEV" -> destinoInterno(user.perfil());
                         case "EMPRESA" -> "/empresa.html";
                         case "HOSPITAL" -> "/hospital.html";
                         case "MEDICO" -> medicos.cadastroCompleto(user.medicoId()) ? "/portal.html" : "/completar-cadastro.html";

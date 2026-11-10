@@ -35,10 +35,8 @@
         if (externo) {
           document.querySelectorAll('a[href="usuarios.html"],a[href="/usuarios.html"]').forEach(link=>link.remove());
         }
-        if (!externo) {
-          const hdCss=document.createElement('link');hdCss.rel='stylesheet';hdCss.href='/chamados-widget.css?v=20261027-avisos';document.head.append(hdCss);
-          const hdScript=document.createElement('script');hdScript.src='/chamados-widget.js?v=20261027-avisos';document.body.append(hdScript);
-        } else {
+        // botao flutuante do Service Desk desativado: a equipe usa o item Central de chamados do menu
+        if (externo) {
           document.querySelectorAll('a[href="chamados.html"],a[href="/chamados.html"]').forEach(link=>link.remove());
         }
       }).catch(()=>{});
