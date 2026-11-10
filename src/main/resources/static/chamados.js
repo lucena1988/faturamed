@@ -125,7 +125,7 @@
       }
 
       for (const c of items) {
-        const card = el('article', `sd-card sla-${c.slaStatus.toLowerCase()}`);
+        const card = el('article', `sd-card sla-${c.slaStatus.toLowerCase()}${c.bloqueado ? ' st-block' : ''}`);
         card.draggable = tecnico();
         card.dataset.id = c.id;
         card.addEventListener('dragstart', e => {
@@ -137,6 +137,7 @@
           el('span', 'sd-protocol-tag', c.protocolo),
           el('span', `sd-pill sla-${c.slaStatus.toLowerCase()}`, formatSlaText(c))
         );
+if (c.bloqueado) top.append(el('span', 'sd-pill sd-pill-block', '⛔ Status: Bloqueado'));
 
         const title = el('h3', 'sd-card-title', c.titulo);
 
@@ -221,6 +222,10 @@
       titulo: 'Chamados Aguardando Retorno',
       desc: 'Demandas que aguardam retorno, informações ou validação do solicitante'
     },
+    BLOQUEADOS: {
+      titulo: 'Chamados Bloqueados',
+      desc: 'Protocolos impedidos por dependência ou bloqueio, exibidos em vermelho na coluna de origem'
+    },
     SLA_VENCIDO: {
       titulo: 'Chamados com SLA Vencido',
       desc: 'Protocolos que ultrapassaram o tempo limite de atendimento e requerem priorização urgente'
@@ -302,6 +307,7 @@
 
         const tdStatus = el('td');
         tdStatus.append(el('span', 'sd-pill', STATUS_LABELS[c.status] || c.status));
+        if (c.bloqueado) tdStatus.append(' ', el('span', 'sd-pill sd-pill-block', 'Bloqueado'));
 
         const tdSla = el('td');
         tdSla.append(el('span', `sd-pill sla-${c.slaStatus.toLowerCase()}`, formatSlaText(c)));
@@ -529,7 +535,7 @@
 
     if (!tecnico()) {
       const acompanhamento = el('div', 'sd-control-panel');
-      acompanhamento.append(el('strong', '', `Etapa: ${STATUS_LABELS[c.status] || c.status}`),
+      acompanhamento.append(el('strong', '', `Etapa: ${STATUS_LABELS[c.status] || c.status}${c.bloqueado ? " • Bloqueado" : ""}`),
         el('p', '', `Responsável: ${c.responsavelNome || 'Não atribuído'} • ${formatSlaText(c)}`),
         el('small', '', 'A equipe técnica gerencia as etapas e o encerramento. Você pode acompanhar e enviar informações.'));
 
@@ -551,6 +557,12 @@
       selStatus.append(new Option(STATUS_LABELS[st], st, st === c.status, st === c.status));
     }
     lblStatus.append(selStatus);
+
+    const lblBloq = el('label', 'sd-check-field sd-block-toggle');
+    const chkBloq = el('input');
+    chkBloq.type = 'checkbox';
+    chkBloq.checked = !!c.bloqueado;
+    lblBloq.append(chkBloq, el('span', '', 'Chamado bloqueado (card em vermelho, permanece na etapa atual)'));
 
     const lblFila = el('label', '', 'Fila de Destino (Distribuição)');
     const selFila = el('select');
@@ -606,7 +618,7 @@
       }
     });
 
-    rightCol.append(lblStatus, lblFila, lblPrio, lblResp, lblObs, btnSaveStatus, btnAssumir);
+    rightCol.append(lblStatus, lblBloq, lblFila, lblPrio, lblResp, lblObs, btnSaveStatus, btnAssumir);
 
     // Cancelamento para administradores/técnicos
     if (c.status !== 'FECHADO') {
@@ -634,7 +646,8 @@
             filaDestino: selFila.value,
             prioridade: selPrio.value,
             responsavelId: Number(selResp.value),
-            observacao: inpObs.value.trim()
+            observacao: inpObs.value.trim(),
+            bloqueado: chkBloq.checked
           })
         });
         await carregarChamados();
