@@ -125,8 +125,8 @@ class ChamadoAvisosIntegracaoTest {
 
     @Test void funcionarioNaoAlteraBloqueio() throws Exception {
         long id = abrir();
-        chamados.atualizarStatus(id, new ChamadoService.AlteracaoStatus(
-                null, null, null, null, false, null, true), funcionario);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> chamados.atualizarStatus(id,
+                new ChamadoService.AlteracaoStatus(null, null, null, null, false, null, true), funcionario));
         assertFalse(chamados.detalhar(id, tecnico).chamado().bloqueado());
     }
 }
