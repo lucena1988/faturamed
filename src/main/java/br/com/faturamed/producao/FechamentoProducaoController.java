@@ -36,6 +36,10 @@ public class FechamentoProducaoController {
     @DeleteMapping("/regras/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void excluirRegra(@PathVariable long id) { service.excluirRegra(id); }
 
+    /** Previa do valor de cada etiqueta do lote (itemId -> valor), pelas regras vigentes. */
+    @GetMapping("/lotes/{id}/valores")
+    public java.util.Map<Long, java.math.BigDecimal> valoresLote(@PathVariable long id) { return service.valoresLote(id); }
+
     @GetMapping("/fechamentos/previa")
     public FechamentoProducaoService.Previa previa(@RequestParam long hospitalId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,

@@ -16,6 +16,9 @@ public class ExportadorFechamentoProducao {
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Map<String, String> PERIODOS = Map.of("MANHA", "Manhã", "TARDE", "Tarde", "NOITE", "Noite", "INTEGRAL", "Integral");
 
+    /** Campos enviados ao hospital na aba Etiquetas. */
+    static final List<String> COLUNAS_ETIQUETAS = List.of("Data", "Atendimento", "Nome", "Tipo de exame", "Período", "Quantidade", "Valor");
+
     public byte[] exportar(FechamentoProducaoService.Detalhe d) {
         try (Workbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             CellStyle titulo = estilo(wb, true, false, 14);
@@ -60,13 +63,23 @@ public class ExportadorFechamentoProducao {
             ajustar(calc, 7);
 
             Sheet et = wb.createSheet("Etiquetas");
-            linha(et, 0, cab, "Data", "Período", "Médico", "Exame", "Atendimento", "Paciente", "Convênio", "Plano", "Carteirinha", "Guia");
+            // so os campos que o hospital usa; convenio, plano, carteirinha e guia nao saem da FaturaMed
+            linha(et, 0, cab, COLUNAS_ETIQUETAS.toArray());
             r = 1;
-            for (var e : d.etiquetas().stream().filter(x -> "INCLUIDA".equals(x.situacao())).toList())
-                linha(et, r++, null, e.data().format(DATA), PERIODOS.getOrDefault(e.periodo(), e.periodo()), e.medico(), e.exame(),
-                        e.nrAtendimento(), e.paciente(), e.convenio(), e.plano(), e.carteirinha(), e.guia());
-            et.setAutoFilter(new CellRangeAddress(0, Math.max(0, r - 1), 0, 9));
-            ajustar(et, 10);
+            BigDecimal somaEtiquetas = BigDecimal.ZERO;
+            for (var e : d.etiquetas().stream().filter(x -> "INCLUIDA".equals(x.situacao())).toList()) {
+                BigDecimal v = e.valor() == null ? BigDecimal.ZERO : e.valor();
+                Row row = linha(et, r++, null, e.data().format(DATA), e.nrAtendimento(), e.paciente(), e.exame(),
+                        PERIODOS.getOrDefault(e.periodo(), e.periodo()), 1);
+                valor(row, 6, v, moeda);
+                somaEtiquetas = somaEtiquetas.add(v);
+            }
+            int ultima = Math.max(0, r - 1);
+            BigDecimal fixos = f.total() == null ? BigDecimal.ZERO : f.total().subtract(somaEtiquetas);
+            if (fixos.signum() != 0) valor(linha(et, r++, null, "Fixo mensal (não vinculado a etiquetas)"), 6, fixos, moeda);
+            valor(linha(et, r, cab, "TOTAL"), 6, f.total(), moedaNegrito);
+            et.setAutoFilter(new CellRangeAddress(0, ultima, 0, COLUNAS_ETIQUETAS.size() - 1));
+            ajustar(et, COLUNAS_ETIQUETAS.size());
 
             wb.write(out);
             return out.toByteArray();

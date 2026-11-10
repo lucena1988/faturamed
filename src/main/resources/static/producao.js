@@ -6,6 +6,13 @@
   const PERIODOS = {MANHA: 'Manhã', TARDE: 'Tarde', NOITE: 'Noite', INTEGRAL: 'Integral'};
   let lote = null; // {id, versao, status}
   let itens = [];
+  let valores = {}; // itemId -> prévia do valor (rateio da agenda)
+  const moeda = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+  async function carregarValores() {
+    valores = {};
+    if (lote?.id) try { valores = await api(`/api/producao/lotes/${lote.id}/valores`) || {}; } catch (_) {}
+    renderItens();
+  }
   let duplicados = new Map();
   let fotoPendente = null;
   let exibirFaltas = false; // liga o destaque de problemas após a 1ª tentativa de conferir
@@ -205,6 +212,7 @@
 
   function atualizarEstado() {
     carregarHistorico().catch(() => {});
+    carregarValores();
     const st = lote?.status || 'RASCUNHO';
     $('#lote-status').innerHTML = lote ? fmUi.status(STATUS[st], COR_STATUS[st]) : fmUi.status('Novo (não salvo)', 'cinza');
     const bloqueado = st === 'ENVIADO';
@@ -247,9 +255,10 @@
         <td${falta(i, 'nrAtendimento')}><input data-campo="nrAtendimento" value="${esc(it.nrAtendimento)}" ${dis}></td>
         <td${falta(i, 'medicoId')}><select data-vinculo="medicoId" ${dis}>${opcoesVinculo(selMedicos, nomeMedico, it.medicoId)}</select></td>
         <td${falta(i, 'exameId')}><select data-vinculo="exameId" ${dis}>${opcoesVinculo(selExames, nomeExame, it.exameId)}</select></td>
+        <td>1</td><td title="${it.id ? 'Prévia pelas regras do hospital' : 'Salve o lote para calcular'}">${moeda(it.id ? valores[it.id] : null)}</td>
         ${CAMPOS.filter(c => c !== 'nrAtendimento').map(c => `<td${falta(i, c)}><input data-campo="${c}" value="${esc(it[c])}" ${dis}${SENSIVEIS.has(c) ? ' class="fm-sensivel" autocomplete="off"' : ''}></td>`).join('')}
         <td>${bloqueado ? '' : `${it.pendenteRevisao ? `<button type="button" class="text-button" data-ok title="Marcar como conferida com a foto" aria-label="Marcar como conferida">${fmUi.icone('ok')}</button>` : ''}<button type="button" class="text-button prod-perigo" data-remover title="Remover etiqueta" aria-label="Remover etiqueta">${fmUi.icone('fechar')}</button>`}</td></tr>`;
-    }).join('') || fmUi.vazio(16, {titulo: 'Nenhuma etiqueta neste lote', texto: 'Leia a foto da folha ou digite o nº de atendimento no campo acima.'});
+    }).join('') || fmUi.vazio(18, {titulo: 'Nenhuma etiqueta neste lote', texto: 'Leia a foto da folha ou digite o nº de atendimento no campo acima.'});
     const pend = itens.filter(i => i.pendenteRevisao).length;
     $('#contagem').textContent = `${itens.length} etiqueta(s) em ${vistos.size} atendimento(s)${pend ? ` · ${pend} pendente(s)` : ''}`;
     if (exibirFaltas) mostrarProblemas(problemas());
@@ -422,15 +431,19 @@
 
   // colunas opcionais da tabela de etiquetas (lembradas neste navegador)
   function configurarColunas() {
-    const OPCIONAIS = [[5, 'Data/hora'], [7, 'Nascimento'], [8, 'Prontuário'], [10, 'Plano'], [11, 'Carteirinha'], [12, 'Guia'], [13, 'Senha'], [14, 'Procedimento'], [15, 'Solicitante']];
-    const chave = 'faturamed-producao-colunas-ocultas';
+    // padrão: só os campos enviados ao hospital (data/período no cabeçalho, atendimento, nome, exame, qtd, valor)
+    const OPCIONAIS = [[7, 'Data/hora'], [9, 'Nascimento'], [10, 'Prontuário'], [11, 'Convênio'], [12, 'Plano'], [13, 'Carteirinha'], [14, 'Guia'], [15, 'Senha'], [16, 'Procedimento'], [17, 'Solicitante']];
+    const SENS_COLS = [13, 14, 15];
+    const chave = 'faturamed-producao-colunas-ocultas-v2';
+    const padrao = OPCIONAIS.map(([n]) => n);
     let ocultas;
-    try { ocultas = new Set(JSON.parse(localStorage.getItem(chave)) ?? [12, 13]); } catch (_) { ocultas = new Set([12, 13]); }
+    try { ocultas = new Set(JSON.parse(localStorage.getItem(chave)) ?? padrao); } catch (_) { ocultas = new Set(padrao); }
     const estilo = document.createElement('style');
     document.head.append(estilo);
     const aplicar = () => {
       estilo.textContent = [...ocultas].map(n => `.prod-tabela :is(th, td):nth-child(${n}) { display: none; }`).join('\n');
       try { localStorage.setItem(chave, JSON.stringify([...ocultas])); } catch (_) {}
+      $('#btn-revelar').hidden = SENS_COLS.every(n => ocultas.has(n));
     };
     $('#colunas').innerHTML = OPCIONAIS.map(([n, nome]) => `<label><input type="checkbox" value="${n}" ${ocultas.has(n) ? '' : 'checked'}>${nome}</label>`).join('');
     $('#colunas').addEventListener('change', e => { const n = +e.target.value; e.target.checked ? ocultas.delete(n) : ocultas.add(n); aplicar(); });
