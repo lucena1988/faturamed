@@ -1,5 +1,4 @@
 /* valores padrão das variáveis definidas pelo inicio.js em cada card (o style inline sobrepõe) */
-.ini-kpi, .ini-modulo, .ini-barra { --i: 0; }
 .ini-barra { --h: 0%; }
 .ini-barras { --media: 0; }
 /* Tela de inicio (central de comando): usa os tokens do tema (claro/escuro) e as cores por modulo de modulos.css */
@@ -7,49 +6,7 @@
 .inicio #inicio-msg:empty { display: none; }
 .ini-titulo { font-size: 16px; margin: 0 0 12px; color: var(--text); letter-spacing: .02em; }
 
-/* --- Hero: sempre escuro, com grade e brilho --- */
-.ini-hero { position: relative; overflow: hidden; isolation: isolate; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px;
-  padding: 34px 36px; border-radius: 22px; color: #eaf7fa; border: 1px solid rgba(79, 214, 224, .28);
-  background: radial-gradient(600px 260px at 88% -10%, rgba(79, 214, 224, .38), transparent 70%),
-    radial-gradient(520px 300px at 0% 120%, rgba(117, 104, 154, .45), transparent 70%),
-    linear-gradient(135deg, #0b1d26, #12333f 55%, #17495a);
-  box-shadow: 0 18px 40px rgba(11, 29, 38, .28); }
-.ini-hero-grade { position: absolute; inset: 0; z-index: -1; opacity: .5;
-  background-image: linear-gradient(rgba(255, 255, 255, .06) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .06) 1px, transparent 1px);
-  background-size: 34px 34px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); }
-.ini-hero-meta { margin: 0; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 13px; color: rgba(234, 247, 250, .72); }
-.ini-online { display: inline-flex; align-items: center; gap: 7px; padding: 3px 11px; border-radius: 999px; background: rgba(79, 214, 224, .14); border: 1px solid rgba(79, 214, 224, .35); color: #b9f3f7; font-weight: 600; }
-.ini-online i { width: 8px; height: 8px; border-radius: 50%; background: #5ef0a8; box-shadow: 0 0 0 0 rgba(94, 240, 168, .7); animation: ini-pulso 2s infinite; }
-.inicio .ini-hero #inicio-saudacao { margin: 10px 0 8px; font-size: clamp(28px, 4.2vw, 42px); line-height: 1.1; letter-spacing: -.02em; color: #fff;
-  background: linear-gradient(90deg, #fff 30%, #9be9f0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.ini-hero-sub { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: rgba(234, 247, 250, .8); font-size: 15px; }
-.ini-perfil:not(:empty) { padding: 3px 11px; border-radius: 6px; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .22); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.ini-hero-lado { display: grid; gap: 14px; justify-items: end; }
-.ini-relogio { font-size: clamp(34px, 5vw, 52px); font-weight: 200; letter-spacing: .04em; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 24px rgba(79, 214, 224, .55); line-height: 1; }
-.ini-botao { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 12px; font-weight: 700; text-decoration: none; color: #06242c;
-  background: linear-gradient(135deg, #7be8ef, #4fd6e0); box-shadow: 0 6px 22px rgba(79, 214, 224, .4); transition: transform .15s, box-shadow .15s; }
-.ini-botao:hover, .ini-botao:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(79, 214, 224, .55); }
-.ini-botao span { transition: transform .15s; } .ini-botao:hover span { transform: translateX(4px); }
-
-/* --- KPIs --- */
-.ini-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-.ini-kpi { --cor: var(--primary); position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; padding: 18px; text-decoration: none; color: var(--text);
-  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
-  transition: transform .18s, box-shadow .18s, border-color .18s; animation: ini-entra .5s both; animation-delay: calc(var(--i, 0) * 70ms); }
-.ini-kpi::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, var(--cor), transparent); }
-.ini-kpi:hover, .ini-kpi:focus-visible { transform: translateY(-3px); border-color: var(--cor); box-shadow: 0 12px 28px color-mix(in srgb, var(--cor) 22%, transparent); }
-.ini-kpi[data-tipo="visitas"] { --cor: var(--mod-visitas); } .ini-kpi[data-tipo="chamados"] { --cor: var(--mod-gestao); }
-.ini-kpi[data-tipo="lotes"] { --cor: var(--mod-producao); } .ini-kpi[data-tipo="solicitacoes"] { --cor: var(--mod-financeiro); }
-.ini-kpi-icone { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: var(--cor); background: color-mix(in srgb, var(--cor) 14%, transparent); }
-.ini-kpi-icone svg, .ini-modulo-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ini-kpi-corpo { display: grid; gap: 1px; min-width: 0; flex: 1; }
-.ini-kpi-titulo { font-size: 12.5px; font-weight: 600; color: var(--muted); }
-.ini-kpi strong { font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.ini-kpi small { font-size: 12.5px; color: var(--muted); }
-.ini-kpi.alerta small { color: var(--danger-fg); font-weight: 700; }
-.ini-kpi-anel { flex: none; width: 48px; height: 48px; }
-.ini-kpi-anel circle { fill: none; stroke: var(--line); stroke-width: 4; }
-.ini-kpi-anel .v { stroke: var(--cor); stroke-linecap: round; }
+.ini-modulo-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 /* --- Paineis de graficos --- */
 .ini-graficos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -99,24 +56,13 @@
 .inicio [data-modulo="gestao"] { --mod-cor: var(--mod-gestao); --mod-forte: var(--mod-gestao-forte); --mod-suave: var(--mod-gestao-suave); }
 
 @keyframes ini-entra { from { opacity: 0; transform: translateY(12px); } }
-@keyframes ini-pulso { 70% { box-shadow: 0 0 0 9px rgba(94, 240, 168, 0); } 100% { box-shadow: 0 0 0 0 rgba(94, 240, 168, 0); } }
 @media (prefers-reduced-motion: reduce) { .inicio * { animation: none !important; transition: none !important; } }
 @media (max-width: 1080px) { .ini-graficos { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 640px) { .inicio { padding: 18px 14px 32px; } .ini-hero { padding: 24px 20px; } .ini-hero-lado { justify-items: start; } .ini-graficos { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .inicio { padding: 18px 14px 32px; } .ini-graficos { grid-template-columns: 1fr; } }
 /* cabecalho padrao (sino, busca e menu do usuario com tema/aparencia, montado pelo ui.js) */
 .inicio .ini-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin: 0; padding: 0 0 4px; border: 0; }
 .inicio .ini-topo .session-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
 .ini-donut svg text { stroke: none; }
-.ini-selo { position: absolute; bottom: 12px; right: 12px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.ini-selo.ok { color: var(--green); background: color-mix(in srgb, var(--green) 13%, transparent); }
-.ini-selo.pendente { color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
-.ini-selo.critico { color: var(--rose); background: color-mix(in srgb, var(--rose) 14%, transparent); }
-.ini-kpi:has(.ini-selo.critico) { border-color: color-mix(in srgb, var(--rose) 45%, var(--line)); background: linear-gradient(135deg, color-mix(in srgb, var(--rose) 6%, var(--surface)), var(--surface) 60%); }
-.ini-spark { flex: none; display: grid; justify-items: end; gap: 2px; }
-.ini-spark svg { width: 64px; height: 28px; overflow: visible; }
-.ini-spark path { fill: none; stroke: var(--cor); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.ini-spark circle { fill: var(--cor); stroke: none; }
-.ini-spark small { font-size: 10.5px; }
 .ini-donut .centro.alerta { fill: var(--rose); }
 .ini-donut-rodape { margin: 4px 0 0; width: 100%; font-size: 12.5px; color: var(--muted); }
 .ini-donut-rodape a { white-space: nowrap; color: var(--primary); font-weight: 600; text-decoration: none; }
@@ -146,3 +92,121 @@
 .ini-arrastavel select, .ini-arrastavel a, .ini-arrastavel button { cursor: pointer; }
 .ini-arrastavel.arrastando { opacity: .35; outline: 2px dashed var(--primary); outline-offset: 2px; transform: none !important; }
 .ordenando > .ini-arrastavel:not(.arrastando) { transition: transform .15s; }
+/* periodo editavel: numero digitado + unidade (minutos/horas/dias) ou opcao fixa (ultimo relatorio / todo o periodo) */
+.ini-periodo-ctl { flex: none; display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+.ini-periodo-ctl:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.ini-periodo-ctl input, .ini-periodo-ctl select { border: 0; border-radius: 0; background: transparent; color: var(--text); font-size: 12.5px; min-height: 0; box-shadow: none; outline: none; }
+.ini-periodo-ctl input { width: 46px; padding: 5px 4px 5px 9px; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.ini-periodo-ctl input::-webkit-inner-spin-button, .ini-periodo-ctl input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.ini-periodo-ctl input[hidden] { display: none; }
+.ini-periodo-ctl select { width: auto; padding: 5px 24px 5px 6px; cursor: pointer; }
+.ini-periodo-ctl input:not([hidden]) + select { border-left: 1px solid var(--line); }
+/* nos cards estreitos o seletor de periodo desce para baixo do titulo em vez de espremer o texto */
+.ini-cab-filtro { flex-wrap: wrap; }
+.ini-cab-filtro > div { flex: 1 1 150px; }
+/* lista aberta do seletor de periodo segue o tema (no escuro o navegador abria com fundo branco e texto claro) */
+.ini-periodo-ctl select option { background-color: var(--surface); color: var(--text); }
+:root[data-theme="dark"] .ini-periodo-ctl { color-scheme: dark; }
+/* animacao ao (re)desenhar cada card: so roda no card que foi redesenhado, pois os outros nao trocam de elementos */
+.ini-donut g circle { animation: ini-arco .9s cubic-bezier(.2, .8, .2, 1) both; }
+.ini-donut svg text { animation: ini-surge .45s .35s both; }
+.ini-esteira span { transform-origin: left center; animation: ini-largura .6s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+.ini-esteira-legenda li, .ini-donut li { animation: ini-surge .4s both; }
+.ini-esteira-legenda li:nth-child(2), .ini-donut li:nth-child(2) { animation-delay: 60ms; }
+.ini-esteira-legenda li:nth-child(3), .ini-donut li:nth-child(3) { animation-delay: 120ms; }
+.ini-esteira-legenda li:nth-child(4) { animation-delay: 180ms; }
+.ini-esteira-legenda li:nth-child(5) { animation-delay: 240ms; }
+@keyframes ini-arco { from { stroke-dasharray: 0 400; } }
+@keyframes ini-largura { from { transform: scaleX(0); } }
+@keyframes ini-surge { from { opacity: 0; transform: translateY(4px); } }
+/* --- Modelo A: central de comando (topo, 4 KPIs, producao larga e 3 paineis lado a lado) --- */
+.ini-central { display: grid; gap: 18px; }
+/* producao: barras empilhadas por situacao (enviado embaixo, conferido no meio, rascunho em cima) */
+.ini-empilhadas .ini-barra span { display: flex; flex-direction: column-reverse; gap: 2px; overflow: hidden; background: none; }
+.ini-empilhadas .ini-barra span i { display: block; min-height: 3px; }
+.ini-empilhadas .ini-barra span i:last-child { border-radius: 8px 8px 0 0; }
+.ini-empilhadas .ini-barra.zero span { background: var(--line); }
+.ini-leg { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+/* --- Ciclo das visitas: medidor semicircular --- */
+.ini-medidor { width: 100%; max-width: 260px; height: auto; display: block; margin: 0 auto; overflow: visible; }
+.ini-medidor path { fill: none; stroke-width: 18; stroke-linecap: butt; }
+.ini-medidor .trilho { stroke: var(--line); }
+.ini-medidor path:not(.trilho) { animation: ini-arco-medidor .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 120ms); }
+.ini-medidor .ponteiro { transform-box: view-box; transform-origin: 100px 100px; transform: rotate(var(--giro, 0deg)); animation: ini-giro 1.2s .2s cubic-bezier(.3, 1.4, .5, 1) both; }
+.ini-medidor .ponteiro line { stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+.ini-medidor .ponteiro circle { fill: var(--text); stroke: var(--surface); stroke-width: 3; }
+.ini-medidor .centro { fill: var(--text); font-size: 26px; font-weight: 700; text-anchor: middle; animation: ini-surge .45s .5s both; }
+.ini-medidor .centro.alerta { fill: var(--rose); }
+.ini-medidor .escala { fill: var(--muted); font-size: 10px; text-anchor: middle; }
+.ini-medidor-rotulo { margin: -2px 0 6px; text-align: center; font-size: 12.5px; color: var(--muted); }
+@keyframes ini-arco-medidor { from { stroke-dasharray: 0 100; } }
+@keyframes ini-giro { from { transform: rotate(0deg); } }
+
+/* --- Esteira de lotes: trilha de etapas --- */
+.ini-trilha { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); position: relative; }
+.ini-trilha::before { content: ""; position: absolute; top: 31px; left: 16.6%; right: 16.6%; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--amber), var(--blue), var(--green)); opacity: .55; }
+.ini-trilha li { position: relative; display: grid; justify-items: center; gap: 2px; text-align: center; animation: ini-surge .4s both; animation-delay: calc(var(--i, 0) * 120ms); }
+.ini-trilha-no { position: relative; display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; margin-bottom: 6px;
+  background: color-mix(in srgb, var(--cor) 14%, var(--surface)); border: 2px solid var(--cor); box-shadow: 0 0 0 5px var(--surface); }
+.ini-trilha-no b { font-size: 18px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.ini-trilha strong { font-size: 13px; color: var(--text); }
+.ini-trilha small { font-size: 11.5px; color: var(--muted); }
+
+/* --- Service Desk: cartoes por situacao + SLA --- */
+.ini-status { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.ini-status a { display: grid; gap: 2px; padding: 10px 10px 9px; border-radius: 10px; text-decoration: none; color: var(--text); border: 1px solid color-mix(in srgb, var(--cor) 35%, var(--line));
+  background: color-mix(in srgb, var(--cor) 11%, var(--surface)); transition: transform .15s, border-color .15s; animation: ini-surge .35s both; animation-delay: calc(var(--i, 0) * 60ms); }
+.ini-status a:hover { transform: translateY(-2px); border-color: var(--cor); }
+.ini-status a.zero { background: var(--surface); border-color: var(--line); }
+.ini-status b { font-size: 20px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--cor); }
+.ini-status a.zero b { color: var(--muted); }
+.ini-status span { font-size: 11.5px; color: var(--muted); line-height: 1.2; }
+.ini-sla { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); display: grid; gap: 6px; }
+.ini-sla-cab { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); }
+.ini-sla-cab b { font-size: 20px; color: var(--cor); font-variant-numeric: tabular-nums; }
+.ini-sla-barra { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.ini-sla-barra span { display: block; height: 100%; border-radius: inherit; background: var(--cor); transform-origin: left; animation: ini-largura .8s .2s cubic-bezier(.2, .8, .2, 1) both; }
+.ini-sla small { font-size: 12px; color: var(--muted); }
+/* --- Topo: saudacao + chips de prioridade (segue o tema claro/escuro) --- */
+.ini-topo2 { position: relative; overflow: hidden; display: grid; gap: 12px; padding: 22px 26px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); animation: ini-entra .5s both; }
+.ini-topo2::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, var(--primary), var(--mod-producao, var(--primary))); }
+.ini-topo2-linha { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.inicio .ini-topo2 #inicio-saudacao { margin: 0; font-size: clamp(22px, 2.6vw, 30px); line-height: 1.15; letter-spacing: -.02em; color: var(--text); }
+.ini-topo2-meta { margin: 6px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ini-topo2 .ini-perfil:not(:empty) { padding: 2px 9px; border-radius: 6px; background: var(--primary-soft); border: 1px solid var(--primary-soft-line); color: var(--primary-strong); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.ini-topo2-titulo { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.ini-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ini-chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 600; text-decoration: none; border: 1px solid transparent;
+  transition: transform .15s, box-shadow .15s; animation: ini-surge .35s both; animation-delay: calc(var(--i, 0) * 60ms); }
+.ini-chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ini-chip span { transition: transform .15s; }
+a.ini-chip:hover, a.ini-chip:focus-visible { transform: translateY(-1px); box-shadow: 0 6px 16px color-mix(in srgb, currentColor 18%, transparent); }
+a.ini-chip:hover span { transform: translateX(3px); }
+.ini-chip.critico { background: var(--danger-bg); color: var(--danger-fg); border-color: var(--danger-line); }
+.ini-chip.atencao { background: var(--warning-bg); color: var(--warning-fg); border-color: var(--warning-line); }
+.ini-chip.ok { background: var(--success-bg); color: var(--success-fg); border-color: var(--success-line); font-weight: 500; }
+@media (max-width: 640px) { .ini-topo2 { padding: 18px 16px; } }
+/* hora e data em destaque no canto do topo */
+.ini-topo2-hora { display: grid; justify-items: end; gap: 2px; text-align: right; }
+.ini-topo2-hora strong { font-size: clamp(34px, 4vw, 48px); font-weight: 300; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; color: var(--text); }
+.ini-topo2-hora span { font-size: 14px; color: var(--muted); }
+@media (max-width: 640px) { .ini-topo2-hora { justify-items: start; text-align: left; } }
+/* topo com o fundo nas cores da marca FaturaMed (petroleo/turquesa), igual nos temas claro e escuro */
+.ini-topo2 { color: #eaf7fa; border-color: rgba(79, 214, 224, .28); box-shadow: 0 18px 40px rgba(11, 29, 38, .28);
+  background: radial-gradient(600px 260px at 88% -10%, rgba(79, 214, 224, .38), transparent 70%),
+    radial-gradient(520px 300px at 0% 120%, rgba(117, 104, 154, .45), transparent 70%),
+    linear-gradient(135deg, #0b1d26, #12333f 55%, #17495a); }
+.ini-topo2::before { display: none; }
+.ini-topo2::after { content: ""; position: absolute; inset: 0; z-index: 0; opacity: .5; pointer-events: none;
+  background-image: linear-gradient(rgba(255, 255, 255, .06) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .06) 1px, transparent 1px);
+  background-size: 34px 34px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); }
+.ini-topo2 > * { position: relative; z-index: 1; }
+.inicio .ini-topo2 #inicio-saudacao { color: #fff; }
+.ini-topo2 .ini-perfil:not(:empty) { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .22); color: #fff; }
+.ini-topo2-titulo { color: rgba(234, 247, 250, .75); }
+.ini-topo2-hora strong { color: #fff; text-shadow: 0 0 24px rgba(79, 214, 224, .55); }
+.ini-topo2-hora span { color: rgba(234, 247, 250, .72); }
+/* chips sobre o fundo escuro: vidro colorido, legiveis nos dois temas */
+.ini-topo2 .ini-chip.critico { background: rgba(240, 120, 140, .18); color: #ffc4cf; border-color: rgba(240, 120, 140, .45); }
+.ini-topo2 .ini-chip.atencao { background: rgba(239, 180, 80, .18); color: #ffdc9a; border-color: rgba(239, 180, 80, .45); }
+.ini-topo2 .ini-chip.ok { background: rgba(94, 220, 160, .16); color: #aef0cd; border-color: rgba(94, 220, 160, .4); }

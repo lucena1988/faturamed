@@ -31,8 +31,8 @@
   relogio(); setInterval(relogio, 15000);
 
   // numeros sobem de 0 ate o valor
-  function contar() {
-    document.querySelectorAll('[data-contar]').forEach(el => {
+  function contar(raiz = document) {
+    raiz.querySelectorAll('[data-contar]').forEach(el => {
       const alvo = Number(el.dataset.contar) || 0;
       if (semAnimacao || !alvo) { el.textContent = num(alvo); return; }
       const inicio = performance.now();
@@ -42,90 +42,175 @@
         if (p < 1) requestAnimationFrame(passo);
       };
       requestAnimationFrame(passo);
+      // garante o valor final mesmo se o navegador pausar a animacao (aba em segundo plano)
+      setTimeout(() => { el.textContent = num(alvo); }, 1000);
     });
   }
 
-  function kpis(r) {
-    const total = (r.visitasAtencao || 0) + (r.visitasPagas || 0);
-    const lotes = Object.values(r.lotesPorStatus || {}).reduce((a, b) => a + b, 0);
-    const cards = [
-      ['visitas', 'Visitas que pedem atenção', r.visitasAtencao, 'index.html#dashboard', r.visitasDivergentes ? `${num(r.visitasDivergentes)} divergente(s)` : 'no último relatório', total ? r.visitasAtencao / total : 0, false],
-      ['chamados', 'Chamados abertos', r.chamadosAbertos, 'chamados.html', r.chamadosBloqueados ? `${num(r.chamadosBloqueados)} bloqueado(s)` : 'no Service Desk', r.chamadosAbertos ? (r.chamadosBloqueados || 0) / r.chamadosAbertos : 0, r.chamadosBloqueados > 0],
-      ['lotes', 'Lotes a enviar', r.lotesPendentes, 'producao.html', `de ${num(lotes)} lotes`, lotes ? r.lotesPendentes / lotes : 0, false],
-      ['solicitacoes', 'Solicitações dos médicos', r.solicitacoesPendentes, 'solicitacoes-medicos.html', 'aguardando resposta', r.solicitacoesPendentes ? 1 : 0, false]
-    ];
-    $('#inicio-kpis').innerHTML = cards.map(([tipo, titulo, n, href, detalhe, fracao, alerta], i) => {
 
-      return `<a class="ini-kpi${alerta ? ' alerta' : ''}" data-tipo="${tipo}" href="${href}" style="--i:${i}">
-        <span class="ini-kpi-icone" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES[tipo]}</svg></span>
-        <span class="ini-kpi-corpo"><span class="ini-kpi-titulo">${esc(titulo)}</span><strong data-contar="${Number(n || 0)}">0</strong><small>${esc(detalhe)}</small></span>
-        ${tipo === 'lotes' ? sparkline(r.lotesPorDia || []) : selo(tipo, n, alerta || (tipo === 'visitas' && r.visitasDivergentes > 0))}
-      </a>`;
+  // topo: chips do que fazer primeiro, do mais urgente (vermelho) ao que esta em dia (verde)
+  function chips(r) {
+    const plural = (n, um, varios) => `${num(n)} ${n === 1 ? um : varios}`;
+    const lista = [];
+    if (r.visitasDivergentes) lista.push(['critico', plural(r.visitasDivergentes, 'divergência', 'divergências'), 'index.html#dashboard', ICONES.visitas]);
+    if (r.chamadosBloqueados) lista.push(['critico', plural(r.chamadosBloqueados, 'chamado bloqueado', 'chamados bloqueados'), 'chamados.html', ICONES.chamados]);
+    const pendVisitas = (r.visitasAtencao || 0) - (r.visitasDivergentes || 0);
+    if (pendVisitas > 0) lista.push(['atencao', plural(pendVisitas, 'visita pendente', 'visitas pendentes'), 'index.html#dashboard', ICONES.visitas]);
+    const abertos = (r.chamadosAbertos || 0) - (r.chamadosBloqueados || 0);
+    if (abertos > 0) lista.push(['atencao', plural(abertos, 'chamado aberto', 'chamados abertos'), 'chamados.html', ICONES.chamados]);
+    if (r.lotesPendentes) lista.push(['atencao', plural(r.lotesPendentes, 'lote a enviar', 'lotes a enviar'), 'producao.html', ICONES.lotes]);
+    if (r.solicitacoesPendentes) lista.push(['atencao', plural(r.solicitacoesPendentes, 'solicitação de médico', 'solicitações de médicos'), 'solicitacoes-medicos.html', ICONES.solicitacoes]);
+    const emDia = [[!r.visitasAtencao, 'Visitas em dia', ICONES.visitas], [!r.chamadosAbertos, 'Service Desk em dia', ICONES.chamados], [!r.lotesPendentes, 'Lotes em dia', ICONES.lotes], [!r.solicitacoesPendentes, 'Solicitações em dia', ICONES.solicitacoes]];
+    emDia.forEach(([ok, texto, icone]) => { if (ok) lista.push(['ok', texto, null, icone]); });
+    const urgentes = lista.filter(c => c[0] !== 'ok').length;
+    $('#inicio-frase').textContent = urgentes ? 'O que precisa de você primeiro:' : 'Tudo em dia por aqui.';
+    $('#inicio-chips').innerHTML = lista.map(([nivel, texto, href, icone], i) => {
+      const corpo = `<svg viewBox="0 0 24 24" aria-hidden="true">${icone}</svg>${esc(texto)}${href ? '<span aria-hidden="true">→</span>' : ''}`;
+      return href ? `<a class="ini-chip ${nivel}" href="${href}" style="--i:${i}">${corpo}</a>` : `<span class="ini-chip ${nivel}" style="--i:${i}">${corpo}</span>`;
     }).join('');
   }
 
-  function selo(tipo, n, critico) {
-    if (!Number(n)) return '<span class="ini-selo ok" title="Nada pendente">Em dia</span>';
-    return `<span class="ini-selo ${critico ? 'critico' : 'pendente'}">${critico ? 'Ação necessária' : 'Pendente'}</span>`;
-  }
 
-  function sparkline(dias) {
-    const v = dias.slice(-7).map(d => Number(d.total) || 0);
-    if (v.length < 2) return '';
-    const max = Math.max(1, ...v), w = 64, h = 28, x = i => (i / (v.length - 1) * w).toFixed(1), y = n => (h - 3 - n / max * (h - 6)).toFixed(1);
-    const d = v.map((n, i) => `${i ? 'L' : 'M'}${x(i)},${y(n)}`).join('');
-    return `<span class="ini-spark" title="Lotes por dia nos últimos 7 dias"><svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}"/><circle cx="${x(v.length - 1)}" cy="${y(v[v.length - 1])}" r="2.6"/></svg><small>7 dias</small></span>`;
-  }
 
+  // ciclo das visitas: medidor semicircular (pagas, pendentes e divergentes em faixas) com ponteiro no % pago
   function donut(r) {
     const partes = [['Pagas', r.visitasPagas || 0, 'var(--green)'], ['Pendentes', r.visitasPendentes || 0, 'var(--amber)'], ['Divergentes', r.visitasDivergentes || 0, 'var(--rose)']];
     const total = partes.reduce((a, p) => a + p[1], 0);
     if (r.relatorioHospital) $('#inicio-ciclo-sub').textContent = `Último relatório · ${r.relatorioHospital}`;
     if (!total) { $('#inicio-donut').innerHTML = '<p class="ini-vazio">Nenhuma visita conciliada ainda.</p>'; return; }
-    const c = 2 * Math.PI * 54; let acumulado = 0;
-    const arcos = partes.map(([, v, cor]) => {
-      const tam = v / total * c, arco = `<circle cx="70" cy="70" r="54" style="stroke:${cor}" stroke-dasharray="${tam.toFixed(2)} ${(c - tam).toFixed(2)}" stroke-dashoffset="${(-acumulado).toFixed(2)}"/>`;
-      acumulado += tam; return v ? arco : '';
+    const ARCO = 'M20 100 A80 80 0 0 1 180 100';
+    let inicio = 0;
+    const faixas = partes.map(([, v, cor], i) => {
+      const tam = v / total * 100, f = v ? `<path d="${ARCO}" pathLength="100" style="stroke:${cor};--i:${i}" stroke-dasharray="${Math.max(0, tam - .6).toFixed(2)} 100" stroke-dashoffset="${(-inicio).toFixed(2)}"/>` : '';
+      inicio += tam; return f;
     }).join('');
     const pct = Math.round((r.visitasPagas || 0) / total * 100), div = r.visitasDivergentes || 0;
-    const [valor, rotulo] = div ? [num(div), div === 1 ? 'divergente' : 'divergentes'] : [`${pct}%`, 'pagas'];
-    $('#inicio-donut').innerHTML = `<svg viewBox="0 0 140 140" role="img" aria-label="${valor} ${rotulo}"><circle class="trilho" cx="70" cy="70" r="54"/><g transform="rotate(-90 70 70)">${arcos}</g>
-      <text x="70" y="70" class="centro${div ? ' alerta' : ''}">${valor}</text><text x="70" y="88" class="legenda">${rotulo}</text></svg>
-      <ul>${partes.map(([nome, v, cor]) => `<li><i style="background:${cor}"></i>${nome}<b>${num(v)}</b></li>`).join('')}</ul>
-      <p class="ini-donut-rodape">${pct}% pagas de ${num(total)} visitas${div ? ' · <a href="index.html#dashboard">Revisar divergências →</a>' : ''}</p>`;
+    $('#inicio-donut').innerHTML = `<svg class="ini-medidor" viewBox="0 0 200 128" role="img" aria-label="${pct}% das visitas pagas">
+        <path class="trilho" d="${ARCO}"/>${faixas}
+        <g class="ponteiro" style="--giro:${(pct * 1.8).toFixed(1)}deg"><line x1="100" y1="100" x2="34" y2="100"/><circle cx="100" cy="100" r="7"/></g>
+        <text x="20" y="122" class="escala">0%</text><text x="180" y="122" class="escala">100%</text>
+        <text x="100" y="80" class="centro${div && !pct ? ' alerta' : ''}">${pct}%</text></svg>
+      <p class="ini-medidor-rotulo">das visitas pagas</p>
+      <ul>${partes.map(([nome, v, cor]) => `<li><i style="background:${cor}"></i>${nome}<b data-contar="${Number(v) || 0}">0</b></li>`).join('')}</ul>
+      <p class="ini-donut-rodape">${num(total)} visitas${div ? ` · ${num(div)} divergente(s) · <a href="index.html#dashboard">Revisar divergências →</a>` : ''}</p>`;
   }
 
+  // producao: barras empilhadas por situacao do lote (rascunho, conferido, enviado) em cada dia
+  const SITUACOES = [['enviado', 'Enviado', 'var(--green)'], ['conferido', 'Conferido', 'var(--blue)'], ['rascunho', 'Rascunho', 'var(--amber)']];
   function area(r) {
     const dias = r.lotesPorDia || [];
     if (!dias.length) { $('#inicio-area').innerHTML = '<p class="ini-vazio">Sem dados de produção.</p>'; return; }
     const v = dias.map(d => Number(d.total) || 0), max = Math.max(1, ...v), total = v.reduce((a, b) => a + b, 0), media = total / v.length;
-    $('#inicio-area').innerHTML = `<div class="ini-barras" role="img" aria-label="${total} lotes em ${v.length} dias" style="--media:${(media / max).toFixed(3)}">
+    const passo = Math.ceil(dias.length / 16), unidade = unidadeProducao === 'd' ? 'dia' : unidadeProducao === 'h' ? 'hora' : 'minuto';
+    const emUm = unidadeProducao === 'h' ? 'em uma hora' : `em um ${unidade}`, pico = Math.max(0, ...v);
+    const somas = Object.fromEntries(SITUACOES.map(([k]) => [k, dias.reduce((a, d) => a + (Number(d[k]) || 0), 0)]));
+    const dica = (d, i) => `${d.dia}: ${num(v[i])} lote(s)` + SITUACOES.map(([k, nome]) => Number(d[k]) ? ` · ${nome} ${num(d[k])}` : '').join('');
+    $('#inicio-area').innerHTML = `<div class="ini-barras ini-empilhadas" role="img" aria-label="${total} lotes em ${v.length} períodos, por situação" style="--media:${(media / max).toFixed(3)}">
       <span class="ini-media" title="Média do período"><em>média ${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</em></span>
-      ${dias.map((d, i) => `<div class="ini-barra${v[i] === max && v[i] ? ' pico' : ''}${v[i] ? '' : ' zero'}" style="--h:${(v[i] / max * 100).toFixed(1)}%;--i:${i}" title="${esc(d.dia)}: ${num(v[i])} lote(s)">
-        <b>${v[i] ? num(v[i]) : ''}</b><span></span><small>${esc(d.dia)}</small></div>`).join('')}
-    </div><p class="ini-area-total"><b>${num(total)}</b> lotes no período · pico de <b>${num(max)}</b> em um dia · média de <b>${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</b> por dia</p>`;
+      ${dias.map((d, i) => `<div class="ini-barra${v[i] ? '' : ' zero'}" style="--h:${(v[i] / max * 100).toFixed(1)}%;--i:${i}" title="${esc(dica(d, i))}">
+        <b>${v[i] ? num(v[i]) : ''}</b><span>${SITUACOES.map(([k, , cor]) => Number(d[k]) ? `<i style="flex:${Number(d[k])};background:${cor}"></i>` : '').join('')}</span><small>${i % passo ? '' : esc(d.dia)}</small></div>`).join('')}
+    </div><p class="ini-area-total">${SITUACOES.slice().reverse().map(([k, nome, cor]) => `<span class="ini-leg" style="background:${cor}"></span>${nome} <b>${num(somas[k])}</b>`).join(' · ')} · <b>${num(total)}</b> lotes no período${pico ? ` · pico de <b>${num(pico)}</b> ${emUm}` : ''} · média de <b>${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</b> por ${unidade}</p>`;
   }
 
-  async function aplicarPeriodo(base) {
-    const dp = $('#inicio-dias-producao').value, dv = $('#inicio-dias-visitas').value;
-    const r = await FaturamedAuth.request(`/api/inicio/resumo?diasProducao=${dp}${dv ? `&diasVisitas=${dv}` : ''}`);
-    $('#inicio-area-titulo').textContent = `Produção nos últimos ${dp} dias`;
+  // --- periodo editavel: numero digitado + unidade (minutos, horas, dias) ---
+  const UNIDADES = [['m', 'minutos', 'minuto', 120], ['h', 'horas', 'hora', 72], ['d', 'dias', 'dia', 90]];
+  let unidadeProducao = 'd';
+  function rotuloPeriodo(valor) {
+    const m = /^(\d+)([mhd])$/.exec(valor || ''); if (!m) return '';
+    const n = Number(m[1]), [, plural, singular] = UNIDADES.find(u => u[0] === m[2]), fem = m[2] === 'h';
+    return n === 1 ? `${fem ? 'última' : 'último'} ${singular}` : `${fem ? 'últimas' : 'últimos'} ${n} ${plural}`;
+  }
+  // "no último minuto", "na última hora", "nos últimos 15 dias", "nas últimas 3 horas"
+  function noPeriodo(valor) {
+    const r = rotuloPeriodo(valor);
+    return `${r.startsWith('últimas') ? 'nas' : r.startsWith('últimos') ? 'nos' : r.startsWith('última') ? 'na' : 'no'} ${r}`;
+  }
+  function montarPeriodos() {
+    document.querySelectorAll('.ini-periodo-ctl').forEach(ctl => {
+      const m = /^(\d+)([mhd])$/.exec(ctl.dataset.padrao || ''), nome = esc(ctl.dataset.nome);
+      ctl.innerHTML = `<input type="number" min="1" max="${m ? UNIDADES.find(u => u[0] === m[2])[3] : 90}" step="1" inputmode="numeric" value="${m ? m[1] : 15}" aria-label="Quantidade · ${nome}" title="Digite a quantidade"${m ? '' : ' hidden'}>
+        <select aria-label="Unidade · ${nome}">${ctl.dataset.extra ? `<option value="">${esc(ctl.dataset.extra)}</option>` : ''}${UNIDADES.map(([u, plural]) => `<option value="${u}"${m && m[2] === u ? ' selected' : ''}>${plural}</option>`).join('')}</select>`;
+      const input = ctl.querySelector('input'), sel = ctl.querySelector('select');
+      let espera;
+      const avisar = () => { clearTimeout(espera); espera = setTimeout(() => ctl.dispatchEvent(new CustomEvent('periodo', {bubbles: true})), 400); };
+      const limitar = () => {
+        const u = UNIDADES.find(x => x[0] === sel.value); if (!u) return;
+        input.max = u[3];
+        const n = parseInt(input.value, 10);
+        if (n > u[3]) input.value = u[3];
+      };
+      sel.addEventListener('change', () => {
+        input.hidden = !sel.value;
+        if (sel.value && !parseInt(input.value, 10)) input.value = sel.value === 'd' ? 15 : sel.value === 'h' ? 1 : 30;
+        limitar(); avisar();
+        if (sel.value) input.focus();
+      });
+      input.addEventListener('input', () => { if (parseInt(input.value, 10) >= 1) { limitar(); avisar(); } });
+      input.addEventListener('blur', () => { if (!(parseInt(input.value, 10) >= 1)) { input.value = 1; avisar(); } });
+    });
+  }
+  function valorPeriodo(nome) {
+    const ctl = $(`.ini-periodo-ctl[data-periodo="${nome}"]`), sel = ctl.querySelector('select');
+    if (!sel.value) return '';
+    return `${Math.max(1, parseInt(ctl.querySelector('input').value, 10) || 1)}${sel.value}`;
+  }
+
+  // esteira de lotes: trilha de etapas (rascunho -> conferido -> enviado) com a quantidade e o % de cada etapa
+  function esteira(r, periodo) {
+    const dados = r.lotesPorStatus || {};
+    const etapas = [['RASCUNHO', 'Rascunho', 'var(--amber)'], ['CONFERIDO', 'Conferido', 'var(--blue)'], ['ENVIADO', 'Enviado', 'var(--green)']];
+    const total = etapas.reduce((a, [k]) => a + (dados[k] || 0), 0);
+    $('#inicio-esteira-sub').textContent = `Do rascunho ao envio · ${periodo ? `criados ${noPeriodo(periodo)}` : 'todo o período'}`;
+    if (!total) { $('#inicio-esteira').innerHTML = '<p class="ini-vazio">Nenhum lote no período.</p>'; return; }
+    $('#inicio-esteira').innerHTML = `<ol class="ini-trilha">${etapas.map(([k, nome, cor], i) => `
+      <li style="--cor:${cor};--i:${i}"><span class="ini-trilha-no"><b data-contar="${Number(dados[k]) || 0}">0</b></span>
+        <strong>${nome}</strong><small>${Math.round((dados[k] || 0) / total * 100)}% do total</small></li>`).join('')}</ol>
+      <p class="ini-donut-rodape"><b>${num(total)}</b> lotes · <a href="producao.html">Abrir lotes →</a></p>`;
+  }
+  // service desk: cartoes por situacao e uma barra com o % de chamados dentro do SLA
+  function servicedesk(r, periodo) {
+    const dados = r.chamadosPorStatus || {}, sla = r.chamadosSla || {total: 0, noPrazo: 0};
+    const situacoes = [['ABERTO', 'Abertos', 'var(--rose)'], ['EM_ATENDIMENTO', 'Em atendimento', 'var(--amber)'], ['AGUARDANDO_USUARIO', 'Aguardando', 'var(--blue)'], ['RESOLVIDO', 'Resolvidos', 'var(--green)'], ['FECHADO', 'Fechados', 'var(--muted)']];
+    $('#inicio-chamados-sub').textContent = `Chamados por situação · ${periodo ? `abertos ${noPeriodo(periodo)}` : 'todo o período'}`;
+    const pctSla = sla.total ? Math.round(sla.noPrazo / sla.total * 100) : null;
+    const corSla = pctSla == null ? 'var(--muted)' : pctSla >= 90 ? 'var(--green)' : pctSla >= 70 ? 'var(--amber)' : 'var(--rose)';
+    $('#inicio-chamados').innerHTML = `<div class="ini-status">${situacoes.map(([k, nome, cor], i) => `
+      <a href="chamados.html" class="${dados[k] ? '' : 'zero'}" style="--cor:${cor};--i:${i}"><b data-contar="${Number(dados[k]) || 0}">0</b><span>${nome}</span></a>`).join('')}</div>
+      <div class="ini-sla" style="--cor:${corSla}">
+        <div class="ini-sla-cab"><span>Dentro do SLA</span><b>${pctSla == null ? '—' : `${pctSla}%`}</b></div>
+        <div class="ini-sla-barra"><span style="width:${pctSla || 0}%"></span></div>
+        <small>${sla.total ? `${num(sla.noPrazo)} de ${num(sla.total)} chamados no prazo` : 'Nenhum chamado com prazo de SLA no período'}</small>
+      </div>`;
+  }
+
+  // atualiza (e anima) somente o card cujo periodo foi alterado; os outros ficam como estao
+  const CARD_DO_PERIODO = {producao: 'producao', visitas: 'ciclo', lotes: 'esteira', chamados: 'servicedesk'};
+  async function aplicarPeriodo(base, alvo) {
+    const p = {producao: valorPeriodo('producao') || '15d', visitas: valorPeriodo('visitas'), lotes: valorPeriodo('lotes'), chamados: valorPeriodo('chamados')};
+    const qs = Object.entries(p).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    const r = await FaturamedAuth.request(`/api/inicio/resumo?${qs}`);
+    const card = $(`[data-card="${CARD_DO_PERIODO[alvo]}"]`);
+    if (alvo === 'lotes') { esteira(r, p.lotes); contar(card); return; }
+    if (alvo === 'chamados') { servicedesk(r, p.chamados); contar(card); return; }
+    if (alvo === 'visitas') { cicloPeriodo(r, p.visitas, base); contar(card); return; }
+    unidadeProducao = p.producao.slice(-1);
+    const rot = rotuloPeriodo(p.producao);
+    $('#inicio-area-titulo').textContent = `Produção · ${rot.charAt(0).toUpperCase() + rot.slice(1)}`;
+    $('#inicio-area-titulo').nextElementSibling.textContent = unidadeProducao === 'd' ? 'Lotes por data de produção' : 'Lotes pelo momento do registro';
     area(r);
-    if (dv) {
+  }
+  function cicloPeriodo(r, periodo, base) {
+    const p = {visitas: periodo};
+    if (p.visitas) {
       donut({visitasPagas: r.visitasPagasPeriodo, visitasPendentes: r.visitasPendentesPeriodo, visitasDivergentes: r.visitasDivergentesPeriodo,
         visitasAtencao: r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo});
-      $('#inicio-ciclo-sub').textContent = `Últimos ${dv} dias · ${num(r.relatoriosPeriodo)} relatório(s)`;
+      const rv = rotuloPeriodo(p.visitas);
+      $('#inicio-ciclo-sub').textContent = `${rv.charAt(0).toUpperCase() + rv.slice(1)} · ${num(r.relatoriosPeriodo)} relatório(s)`;
+      if (!(r.visitasPagasPeriodo + r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo))
+        $('#inicio-donut').innerHTML = `<p class="ini-vazio">Nenhum relatório de conciliação ${noPeriodo(p.visitas)}.</p>`;
     } else donut(base);
-    if (dv && !(r.visitasPagasPeriodo + r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo))
-      $('#inicio-donut').innerHTML = `<p class="ini-vazio">Nenhum relatório de conciliação nos últimos ${dv} dias.</p>`;
   }
 
-  function barras(alvo, dados, etapas) {
-    const total = etapas.reduce((a, [k]) => a + (dados[k] || 0), 0);
-    if (!total) { $(alvo).innerHTML = '<p class="ini-vazio">Nada por aqui.</p>'; return; }
-    $(alvo).innerHTML = `<div class="ini-esteira">${etapas.map(([k, , cor]) => dados[k] ? `<span style="flex:${dados[k]};background:${cor}"></span>` : '').join('')}</div>
-      <ul class="ini-esteira-legenda">${etapas.map(([k, nome, cor]) => `<li><i style="background:${cor}"></i>${nome}<b>${num(dados[k])}</b></li>`).join('')}</ul>`;
-  }
 
   function modulos(perfil) {
     const itens = window.fmNavItens || [];
@@ -140,7 +225,7 @@
   }
 
   // ordem dos cards escolhida pelo usuário (arrastar e soltar), guardada neste navegador
-  const GRUPOS = [['#inicio-kpis', 'data-tipo'], ['.ini-graficos', 'data-card'], ['#inicio-modulos', 'data-modulo']];
+  const GRUPOS = [['.ini-graficos', 'data-card'], ['#inicio-modulos', 'data-modulo']];
   let usuarioOrdem = 'anonimo';
   const chaveOrdem = sel => `fm-inicio-ordem:${usuarioOrdem}:${sel}`;
   function lerOrdem(sel) { try { return JSON.parse(localStorage.getItem(chaveOrdem(sel)) || 'null'); } catch (_) { return null; } }
@@ -198,15 +283,13 @@
       $('#inicio-saudacao').textContent = nome ? `${periodo}, ${nome}` : periodo;
       $('#inicio-perfil').textContent = PERFIS[perfil] || perfil || '';
     } catch (_) { $('#inicio-saudacao').textContent = periodo; }
-    modulos(perfil); aplicarOrdens();
+    modulos(perfil); montarPeriodos(); aplicarOrdens();
     try {
       const r = await FaturamedAuth.request('/api/inicio/resumo');
-      kpis(r); donut(r); area(r); aplicarOrdens();
-      ['#inicio-dias-producao', '#inicio-dias-visitas'].forEach(s => $(s).addEventListener('change', () => aplicarPeriodo(r).catch(() => {})));
-      barras('#inicio-esteira', r.lotesPorStatus || {}, [['RASCUNHO', 'Rascunho', 'var(--amber)'], ['CONFERIDO', 'Conferido', 'var(--blue)'], ['ENVIADO', 'Enviado', 'var(--green)']]);
-      barras('#inicio-chamados', r.chamadosPorStatus || {}, [['ABERTO', 'Abertos', 'var(--rose)'], ['EM_ATENDIMENTO', 'Em atendimento', 'var(--amber)'], ['AGUARDANDO_USUARIO', 'Aguardando', 'var(--blue)'], ['RESOLVIDO', 'Resolvidos', 'var(--green)'], ['FECHADO', 'Fechados', 'var(--muted)']]);
-      const pend = (r.visitasAtencao || 0) + (r.chamadosAbertos || 0) + (r.lotesPendentes || 0) + (r.solicitacoesPendentes || 0);
-      $('#inicio-frase').textContent = pend ? `${num(pend)} itens aguardam sua atenção hoje.` : 'Tudo em dia por aqui.';
+      donut(r); area(r); aplicarOrdens();
+      $('.ini-graficos').addEventListener('periodo', e => aplicarPeriodo(r, e.target.dataset.periodo).catch(() => { $('#inicio-msg').textContent = 'Não foi possível aplicar o período agora.'; }));
+      esteira(r, ''); servicedesk(r, '');
+      chips(r);
       contar();
     } catch (_) { $('#inicio-msg').textContent = 'Não foi possível carregar os indicadores agora.'; }
   }
