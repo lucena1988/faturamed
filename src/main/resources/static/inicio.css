@@ -48,7 +48,8 @@
 .ini-kpi-anel .v { stroke: var(--cor); stroke-linecap: round; }
 
 /* --- Paineis de graficos --- */
-.ini-graficos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr); gap: 14px; }
+.ini-graficos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.ini-painel-largo { grid-column: 1 / -1; }
 .ini-painel { padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); min-width: 0; animation: ini-entra .5s .25s both; }
 .ini-cab { display: grid; gap: 2px; margin-bottom: 12px; }
 .ini-painel h2 { margin: 0; font-size: 15px; color: var(--text); }
@@ -105,8 +106,48 @@
 @keyframes ini-traco { to { stroke-dashoffset: 0; } }
 @keyframes ini-pulso { 70% { box-shadow: 0 0 0 9px rgba(94, 240, 168, 0); } 100% { box-shadow: 0 0 0 0 rgba(94, 240, 168, 0); } }
 @media (prefers-reduced-motion: reduce) { .inicio * { animation: none !important; transition: none !important; } .ini-area .linha { stroke-dashoffset: 0; } }
-@media (max-width: 1080px) { .ini-graficos { grid-template-columns: 1fr 1fr; } .ini-painel-largo { grid-column: 1 / -1; order: -1; } }
+@media (max-width: 1080px) { .ini-graficos { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .inicio { padding: 18px 14px 32px; } .ini-hero { padding: 24px 20px; } .ini-hero-lado { justify-items: start; } .ini-graficos { grid-template-columns: 1fr; } }
 /* cabecalho padrao (sino, busca e menu do usuario com tema/aparencia, montado pelo ui.js) */
 .inicio .ini-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin: 0; padding: 0 0 4px; border: 0; }
 .inicio .ini-topo .session-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
+.ini-donut svg text, .ini-area svg text { stroke: none; }
+.ini-selo { position: absolute; bottom: 12px; right: 12px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.ini-selo.ok { color: var(--green); background: color-mix(in srgb, var(--green) 13%, transparent); }
+.ini-selo.pendente { color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
+.ini-selo.critico { color: var(--rose); background: color-mix(in srgb, var(--rose) 14%, transparent); }
+.ini-kpi:has(.ini-selo.critico) { border-color: color-mix(in srgb, var(--rose) 45%, var(--line)); background: linear-gradient(135deg, color-mix(in srgb, var(--rose) 6%, var(--surface)), var(--surface) 60%); }
+.ini-spark { flex: none; display: grid; justify-items: end; gap: 2px; }
+.ini-spark svg { width: 64px; height: 28px; overflow: visible; }
+.ini-spark path { fill: none; stroke: var(--cor); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ini-spark circle { fill: var(--cor); stroke: none; }
+.ini-spark small { font-size: 10.5px; }
+.ini-donut .centro.alerta { fill: var(--rose); }
+.ini-donut-rodape { margin: 4px 0 0; width: 100%; font-size: 12.5px; color: var(--muted); }
+.ini-donut-rodape a { white-space: nowrap; color: var(--primary); font-weight: 600; text-decoration: none; }
+.ini-donut-rodape a:hover { text-decoration: underline; }
+.ini-barras { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; gap: clamp(4px, 1.2vw, 14px); height: 240px; padding: 22px 0 26px; margin-top: 6px; }
+.ini-barras::before { content: ""; position: absolute; inset: 22px 0 26px; background: repeating-linear-gradient(to top, var(--line) 0 1px, transparent 1px 25%); opacity: .55; pointer-events: none; }
+.ini-media { position: absolute; left: 0; right: 0; bottom: calc(26px + (100% - 48px) * var(--media) / 100%); border-top: 2px dashed color-mix(in srgb, var(--amber) 70%, transparent); z-index: 1; pointer-events: none; }
+.ini-media em { position: absolute; right: 0; top: -20px; font-style: normal; font-size: 11px; font-weight: 600; color: var(--amber); background: var(--surface); padding: 0 6px; border-radius: 6px; }
+.ini-barra { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.ini-barra span { width: 100%; max-width: 46px; height: max(var(--h), 3px); border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent));
+  transform-origin: bottom; animation: ini-cresce .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 45ms); transition: filter .15s; }
+.ini-barra:hover span { filter: brightness(1.15); }
+.ini-barra.pico span { background: linear-gradient(180deg, var(--green), color-mix(in srgb, var(--green) 55%, transparent)); }
+.ini-barra.zero span { background: var(--line); }
+.ini-barra b { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.ini-barra small { position: absolute; bottom: -22px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+@keyframes ini-cresce { from { transform: scaleY(0); } }
+.ini-donut svg { width: 190px; }
+@media (max-width: 640px) { .ini-barra small { display: none; } .ini-barra:nth-child(3n+2) small { display: block; } .ini-barras { height: 200px; } }
+.ini-cab-filtro { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ini-cab-filtro > div { display: grid; gap: 2px; min-width: 0; }
+.ini-periodo { flex: none; width: auto; padding: 5px 28px 5px 10px; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--line); background-color: var(--surface); color: var(--text); cursor: pointer; }
+.ini-dica { margin: -4px 0 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ini-dica button { padding: 2px 10px; font-size: 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--primary); cursor: pointer; }
+.ini-arrastavel { cursor: grab; }
+.ini-arrastavel:active { cursor: grabbing; }
+.ini-arrastavel select, .ini-arrastavel a, .ini-arrastavel button { cursor: pointer; }
+.ini-arrastavel.arrastando { opacity: .35; outline: 2px dashed var(--primary); outline-offset: 2px; transform: none !important; }
+.ordenando > .ini-arrastavel:not(.arrastando) { transition: transform .15s; }

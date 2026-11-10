@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
   <link rel="stylesheet" href="identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="tema.css?v=20261103-sino">
-  <link rel="stylesheet" href="inicio.css?v=20261110-5">
+  <link rel="stylesheet" href="inicio.css?v=20261110-10">
   <script src="tema.js?v=20261009-1"></script>
 </head>
 <body>
@@ -27,21 +27,24 @@
     </section>
 
     <p id="inicio-msg" role="status" aria-live="polite"></p>
+    <p class="ini-dica">Arraste os cards para deixar na ordem que preferir. <button type="button" id="inicio-restaurar" hidden>Restaurar ordem padrão</button></p>
     <section class="ini-kpis" id="inicio-kpis" aria-label="Pendências"></section>
 
     <section class="ini-graficos" aria-label="Indicadores">
-      <article class="ini-painel">
-        <div class="ini-cab"><h2>Ciclo das visitas</h2><small id="inicio-ciclo-sub">Último relatório</small></div>
-        <div class="ini-donut" id="inicio-donut"></div>
-      </article>
-      <article class="ini-painel ini-painel-largo">
-        <div class="ini-cab"><h2>Produção nos últimos 14 dias</h2><small>Lotes por data de produção</small></div>
+      <article class="ini-painel ini-painel-largo" data-card="producao">
+        <div class="ini-cab ini-cab-filtro"><div><h2 id="inicio-area-titulo">Produção nos últimos 15 dias</h2><small>Lotes por data de produção</small></div><select id="inicio-dias-producao" class="ini-periodo" aria-label="Período da produção"><option value="5">5 dias</option><option value="10">10 dias</option><option value="15" selected>15 dias</option><option value="20">20 dias</option><option value="30">30 dias</option></select></div>
         <div class="ini-area" id="inicio-area"></div>
       </article>
-      <article class="ini-painel">
+      <article class="ini-painel" data-card="ciclo">
+        <div class="ini-cab ini-cab-filtro"><div><h2>Ciclo das visitas</h2><small id="inicio-ciclo-sub">Último relatório</small></div><select id="inicio-dias-visitas" class="ini-periodo" aria-label="Período do ciclo das visitas"><option value="">Último relatório</option><option value="5">5 dias</option><option value="10">10 dias</option><option value="15">15 dias</option><option value="20">20 dias</option><option value="30">30 dias</option></select></div>
+        <div class="ini-donut" id="inicio-donut"></div>
+      </article>
+      <article class="ini-painel" data-card="esteira">
         <div class="ini-cab"><h2>Esteira de lotes</h2><small>Do rascunho ao envio</small></div>
         <div id="inicio-esteira"></div>
-        <div class="ini-cab ini-sub-header"><h2>Service Desk</h2><small>Chamados por situação</small></div>
+      </article>
+      <article class="ini-painel" data-card="servicedesk">
+        <div class="ini-cab"><h2>Service Desk</h2><small>Chamados por situação</small></div>
         <div id="inicio-chamados"></div>
       </article>
     </section>
@@ -52,6 +55,6 @@
     </section>
   </main>
   <script src="sidebar.js?v=20261110-avisos"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
-  <script src="inicio.js?v=20261110-2"></script>
+  <script src="inicio.js?v=20261110-10"></script>
 </body>
 </html>
