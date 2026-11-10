@@ -15,7 +15,8 @@
   }
   function button(text, action) { const item = element('button', text); item.type = 'button'; item.addEventListener('click', () => action().catch(error => showMessage('error', error.message))); return item; }
   function renderVisits() {
-    const filtered = visits.filter(visit => (!find('status').value || visit.situacao === find('status').value) && visit.atendimento.includes(find('search').value.trim()));
+    const comp = find('competencia-filter').value;
+    const filtered = visits.filter(visit => (!comp || visit.competencia === comp) && (!find('status').value || visit.situacao === find('status').value) && visit.atendimento.includes(find('search').value.trim()));
     find('visits').replaceChildren();
     for (const visit of filtered) {
       const row = element('tr');
@@ -35,12 +36,37 @@
     }
     find('count').textContent = `${filtered.length} ocorrências · IDs das visitas distintas são preservados`;
   }
+  function renderCompetencias(files) {
+    const box = find('competencias'), groups = new Map();
+    for (const file of files.filter(f => f.tipo === 'HOSPITAL')) {
+      if (!groups.has(file.competencia)) groups.set(file.competencia, []);
+      groups.get(file.competencia).push(file);
+    }
+    if (!groups.size) { box.replaceChildren(element('p', 'Nenhuma importação do hospital.')); return; }
+    const cards = [...groups.keys()].sort().reverse().map(comp => {
+      const list = groups.get(comp), total = list.reduce((s, f) => s + (f.quantidade_registros || 0), 0);
+      const card = element('article'); card.className = 'competencia-card';
+      card.append(element('h3', `${comp.replace('-', '/')} · ${total} registros`));
+      const ul = element('ul');
+      for (const f of list) {
+        const li = element('li', `${f.nome} — ${f.quantidade_registros ?? '—'} registros · ${f.modo_hospital === 'ATUALIZAR' ? 'atualização' : 'novos registros'} · ${String(f.criado_em || '').slice(0, 10)} `);
+        li.append(link('Baixar original', `/api/base-hospitalar/arquivos/${f.id}/original`));
+        ul.append(li);
+      }
+      card.append(ul); return card;
+    });
+    box.replaceChildren(...cards);
+  }
   async function load() {
     const token = ++generation, hospital = find('hospital').value;
-    if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); find('files').replaceChildren(); return; }
-    const [data, files, tracking] = await Promise.all([request(`/api/base-hospitalar/visitas?hospitalId=${hospital}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospital}`), request(`/api/base-hospitalar/acompanhamento?hospitalId=${hospital}`)]);
+    if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); renderCompetencias([]); find('files').replaceChildren(); return; }
+    let [data, files, tracking] = await Promise.all([request(`/api/base-hospitalar/visitas?hospitalId=${hospital}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospital}`), request(`/api/base-hospitalar/acompanhamento?hospitalId=${hospital}${find('competencia-filter').value ? `&competencia=${find('competencia-filter').value}` : ''}`)]);
     if (token !== generation) return;
-    visits = data; flow = tracking; renderFlow(); renderVisits(); find('files').replaceChildren();
+    const filter = find('competencia-filter'), atual = filter.value, comps = [...new Set(files.map(f => f.competencia))].sort().reverse();
+    filter.replaceChildren(new Option('Todas as competências', ''), ...comps.map(c => new Option(c.replace('-', '/'), c)));
+    filter.value = comps.includes(atual) ? atual : '';
+    files = files.filter(f => !filter.value || f.competencia === filter.value);
+    visits = data; flow = tracking; renderFlow(); renderVisits(); renderCompetencias(files); find('files').replaceChildren();
     for (const file of files) {
       const row = element('tr');
       for (const value of [file.nome, file.tipo, file.competencia, file.medico || (file.tipo === 'PRODUCAO' && file.modo_producao === 'VARIOS' ? 'Vários médicos' : '—')]) row.append(element('td', value));
@@ -131,7 +157,7 @@
       await perform(async () => {
         showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
         const result = await request(`/api/base-hospitalar/${endpoint}`, {method:'POST', body:data});
-        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} visitas atualizadas mantendo o ID; ${result.divergencias} divergências para análise.`;
+        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} visitas atualizadas mantendo o ID; ${result.divergencias} divergências para análise.` + (result.foraDaCompetencia > 0 ? ` Atenção: ${result.foraDaCompetencia} visitas têm data fora da competência informada.` : '');
         const nodes = [element('span', `${text} `)];
         if (result.relatorioId) nodes.push(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
         showMessage(result.repetido || result.divergencias > 0 ? 'warning' : 'success', ...nodes);
@@ -215,7 +241,8 @@
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
   find('history-close').addEventListener('click', () => find('history-dialog').close());
   for (const id of ['status','search']) find(id).addEventListener('input', renderVisits);
-  find('hospital').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
+  find('competencia-filter').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
+  find('hospital').addEventListener('change', () => { find('competencia-filter').value = ''; load().catch(error => showMessage('error', error.message)); });
   find('reload').addEventListener('click', () => load().catch(error => showMessage('error', error.message)));
   async function initialize() {
     let hospitals;

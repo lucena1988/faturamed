@@ -22,17 +22,22 @@ public class AcompanhamentoBaseHospitalarService {
         this.jdbc=jdbc; this.base=base; this.revisoes=revisoes; this.recebimentos=recebimentos;
     }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
-    public Resultado consultar(long hospitalId) throws Exception {
+    public Resultado consultar(long hospitalId) throws Exception { return consultar(hospitalId,null); }
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    public Resultado consultar(long hospitalId,String competencia) throws Exception {
+        String comp=competencia==null||competencia.isBlank()?null:BaseHospitalarService.normalizarCompetencia(competencia);
         Map<String,RecebimentoService.Visita> financeiro=new HashMap<>();
         long producaoSemBase=0;
-        for(long relatorio:jdbc.queryForList("select relatorio_id from arquivo_base_hospitalar where hospital_id=? and tipo='PRODUCAO' and relatorio_id is not null",Long.class,hospitalId)) {
+        for(var producao:jdbc.queryForList("select relatorio_id,competencia from arquivo_base_hospitalar where hospital_id=? and tipo='PRODUCAO' and relatorio_id is not null",hospitalId)) {
+            long relatorio=((Number)producao.get("relatorio_id")).longValue();
             for(var visita:recebimentos.listar(relatorio).visitas()) financeiro.put(relatorio+":"+visita.linha(),visita);
-            producaoSemBase+=revisoes.carregar(relatorio).atual().visitas().stream().filter(FilaCobranca::elegivel).count();
+            if(comp==null || comp.equals(producao.get("competencia"))) producaoSemBase+=revisoes.carregar(relatorio).atual().visitas().stream().filter(FilaCobranca::elegivel).count();
         }
         var reservadas=new HashSet<>(jdbc.queryForList("select r.visita_id from reserva_base_hospitalar r join visita_base_hospitalar v on v.id=r.visita_id where v.hospital_id=?",Integer.class,hospitalId));
         List<Item> itens=new ArrayList<>();
         long emAnalise=0,duplicadas=0;
         for(var visita:base.visitas(hospitalId)) {
+            if(comp!=null && !comp.equals(visita.get("competencia"))) continue;
             if(visita.get("decisao").equals("EM_ANALISE")) { emAnalise++; continue; }
             if(Set.of("DUPLICADO_PAGO_OUTRO_MES","DUPLICADO_MESMA_COMPETENCIA").contains(visita.get("decisao"))) { duplicadas++; continue; }
             int id=((Number)visita.get("id")).intValue();
