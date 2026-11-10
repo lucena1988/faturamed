@@ -1,3 +1,7 @@
+/* valores padrão das variáveis definidas pelo inicio.js em cada card (o style inline sobrepõe) */
+.ini-kpi, .ini-modulo, .ini-barra { --i: 0; }
+.ini-barra { --h: 0%; }
+.ini-barras { --media: 0; }
 /* Tela de inicio (central de comando): usa os tokens do tema (claro/escuro) e as cores por modulo de modulos.css */
 .inicio { --ini-neon: #4fd6e0; max-width: 1280px; margin: 0 auto; padding: 28px 28px 48px; display: grid; gap: 22px; }
 .inicio #inicio-msg:empty { display: none; }
@@ -31,7 +35,7 @@
 .ini-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .ini-kpi { --cor: var(--primary); position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; padding: 18px; text-decoration: none; color: var(--text);
   background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
-  transition: transform .18s, box-shadow .18s, border-color .18s; animation: ini-entra .5s both; animation-delay: calc(var(--i) * 70ms); }
+  transition: transform .18s, box-shadow .18s, border-color .18s; animation: ini-entra .5s both; animation-delay: calc(var(--i, 0) * 70ms); }
 .ini-kpi::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, var(--cor), transparent); }
 .ini-kpi:hover, .ini-kpi:focus-visible { transform: translateY(-3px); border-color: var(--cor); box-shadow: 0 12px 28px color-mix(in srgb, var(--cor) 22%, transparent); }
 .ini-kpi[data-tipo="visitas"] { --cor: var(--mod-visitas); } .ini-kpi[data-tipo="chamados"] { --cor: var(--mod-gestao); }
@@ -68,14 +72,6 @@
 .ini-donut li i, .ini-esteira-legenda li i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .ini-donut li b, .ini-esteira-legenda li b { margin-left: auto; color: var(--text); font-variant-numeric: tabular-nums; }
 
-.ini-area svg { width: 100%; height: auto; display: block; color: var(--primary); }
-.ini-area .grade { stroke: var(--line); stroke-dasharray: 3 5; }
-.ini-area .linha { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 4px 8px color-mix(in srgb, currentColor 45%, transparent));
-  stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: ini-traco 1.4s .3s ease-out forwards; }
-.ini-area .preenchimento { fill: url(#ini-grad); }
-.ini-area .g0 { stop-color: currentColor; stop-opacity: .32; } .ini-area .g1 { stop-color: currentColor; stop-opacity: 0; }
-.ini-area .ponto { fill: var(--surface); stroke: currentColor; stroke-width: 2; transition: r .15s; } .ini-area .ponto:hover { r: 6; }
-.ini-area .eixo { fill: var(--muted); font-size: 10.5px; text-anchor: middle; }
 .ini-area-total { margin: 8px 0 0; font-size: 13px; color: var(--muted); } .ini-area-total b { color: var(--text); }
 
 .ini-esteira { display: flex; gap: 3px; height: 12px; margin-bottom: 12px; }
@@ -84,7 +80,7 @@
 /* --- Modulos --- */
 .ini-modulos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
 .ini-modulo { position: relative; overflow: hidden; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
-  transition: transform .18s, border-color .18s, box-shadow .18s; animation: ini-entra .5s both; animation-delay: calc(350ms + var(--i) * 60ms); }
+  transition: transform .18s, border-color .18s, box-shadow .18s; animation: ini-entra .5s both; animation-delay: calc(350ms + var(--i, 0) * 60ms); }
 .ini-modulo::after { content: ""; position: absolute; width: 160px; height: 160px; right: -60px; top: -60px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--mod-cor) 28%, transparent), transparent 70%); pointer-events: none; transition: transform .3s; }
 .ini-modulo:hover { transform: translateY(-3px); border-color: var(--mod-cor); box-shadow: 0 12px 28px color-mix(in srgb, var(--mod-cor) 20%, transparent); }
 .ini-modulo:hover::after { transform: scale(1.5); }
@@ -103,15 +99,14 @@
 .inicio [data-modulo="gestao"] { --mod-cor: var(--mod-gestao); --mod-forte: var(--mod-gestao-forte); --mod-suave: var(--mod-gestao-suave); }
 
 @keyframes ini-entra { from { opacity: 0; transform: translateY(12px); } }
-@keyframes ini-traco { to { stroke-dashoffset: 0; } }
 @keyframes ini-pulso { 70% { box-shadow: 0 0 0 9px rgba(94, 240, 168, 0); } 100% { box-shadow: 0 0 0 0 rgba(94, 240, 168, 0); } }
-@media (prefers-reduced-motion: reduce) { .inicio * { animation: none !important; transition: none !important; } .ini-area .linha { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .inicio * { animation: none !important; transition: none !important; } }
 @media (max-width: 1080px) { .ini-graficos { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .inicio { padding: 18px 14px 32px; } .ini-hero { padding: 24px 20px; } .ini-hero-lado { justify-items: start; } .ini-graficos { grid-template-columns: 1fr; } }
 /* cabecalho padrao (sino, busca e menu do usuario com tema/aparencia, montado pelo ui.js) */
 .inicio .ini-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin: 0; padding: 0 0 4px; border: 0; }
 .inicio .ini-topo .session-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
-.ini-donut svg text, .ini-area svg text { stroke: none; }
+.ini-donut svg text { stroke: none; }
 .ini-selo { position: absolute; bottom: 12px; right: 12px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .ini-selo.ok { color: var(--green); background: color-mix(in srgb, var(--green) 13%, transparent); }
 .ini-selo.pendente { color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
@@ -128,11 +123,11 @@
 .ini-donut-rodape a:hover { text-decoration: underline; }
 .ini-barras { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; gap: clamp(4px, 1.2vw, 14px); height: 240px; padding: 22px 0 26px; margin-top: 6px; }
 .ini-barras::before { content: ""; position: absolute; inset: 22px 0 26px; background: repeating-linear-gradient(to top, var(--line) 0 1px, transparent 1px 25%); opacity: .55; pointer-events: none; }
-.ini-media { position: absolute; left: 0; right: 0; bottom: calc(26px + (100% - 48px) * var(--media) / 100%); border-top: 2px dashed color-mix(in srgb, var(--amber) 70%, transparent); z-index: 1; pointer-events: none; }
+.ini-media { position: absolute; left: 0; right: 0; bottom: calc(26px + (100% - 48px) * var(--media, 0)); border-top: 2px dashed color-mix(in srgb, var(--amber) 70%, transparent); z-index: 1; pointer-events: none; }
 .ini-media em { position: absolute; right: 0; top: -20px; font-style: normal; font-size: 11px; font-weight: 600; color: var(--amber); background: var(--surface); padding: 0 6px; border-radius: 6px; }
 .ini-barra { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
-.ini-barra span { width: 100%; max-width: 46px; height: max(var(--h), 3px); border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent));
-  transform-origin: bottom; animation: ini-cresce .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 45ms); transition: filter .15s; }
+.ini-barra span { width: 100%; max-width: 46px; height: max(var(--h, 0%), 3px); border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 55%, transparent));
+  transform-origin: bottom; animation: ini-cresce .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); transition: filter .15s; }
 .ini-barra:hover span { filter: brightness(1.15); }
 .ini-barra.pico span { background: linear-gradient(180deg, var(--green), color-mix(in srgb, var(--green) 55%, transparent)); }
 .ini-barra.zero span { background: var(--line); }

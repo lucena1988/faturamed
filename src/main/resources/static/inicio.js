@@ -99,7 +99,7 @@
     const dias = r.lotesPorDia || [];
     if (!dias.length) { $('#inicio-area').innerHTML = '<p class="ini-vazio">Sem dados de produção.</p>'; return; }
     const v = dias.map(d => Number(d.total) || 0), max = Math.max(1, ...v), total = v.reduce((a, b) => a + b, 0), media = total / v.length;
-    $('#inicio-area').innerHTML = `<div class="ini-barras" role="img" aria-label="${total} lotes em 14 dias" style="--media:${(media / max * 100).toFixed(1)}%">
+    $('#inicio-area').innerHTML = `<div class="ini-barras" role="img" aria-label="${total} lotes em ${v.length} dias" style="--media:${(media / max).toFixed(3)}">
       <span class="ini-media" title="Média do período"><em>média ${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</em></span>
       ${dias.map((d, i) => `<div class="ini-barra${v[i] === max && v[i] ? ' pico' : ''}${v[i] ? '' : ' zero'}" style="--h:${(v[i] / max * 100).toFixed(1)}%;--i:${i}" title="${esc(d.dia)}: ${num(v[i])} lote(s)">
         <b>${v[i] ? num(v[i]) : ''}</b><span></span><small>${esc(d.dia)}</small></div>`).join('')}
