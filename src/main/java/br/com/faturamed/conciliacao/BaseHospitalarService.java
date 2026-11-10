@@ -13,7 +13,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class BaseHospitalarService {
-    public record Resultado(long arquivoId, Long relatorioId, int visitas, int divergencias, boolean repetido, int atualizadas) {
+    public record Resultado(long arquivoId, Long relatorioId, int visitas, int divergencias, boolean repetido, int atualizadas, int foraDaCompetencia) {
+        public Resultado(long arquivoId,Long relatorioId,int visitas,int divergencias,boolean repetido,int atualizadas) {
+            this(arquivoId,relatorioId,visitas,divergencias,repetido,atualizadas,0);
+        }
         public Resultado(long arquivoId,Long relatorioId,int visitas,int divergencias,boolean repetido) {
             this(arquivoId,relatorioId,visitas,divergencias,repetido,0);
         }
@@ -78,7 +81,10 @@ public class BaseHospitalarService {
                     values(?,?,?,?,?,?,?::jsonb,?,?,?,?)
                     """,arquivoId,hospitalId,registro.linha(),registro.atendimento(),registro.data(),registro.medico(),json.writeValueAsString(linha.campos()),anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE",arquivoId,registro.linha());
         }
-        return new Resultado(arquivoId,null,registros.size(),divergencias,false,atualizadas);
+        jdbc.update("update arquivo_base_hospitalar set quantidade_registros=? where id=?",registros.size(),arquivoId);
+        String mes=competencia;
+        int fora=(int)registros.stream().filter(r->!r.data().toString().startsWith(mes)).count();
+        return new Resultado(arquivoId,null,registros.size(),divergencias,false,atualizadas,fora);
     }
 
     @Transactional(rollbackFor=Exception.class)
@@ -300,7 +306,7 @@ public class BaseHospitalarService {
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> arquivos(long hospitalId) {
-        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
+        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
     }
 
     @Transactional(readOnly=true)

@@ -190,6 +190,26 @@ class BaseHospitalarIntegracaoTest {
         assertThat(service.visitas(hospital)).hasSize(1);
     }
 
+    @Test void importacoesDeCompetenciasDiferentesGuardamArquivoEQuantidade() throws Exception {
+        var cab=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        var jan=service.importarHospital(hospital,"2026/01",planilha(List.of(cab,
+                List.of("701","2026-01-05",nome(ana),"101","Visita","100","1","100","Faturado"),
+                List.of("702","2026-01-06",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
+        var fev=service.importarHospital(hospital,"2026/02",planilha(List.of(cab,
+                List.of("801","2026-02-05",nome(ana),"101","Visita","100","1","100","Faturado"),
+                List.of("802","2026-02-06",nome(ana),"101","Visita","100","1","100","Faturado"),
+                List.of("803","2026-01-30",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
+        assertThat(jan.foraDaCompetencia()).isZero();
+        assertThat(fev.foraDaCompetencia()).isEqualTo(1);
+        var hospitalares=service.arquivos(hospital).stream().filter(a->"HOSPITAL".equals(a.get("tipo"))).toList();
+        assertThat(hospitalares).extracting(a->a.get("competencia")).containsExactly("2026-02","2026-01");
+        assertThat(hospitalares).extracting(a->((Number)a.get("quantidade_registros")).intValue()).containsExactly(3,2);
+        assertThat(hospitalares).allSatisfy(a->assertThat(a.get("nome")).isNotNull());
+        assertThat(acompanhamento.consultar(hospital).visitasDistintas()).isEqualTo(5);
+        assertThat(acompanhamento.consultar(hospital,"2026/01").visitasDistintas()).isEqualTo(2);
+        assertThat(acompanhamento.consultar(hospital,"2026-02").visitasDistintas()).isEqualTo(3);
+    }
+
     @Test void mesmoAtendimentoDataComDoisMedicosGeraVinculosDiferentes() throws Exception {
         var arquivo=hospital(nome(ana),nome(bruno));
         assertThat(service.importarHospital(hospital,"2026-09",arquivo,usuario).divergencias()).isZero();

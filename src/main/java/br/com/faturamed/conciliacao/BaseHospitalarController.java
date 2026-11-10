@@ -15,7 +15,7 @@ public class BaseHospitalarController {
     private final AcompanhamentoBaseHospitalarService acompanhamento;
     public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento) { this.service=service; this.acompanhamento=acompanhamento; }
     @GetMapping("/acompanhamento")
-    public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId) throws Exception { return acompanhamento.consultar(hospitalId); }
+    public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) throws Exception { return acompanhamento.consultar(hospitalId,competencia); }
 
     @PostMapping(value="/hospital",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado hospital(@RequestParam long hospitalId,@RequestParam String competencia,
