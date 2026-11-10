@@ -103,4 +103,30 @@ class ChamadoAvisosIntegracaoTest {
         assertEquals(1, restantes.naoLidas());
         assertEquals(segundo, restantes.itens().getFirst().chamadoId());
     }
+
+    @Test void bloqueioMantemEtapaDeOrigemEContaNoResumo() throws Exception {
+        long id = abrir();
+        aguardar(id);
+        chamados.atualizarStatus(id, new ChamadoService.AlteracaoStatus(
+                "AGUARDANDO_USUARIO", null, null, null, false, "Aguardando fornecedor", true), tecnico);
+        var chamado = chamados.detalhar(id, tecnico).chamado();
+        assertEquals("AGUARDANDO_USUARIO", chamado.status());
+        assertTrue(chamado.bloqueado());
+        var painel = chamados.listar(null, "BLOQUEADOS", null, null, false, tecnico);
+        assertTrue(painel.chamados().stream().anyMatch(c -> c.id() == id));
+        assertTrue(painel.resumo().bloqueados() >= 1);
+        chamados.atualizarStatus(id, new ChamadoService.AlteracaoStatus(
+                "EM_ATENDIMENTO", null, null, null, false, "Retomado"), tecnico);
+        assertTrue(chamados.detalhar(id, tecnico).chamado().bloqueado());
+        chamados.atualizarStatus(id, new ChamadoService.AlteracaoStatus(
+                "RESOLVIDO", null, null, null, false, "Concluido"), tecnico);
+        assertFalse(chamados.detalhar(id, tecnico).chamado().bloqueado());
+    }
+
+    @Test void funcionarioNaoAlteraBloqueio() throws Exception {
+        long id = abrir();
+        chamados.atualizarStatus(id, new ChamadoService.AlteracaoStatus(
+                null, null, null, null, false, null, true), funcionario);
+        assertFalse(chamados.detalhar(id, tecnico).chamado().bloqueado());
+    }
 }

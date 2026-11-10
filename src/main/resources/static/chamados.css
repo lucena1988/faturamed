@@ -59,3 +59,14 @@ body.sd-liquid-body { min-height:100dvh; background:var(--bg); color:var(--text)
 .sd-workspace :is(a,button,input,select,textarea):focus-visible,.sd-modal :is(button,input,select,textarea):focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
 @media(max-width:900px) { .sd-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.sd-detail-grid { grid-template-columns:1fr; }.sd-workspace { padding:20px 16px 40px; }.sd-nav-actions { justify-content:flex-start; } }
 @media(max-width:480px) { .sd-kpi-grid { gap:10px; }.sd-kpi-card { padding:14px; }.sd-topbar h1 { font-size:23px; }.sd-search-field { flex-basis:100%; } }
+/* Status BLOCK (Bloqueado): vermelho vivo, distinto do vermelho queimado do grupo Gestao */
+.sd-card.st-block { border:1px solid #e5383b; border-left:4px solid #e5383b; background:color-mix(in srgb, #e5383b 10%, var(--surface)); box-shadow:0 0 0 1px #e5383b33, 0 2px 8px #e5383b26; }
+.sd-card.st-block:hover { border-color:#ff5a5f; }
+.sd-card.st-block .sd-protocol-tag { color:#c1121f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sd-card.st-block { background:color-mix(in srgb, #e5383b 16%, var(--surface)); } :root:not([data-theme="light"]) .sd-card.st-block .sd-protocol-tag { color:#ff8a8e; } }
+:root[data-theme="dark"] .sd-card.st-block { background:color-mix(in srgb, #e5383b 16%, var(--surface)); }
+:root[data-theme="dark"] .sd-card.st-block .sd-protocol-tag { color:#ff8a8e; }
+:root[data-theme="light"] .sd-card.st-block .sd-protocol-tag { color:#c1121f; }
+.sd-pill.sd-pill-block { background:#e5383b; color:#fff; border-color:#e5383b; }
+.sd-block-toggle { display:flex; align-items:center; gap:8px; color:#c1121f; font-weight:600; }
+:root[data-theme="dark"] .sd-block-toggle { color:#ff8a8e; }

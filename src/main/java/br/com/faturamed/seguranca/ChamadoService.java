@@ -87,11 +87,12 @@ public class ChamadoService {
                               Instant canceladoEm, String motivoCancelamento, String justificativaCancelamento,
                               Integer notaAvaliacao, String comentarioAvaliacao, Instant avaliadoEm,
                               Instant criadoEm, Instant atualizadoEm, long versao,
-                              String slaStatus, long minutosRestantes, long totalMensagens, long totalAnexos) {}
+                              String slaStatus, long minutosRestantes, long totalMensagens, long totalAnexos,
+                              boolean bloqueado) {}
 
     public record ResumoKanban(long totalAbertos, long noPrazo, long emAlerta, long vencidos, long resolvidos, long cancelados,
                                Double mediaAvaliacao, long totalAvaliacoes, long filaDevAbertos, long filaAdminAbertos,
-                               long emAtendimento, long aguardandoRetorno) {}
+                               long emAtendimento, long aguardandoRetorno, long bloqueados) {}
 
     public record PainelChamados(ResumoKanban resumo, List<ChamadoItem> chamados) {}
 
@@ -104,7 +105,12 @@ public class ChamadoService {
     public record DetalheChamado(ChamadoItem chamado, List<MensagemItem> mensagens, List<AnexoItem> anexos) {}
 
     public record AlteracaoStatus(String status, String filaDestino, String prioridade, Long responsavelId,
-                                  Boolean assumir, @Size(max = 2000) String observacao) {}
+                                  Boolean assumir, @Size(max = 2000) String observacao, Boolean bloqueado) {
+        public AlteracaoStatus(String status, String filaDestino, String prioridade, Long responsavelId,
+                               Boolean assumir, String observacao) {
+            this(status, filaDestino, prioridade, responsavelId, assumir, observacao, null);
+        }
+    }
 
     public record Avaliacao(@NotNull @Min(1) @Max(5) Integer nota, @Size(max = 1500) String comentario) {}
 
@@ -247,6 +253,8 @@ public class ChamadoService {
         if (status != null && !status.isBlank() && !"TODOS".equalsIgnoreCase(status)) {
             if ("ATIVOS".equalsIgnoreCase(status)) {
                 sql.append(" and c.status not in ('CANCELADO', 'FECHADO') ");
+            } else if ("BLOQUEADOS".equalsIgnoreCase(status)) {
+                sql.append(" and c.bloqueado and c.status not in ('RESOLVIDO', 'FECHADO', 'CANCELADO') ");
             } else if ("SLA_VENCIDO".equalsIgnoreCase(status)) {
                 sql.append(" and c.status not in ('RESOLVIDO', 'FECHADO', 'CANCELADO') and c.prazo_sla_em < now() ");
             } else {
@@ -287,7 +295,7 @@ public class ChamadoService {
         Object[] args = isMedico || "OPERADOR".equals(user.perfil()) ? new Object[]{user.id()} : new Object[]{};
         List<ChamadoItem> todos = jdbc.query(SELECT_CHAMADO_BASE + filtroEscopo, this::mapearChamado, args);
         long abertos = 0, noPrazo = 0, emAlerta = 0, vencidos = 0, resolvidos = 0, cancelados = 0, filaDev = 0, filaAdmin = 0;
-        long emAtendimento = 0, aguardandoRetorno = 0;
+        long emAtendimento = 0, aguardandoRetorno = 0, bloqueados = 0;
         long somaNotas = 0, totalAvaliacoes = 0;
         for (ChamadoItem c : todos) {
             if ("CANCELADO".equals(c.status())) {
@@ -298,6 +306,7 @@ public class ChamadoService {
                 abertos++;
                 if ("EM_ATENDIMENTO".equals(c.status())) emAtendimento++;
                 else if ("AGUARDANDO_USUARIO".equals(c.status())) aguardandoRetorno++;
+                if (c.bloqueado()) bloqueados++;
                 if ("DEV".equals(c.filaDestino())) filaDev++;
                 else if ("ADMIN".equals(c.filaDestino())) filaAdmin++;
                 switch (c.slaStatus()) {
@@ -312,7 +321,7 @@ public class ChamadoService {
             }
         }
         Double media = totalAvaliacoes > 0 ? Math.round((somaNotas * 10.0) / totalAvaliacoes) / 10.0 : null;
-        return new ResumoKanban(abertos, noPrazo, emAlerta, vencidos, resolvidos, cancelados, media, totalAvaliacoes, filaDev, filaAdmin, emAtendimento, aguardandoRetorno);
+        return new ResumoKanban(abertos, noPrazo, emAlerta, vencidos, resolvidos, cancelados, media, totalAvaliacoes, filaDev, filaAdmin, emAtendimento, aguardandoRetorno, bloqueados);
     }
 
     @Transactional(readOnly = true)
@@ -473,6 +482,8 @@ public class ChamadoService {
             }
         }
 
+        boolean novoBloqueado = isAtendente && dados.bloqueado() != null ? dados.bloqueado() : atual.bloqueado();
+        if (Set.of("RESOLVIDO", "FECHADO").contains(novoStatus)) novoBloqueado = false;
         jdbc.update("""
                 update chamado_suporte
                 set status = ?,
@@ -491,12 +502,13 @@ public class ChamadoService {
                     fechado_em = case
                         when ? = 'FECHADO' then coalesce(fechado_em, now())
                         else null end,
+                    bloqueado = ?,
                     atualizado_em = now(),
                     versao = versao + 1
                 where id = ?
                 """,
                 novoStatus, novaFila, novaPrioridade, novoRespId, novoRespNome,
-                novoStatus, novoStatus, novoStatus, novoStatus, id);
+                novoStatus, novoStatus, novoStatus, novoStatus, novoBloqueado, id);
 
         if ("AGUARDANDO_USUARIO".equals(novoStatus) && !novoStatus.equals(atual.status()))
             avisar(atual,user,"RETORNO_SOLICITADO",false);
@@ -504,6 +516,9 @@ public class ChamadoService {
         List<String> mudancas = new ArrayList<>();
         if (!novoStatus.equals(atual.status())) {
             mudancas.add("Status alterado de " + rotuloStatus(atual.status()) + " para " + rotuloStatus(novoStatus));
+        }
+        if (novoBloqueado != atual.bloqueado()) {
+            mudancas.add(novoBloqueado ? "Chamado marcado como Bloqueado" : "Bloqueio do chamado removido");
         }
         if (!novaFila.equals(atual.filaDestino())) {
             mudancas.add("Redirecionado da fila " + atual.filaDestino() + " para a fila " + novaFila);
@@ -812,7 +827,8 @@ public class ChamadoService {
                 slaStatus,
                 minutosRestantes,
                 r.getLong("total_mensagens"),
-                r.getLong("total_anexos")
+                r.getLong("total_anexos"),
+                r.getBoolean("bloqueado")
         );
     }
 }
