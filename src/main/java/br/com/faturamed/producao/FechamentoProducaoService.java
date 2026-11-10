@@ -39,7 +39,7 @@ public class FechamentoProducaoService {
             LocalDate prazoConferencia, Integer diasParaPrazo) {}
     public record Etiqueta(LocalDate data, String periodo, String medico, String exame, String nrAtendimento, String paciente,
             String convenio, String plano, String carteirinha, String guia, long itemId, long loteId, String situacao,
-            String contestacao, String contestacaoMotivo, String contestacaoResposta) {}
+            String contestacao, String contestacaoMotivo, String contestacaoResposta, Long medicoId, BigDecimal valor) {}
     /** Etiqueta contestada pelo hospital aguardando decisao da FaturaMed. */
     public record Contestacao(long itemId, long loteId, long fechamentoId, String hospital, LocalDate data, String medico, String exame,
             String nrAtendimento, String paciente, String motivo, String por, java.time.LocalDateTime em) {}
@@ -275,15 +275,57 @@ public class FechamentoProducaoService {
                 r.getInt("pontos"), r.getBigDecimal("valor")), id);
         List<Etiqueta> etiquetas = jdbc.query("""
                 select l.data_producao, l.periodo, m.nome medico, e.nome exame, i.nr_atendimento, i.paciente, i.convenio, i.plano, i.carteirinha, i.guia,
-                       i.id item_id, l.id lote_id, fi.situacao, i.contestacao, i.contestacao_motivo, i.contestacao_resposta
+                       i.id item_id, l.id lote_id, i.medico_id, fi.situacao, i.contestacao, i.contestacao_motivo, i.contestacao_resposta
                 from producao_fechamento_item fi join producao_item i on i.id=fi.item_id join producao_lote l on l.id=i.lote_id
                 left join medico_cadastro m on m.id=i.medico_id left join producao_exame_tipo e on e.id=i.exame_id
                 where fi.fechamento_id=? order by m.nome, l.data_producao, i.nr_atendimento""", (r, n) -> new Etiqueta(
                 r.getObject("data_producao", LocalDate.class), r.getString("periodo"), Objects.toString(r.getString("medico"), ""),
                 Objects.toString(r.getString("exame"), ""), r.getString("nr_atendimento"), r.getString("paciente"), r.getString("convenio"),
                 r.getString("plano"), cripto.decifrar(r.getString("carteirinha")), cripto.decifrar(r.getString("guia")), r.getLong("item_id"), r.getLong("lote_id"),
-                r.getString("situacao"), r.getString("contestacao"), r.getString("contestacao_motivo"), r.getString("contestacao_resposta")), id);
+                r.getString("situacao"), r.getString("contestacao"), r.getString("contestacao_motivo"), r.getString("contestacao_resposta"),
+                (Long) r.getObject("medico_id", Long.class), null), id);
+        Map<Long, BigDecimal> valores = ratear(calculos, etiquetas.stream().filter(e -> "INCLUIDA".equals(e.situacao()))
+                .map(e -> new RefItem(e.itemId(), e.loteId(), e.medicoId())).toList());
+        etiquetas = etiquetas.stream().map(e -> new Etiqueta(e.data(), e.periodo(), e.medico(), e.exame(), e.nrAtendimento(), e.paciente(),
+                e.convenio(), e.plano(), e.carteirinha(), e.guia(), e.itemId(), e.loteId(), e.situacao(), e.contestacao(), e.contestacaoMotivo(),
+                e.contestacaoResposta(), e.medicoId(), valores.get(e.itemId()))).toList();
         return new Detalhe(f.get(0), calculos, resumir(calculos), etiquetas);
+    }
+
+    /** Referencia minima de uma etiqueta para o rateio: agenda = lote x medico. */
+    record RefItem(long itemId, long loteId, Long medicoId) {}
+
+    /**
+     * Rateia o valor de cada agenda (soma dos calculos do lote x medico) entre as etiquetas dela, em partes iguais;
+     * a sobra de centavos vai para a ultima etiqueta, de modo que a soma bate com o valor da agenda.
+     * Fixos mensais (sem lote) nao sao atribuidos a etiquetas.
+     */
+    static Map<Long, BigDecimal> ratear(List<Calculo> calculos, List<RefItem> itens) {
+        Map<List<Object>, BigDecimal> porAgenda = new HashMap<>();
+        for (Calculo c : calculos)
+            if (c.loteId() != null) porAgenda.merge(Arrays.asList(c.loteId(), c.medicoId()), c.valor() == null ? BigDecimal.ZERO : c.valor(), BigDecimal::add);
+        Map<List<Object>, List<RefItem>> agendas = new LinkedHashMap<>();
+        for (RefItem i : itens) agendas.computeIfAbsent(Arrays.asList(i.loteId(), i.medicoId()), k -> new ArrayList<>()).add(i);
+        Map<Long, BigDecimal> valores = new HashMap<>();
+        agendas.forEach((k, lista) -> {
+            BigDecimal total = porAgenda.getOrDefault(k, BigDecimal.ZERO);
+            BigDecimal parte = total.divide(BigDecimal.valueOf(lista.size()), 2, java.math.RoundingMode.DOWN);
+            for (int n = 0; n < lista.size(); n++)
+                valores.put(lista.get(n).itemId(), n == lista.size() - 1 ? total.subtract(parte.multiply(BigDecimal.valueOf(n))) : parte);
+        });
+        return valores;
+    }
+
+    /** Previa do valor de cada etiqueta de um lote pelas regras vigentes do hospital na data do lote. */
+    @Transactional(readOnly = true)
+    public Map<Long, BigDecimal> valoresLote(long loteId) {
+        List<Map<String, Object>> cab = jdbc.queryForList("select hospital_id, data_producao from producao_lote where id=?", loteId);
+        if (cab.isEmpty()) throw new RecursoNaoEncontradoException("Lote nao encontrado");
+        long hospitalId = ((Number) cab.get(0).get("hospital_id")).longValue();
+        LocalDate data = ((java.sql.Date) cab.get(0).get("data_producao")).toLocalDate();
+        List<ItemLinha> itens = itens("where i.lote_id=?", loteId);
+        Previa p = calcular(hospitalId, data, data, itens);
+        return ratear(p.calculos(), itens.stream().map(i -> new RefItem(i.itemId(), i.loteId(), i.medicoId())).toList());
     }
 
     /** AGUARDANDO (enviado ao hospital) -> APROVADO (hospital deu ok) -> NF_EMITIDA. */
