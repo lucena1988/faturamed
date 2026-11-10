@@ -39,7 +39,7 @@
 
   function item([label, href, view, icon]) {
     const icone = `<span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span>`;
-    const contador = view === 'divergencias' ? '<span class="nav-count" id="nav-divergencias-count" hidden></span>' : '';
+    const contador = view === 'divergencias' ? '<span class="nav-count" id="nav-divergencias-count" hidden></span>' : href === 'chamados.html' ? '<span class="nav-count" data-chamados-count hidden></span>' : '';
     // No index as visoes trocam por hash (app.js); nas outras paginas o link leva ao index.
     const destino = href || (onIndex ? `#${view}` : `index.html#${view}`);
     const ativo = href ? href === page : onIndex && view === 'dashboard';
@@ -49,16 +49,17 @@
 
   const html = `
     <div class="sidebar-top">
-      <a class="brand" href="${onIndex ? '#dashboard' : 'index.html#dashboard'}"${onIndex ? ' data-view-link="dashboard"' : ''} aria-label="FaturaMed dashboard">
+      <a class="brand" href="inicio.html" aria-label="FaturaMed início">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.75A2.75 2.75 0 0 1 7.75 2h8.5A2.75 2.75 0 0 1 19 4.75v14.5A2.75 2.75 0 0 1 16.25 22h-8.5A2.75 2.75 0 0 1 5 19.25V4.75Z"/><path d="M9 7h6M9 11h6M9 15h2.5"/><path d="M14.25 14.25v4.5M12 16.5h4.5"/></svg></span>
         <span><strong>FaturaMed</strong><small>Faturamento e consultoria</small></span>
       </a>
       <button class="sidebar-toggle" type="button" aria-controls="sidebar-nav"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/></svg></button>
     </div>
     <nav class="nav-list" id="sidebar-nav" aria-label="Módulos">
+      <a class="nav-item nav-inicio${page === 'inicio.html' ? ' active' : ''}" href="inicio.html" title="Início"${page === 'inicio.html' ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>Início</a>
       ${groups.map(([id, title, items, modulo]) => `
       <div class="nav-group"${modulo ? ` data-modulo="${modulo}"` : ''} role="group" aria-labelledby="${id}">
-        <button class="nav-group-title" id="${id}" type="button" aria-expanded="true" aria-controls="${id}-itens">${title}<svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="nav-group-title" id="${id}" type="button" aria-expanded="true" aria-controls="${id}-itens">${title}${modulo === 'gestao' ? '<span class="nav-count nav-count-grupo" data-chamados-count hidden></span>' : ''}<svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="nav-group-items" id="${id}-itens">${items.map(item).join('')}</div>
       </div>`).join('')}
     </nav>
@@ -77,7 +78,7 @@
     : Promise.resolve(window.prompt(texto));
 
   // Estilos globais (componentes e cores por modulo) e grupo da pagina atual (usado na trilha do cabecalho)
-  for (const href of ['modulos.css?v=20261107-3', 'ui.css?v=20261109-1', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
+  for (const href of ['modulos.css?v=20261110-1', 'ui.css?v=20261109-1', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
     if (document.querySelector(`link[href^="${href.split('?')[0]}"]`)) continue;
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = href;
@@ -98,7 +99,7 @@
     js.src = 'ui.js?v=20261108-6';
     document.head.append(js);
   }
-  window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view]) => ({label, grupo: titulo, url: href || `index.html#${view}`})));
+  window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view, icone]) => ({label, grupo: titulo, url: href || `index.html#${view}`, icone})));
   // no index as telas trocam pelo #hash: aplica a cor/grupo do modulo da tela visivel
   if (onIndex) {
     const porHash = () => {
@@ -145,4 +146,18 @@
     try { localStorage.setItem(key, recolhida ? '1' : '0'); } catch (_) {}
     label();
   });
+
+  // avisos nao lidos do Service Desk no item Central de chamados (e no grupo Gestao, visivel com o grupo fechado)
+  function avisosChamados() {
+    fetch('/api/chamados/notificacoes', {headers: {Accept: 'application/json'}}).then(r => r.ok ? r.json() : null).then(caixa => {
+      const total = caixa?.naoLidas || 0;
+      aside.querySelectorAll('[data-chamados-count]').forEach(el => {
+        el.hidden = total === 0;
+        el.textContent = total > 99 ? '99+' : String(total);
+        el.title = `${total} aviso(s) não lido(s) no Service Desk`;
+      });
+    }).catch(() => {});
+  }
+  avisosChamados();
+  setInterval(avisosChamados, 60000);
 })();
