@@ -51,6 +51,9 @@ faturamed:
     lembrete-cron: ${LEMBRETE_PRAZO_CRON:0 0 8 * * MON-FRI}
   # endereco usado nos links dos e-mails (ex.: https://faturamed.com.br)
   url-publica: ${APP_URL:http://localhost:8080}
+  # servidor Jitsi proprio para videochamadas do chat (ex.: video.suaempresa.com.br); vazio desliga o video
+  video:
+    dominio: ${VIDEO_DOMINIO:}
   recuperacao-senha:
     remetente: ${MAIL_FROM:}
     # Somente para ambiente local sem SMTP: escreve o codigo no log. Nunca ligar em HML/producao.

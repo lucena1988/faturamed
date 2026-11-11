@@ -21,6 +21,7 @@ class SegurancaTest {
     @Autowired PasswordEncoder encoder;
     @MockitoBean UsuarioService users;
     @MockitoBean br.com.faturamed.conciliacao.MedicoCadastroService medicos;
+    @MockitoBean FotoUsuarioController fotos;
     private UsuarioAutenticado admin, medico;
     @BeforeEach void configurar() {
         admin=new UsuarioAutenticado(1,"admin@test.local","Admin",encoder.encode("SenhaTesteSegura12"),"ADMIN",null,true,false,0);

@@ -186,3 +186,24 @@ dialog::backdrop { background: var(--backdrop); }
 @media (max-width: 720px) {
   .sidebar-recolhida .app-shell { display: block; }
 }
+
+/* widget "Mensagens recentes" do chat no menu lateral */
+.nav-chat { margin: 14px 4px 10px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.nav-chat[hidden], .sidebar-recolhida .nav-chat { display: none; }
+.nav-chat-titulo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; }
+.nav-chat-titulo:hover { color: var(--primary); }
+.nav-chat-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.nav-chat-item { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
+.nav-chat-item:hover { background: var(--primary-soft); }
+.nav-chat-avatar { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-fill); color: #fff; font-size: 11px; font-weight: 700; }
+.nav-chat-avatar.grupo { background: var(--amber); border-radius: 8px; }
+.nav-chat-corpo { display: grid; min-width: 0; flex: 1; }
+.nav-chat-corpo strong { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-chat-corpo small { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-chat-item.nao-lida strong { font-weight: 800; }
+.nav-chat-item.nao-lida small { color: var(--text); }
+.nav-chat-item .nav-count { margin-left: 0; min-width: 18px; padding: 0 5px; font-size: 11px; }
+.nav-chat-titulo .nav-count { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px; min-width: 18px; padding: 0 6px; }
+.nav-chat-avatar { position: relative; overflow: hidden; }
+.nav-chat-avatar.com-foto { color: transparent; }
+.nav-chat-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }

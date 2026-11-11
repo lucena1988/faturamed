@@ -17,11 +17,12 @@ public class AcessoController {
     private static final Set<String> GERIDOS_POR_FUNCIONARIO = Set.of("MEDICO", "EMPRESA", "HOSPITAL");
     private final UsuarioService users;
     private final PasswordEncoder encoder;
-    public AcessoController(UsuarioService users,PasswordEncoder encoder) { this.users=users; this.encoder=encoder; }
+    private final FotoUsuarioController fotos;
+    public AcessoController(UsuarioService users,PasswordEncoder encoder,FotoUsuarioController fotos) { this.users=users; this.encoder=encoder; this.fotos=fotos; }
     @GetMapping("/api/auth/csrf") public Map<String,String> csrf(CsrfToken token) { return Map.of("token",token.getToken(),"header",token.getHeaderName()); }
     @GetMapping("/api/auth/me") public Map<String,Object> me(@AuthenticationPrincipal UsuarioAutenticado user) {
         var result=new LinkedHashMap<String,Object>(); result.put("id",user.id()); result.put("nome",user.nome()); result.put("email",user.email());
-        result.put("perfil",user.perfil()); result.put("medicoId",user.medicoId()); result.put("empresaId",user.empresaId()); return result;
+        result.put("perfil",user.perfil()); result.put("medicoId",user.medicoId()); result.put("empresaId",user.empresaId()); result.put("foto",fotos.versao(user.id())); return result;
     }
     @PostMapping("/api/auth/password") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void senha(@AuthenticationPrincipal UsuarioAutenticado user,@Valid @RequestBody TrocaSenha dados,HttpServletRequest request) {

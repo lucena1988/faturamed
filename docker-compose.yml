@@ -16,6 +16,7 @@ services:
       RECUPERACAO_CODIGO_NO_LOG: ${RECUPERACAO_CODIGO_NO_LOG:-false}
       FATURAMED_CHAVE_DADOS: ${FATURAMED_CHAVE_DADOS:-}
       APP_URL: ${APP_URL:-http://localhost:8080}
+      VIDEO_DOMINIO: ${VIDEO_DOMINIO:-}
     ports:
       - "8080:8080"
     depends_on:

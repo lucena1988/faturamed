@@ -839,6 +839,9 @@ if (c.bloqueado) top.append(el('span', 'sd-pill sd-pill-block', '⛔ Status: Blo
       document.querySelector('#btn-config-sla').hidden = !tecnico();
       atendentes = tecnico() ? await api('/api/chamados/atendentes') : [];
       await carregarChamados();
+      // link direto (ex.: mencao "#chamado 42" no chat da equipe): chamados.html?chamado=42
+      const alvo = Number(new URLSearchParams(location.search).get("chamado"));
+      if (Number.isInteger(alvo) && alvo > 0) abrirModalChamado(alvo);
     } catch (err) {
       showBanner(err.message, true);
     }
