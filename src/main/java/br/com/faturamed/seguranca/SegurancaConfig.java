@@ -27,7 +27,16 @@ public class SegurancaConfig {
         return switch (perfil) { case "ADMIN", "OPERADOR", "DEV" -> "/inicio.html"; default -> null; };
     }
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
-    @Bean SecurityFilterChain security(HttpSecurity http, UsuarioService users, br.com.faturamed.conciliacao.MedicoCadastroService medicos) throws Exception {
+    /** CSP da aplicacao; com o video ligado libera apenas o servidor Jitsi proprio (script da API e a sala em iframe). */
+    static String politicaConteudo(String dominioVideo) {
+        String video = br.com.faturamed.chat.VideoConfig.normalizar(dominioVideo);
+        String extraScript = video.isEmpty() ? "" : " https://" + video;
+        String frame = video.isEmpty() ? "" : " frame-src https://" + video + ";";
+        return "default-src 'self'; script-src 'self'" + extraScript + "; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+                + frame + " object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+    }
+    @Bean SecurityFilterChain security(HttpSecurity http, UsuarioService users, br.com.faturamed.conciliacao.MedicoCadastroService medicos,
+            @org.springframework.beans.factory.annotation.Value("${faturamed.video.dominio:}") String dominioVideo) throws Exception {
         RequestMatcher api = request -> request.getRequestURI().startsWith("/api/");
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/login.html", "/login.js", "/auth.js", "/login.css", "/tokens.css", "/styles.css", "/identidade.css", "/tema.css", "/tema.js", "/painel-medico.css", "/painel-medico.js", "/assets/**", "/favicon.ico", "/api/auth/csrf", "/api/health", "/error",
@@ -43,8 +52,7 @@ public class SegurancaConfig {
                 .requestMatchers("/chamados.html", "/chamados.js", "/chamados.css", "/api/**").hasAnyRole("ADMIN", "DEV", "OPERADOR")
                 .anyRequest().hasAnyRole("ADMIN", "DEV", "OPERADOR"))
             .requestCache(RequestCacheConfigurer::disable)
-            .headers(headers -> headers.contentSecurityPolicy(policy -> policy.policyDirectives(
-                    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'")))
+            .headers(headers -> headers.contentSecurityPolicy(policy -> policy.policyDirectives(politicaConteudo(dominioVideo))))
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((request,response,error) -> {
                     if(api.matches(request)) json(response,401,"Sessao expirada. Entre novamente");

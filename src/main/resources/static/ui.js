@@ -156,6 +156,99 @@
       <div class="fm-usuario-menu" role="menu" hidden><div class="fm-usuario-info"><strong>…</strong><small></small></div></div>`;
     const menu = caixa.querySelector('.fm-usuario-menu');
     if (conta) { conta.textContent = 'Minha conta'; conta.setAttribute('role', 'menuitem'); menu.append(conta); }
+    // foto de perfil: recorta em quadrado, reduz para 256 px no navegador e envia (aparece aqui e no chat da equipe)
+    const fotoBotao = document.createElement('button');
+    fotoBotao.type = 'button'; fotoBotao.setAttribute('role', 'menuitem'); fotoBotao.className = 'fm-foto-trocar';
+    fotoBotao.textContent = 'Trocar foto do perfil';
+    const fotoRemover = document.createElement('button');
+    fotoRemover.type = 'button'; fotoRemover.setAttribute('role', 'menuitem'); fotoRemover.className = 'fm-foto-remover';
+    fotoRemover.textContent = 'Remover foto'; fotoRemover.hidden = true;
+    const fotoInput = Object.assign(document.createElement('input'), {type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true});
+    menu.append(fotoBotao, fotoRemover, fotoInput);
+    const mostrarFoto = versao => {
+      const av = caixa.querySelector('.fm-avatar');
+      av.querySelector('img')?.remove();
+      av.classList.toggle('com-foto', !!versao);
+      fotoRemover.hidden = !versao;
+      if (versao) { const img = document.createElement('img'); img.alt = ''; img.src = `/api/auth/foto?v=${versao}`; av.append(img); }
+    };
+    // janela de ajuste: arrastar para centralizar, zoom pela barra ou rodinha; salva o circulo em 256x256
+    async function abrirRecorte(arquivo) {
+      const bmp = await createImageBitmap(arquivo);
+      const LADO = 280;
+      const d = document.createElement('dialog');
+      d.className = 'fm-dialogo fm-recorte';
+      d.innerHTML = `<form method="dialog"><h2>Ajustar foto do perfil</h2>
+        <p class="fm-recorte-dica">Arraste a imagem para centralizar e use o zoom para aproximar.</p>
+        <div class="fm-recorte-area" tabindex="0" aria-label="Área da foto: arraste ou use as setas para mover">
+          <canvas width="${LADO}" height="${LADO}"></canvas><span class="fm-recorte-mascara" aria-hidden="true"></span></div>
+        <label class="fm-recorte-zoom"><span aria-hidden="true">−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><span aria-hidden="true">+</span></label>
+        <div class="fm-dialogo-acoes"><button type="button" class="secondary-button" value="cancelar">Cancelar</button>
+        <button type="submit" class="primary-button" value="ok">Salvar foto</button></div></form>`;
+      document.body.append(d);
+      const canvas = d.querySelector('canvas'), ctx = canvas.getContext('2d'), zoom = d.querySelector('input[type=range]');
+      const area = d.querySelector('.fm-recorte-area');
+      const base = LADO / Math.min(bmp.width, bmp.height); // escala que cobre o quadrado inteiro
+      let escala = base, cx = 0, cy = 0; // deslocamento do centro da imagem em px da tela
+      const limitar = () => {
+        const mx = Math.max(0, (bmp.width * escala - LADO) / 2), my = Math.max(0, (bmp.height * escala - LADO) / 2);
+        cx = Math.min(mx, Math.max(-mx, cx)); cy = Math.min(my, Math.max(-my, cy));
+      };
+      const desenhar = (alvoCtx = ctx, tam = LADO) => {
+        const f = tam / LADO, w = bmp.width * escala * f, h = bmp.height * escala * f;
+        alvoCtx.fillStyle = '#fff'; alvoCtx.fillRect(0, 0, tam, tam);
+        alvoCtx.drawImage(bmp, (tam - w) / 2 + cx * f, (tam - h) / 2 + cy * f, w, h);
+      };
+      const aplicarZoom = valor => { escala = base * valor; limitar(); desenhar(); };
+      zoom.addEventListener('input', () => aplicarZoom(Number(zoom.value)));
+      area.addEventListener('wheel', e => {
+        e.preventDefault();
+        zoom.value = Math.min(4, Math.max(1, Number(zoom.value) - Math.sign(e.deltaY) * 0.1));
+        aplicarZoom(Number(zoom.value));
+      }, {passive: false});
+      let arrasto = null;
+      area.addEventListener('pointerdown', e => { arrasto = {x: e.clientX - cx, y: e.clientY - cy}; area.setPointerCapture(e.pointerId); area.classList.add('arrastando'); });
+      area.addEventListener('pointermove', e => { if (!arrasto) return; cx = e.clientX - arrasto.x; cy = e.clientY - arrasto.y; limitar(); desenhar(); });
+      const soltar = () => { arrasto = null; area.classList.remove('arrastando'); };
+      area.addEventListener('pointerup', soltar); area.addEventListener('pointercancel', soltar);
+      area.addEventListener('keydown', e => {
+        const passo = e.shiftKey ? 20 : 5;
+        const mov = {ArrowLeft: [passo, 0], ArrowRight: [-passo, 0], ArrowUp: [0, passo], ArrowDown: [0, -passo]}[e.key];
+        if (!mov) return;
+        e.preventDefault(); cx += mov[0]; cy += mov[1]; limitar(); desenhar();
+      });
+      desenhar();
+      d.querySelector('[value=cancelar]').addEventListener('click', () => d.close('cancelar'));
+      d.showModal();
+      const escolha = await new Promise(ok => d.addEventListener('close', () => ok(d.returnValue), {once: true}));
+      d.remove();
+      if (escolha !== 'ok') return null;
+      const final = Object.assign(document.createElement('canvas'), {width: 256, height: 256});
+      desenhar(final.getContext('2d'), 256);
+      const blob = await new Promise(ok => final.toBlob(ok, 'image/jpeg', 0.9));
+      return new File([blob], 'foto.jpg', {type: 'image/jpeg'});
+    }
+    fotoBotao.addEventListener('click', e => { e.stopPropagation(); fotoInput.click(); });
+    fotoInput.addEventListener('change', async () => {
+      const arquivo = fotoInput.files[0]; fotoInput.value = '';
+      if (!arquivo) return;
+      try {
+        const recortada = await abrirRecorte(arquivo);
+        if (!recortada) return;
+        const dados = new FormData(); dados.append('arquivo', recortada);
+        const r = await fetch('/api/auth/foto', {method: 'PUT', body: dados});
+        const corpo = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(corpo.erro || 'Não foi possível salvar a foto');
+        mostrarFoto(corpo.foto);
+        toast('Foto do perfil atualizada', 'ok');
+        window.dispatchEvent(new CustomEvent('fm-foto-alterada', {detail: corpo.foto}));
+      } catch (err) { toast(err.message || 'Não foi possível usar esta imagem', 'erro'); }
+    });
+    fotoRemover.addEventListener('click', async e => {
+      e.stopPropagation();
+      const r = await fetch('/api/auth/foto', {method: 'DELETE'});
+      if (r.ok) { mostrarFoto(null); toast('Foto removida', 'ok'); window.dispatchEvent(new CustomEvent('fm-foto-alterada', {detail: null})); }
+    });
     // escolha de aparencia (lembrada neste navegador)
     const TEMAS = [['classica', 'Clássica'], ['vidro', 'Vidro'], ['aurora', 'Aurora'], ['papel', 'Papel'], ['contraste', 'Alto contraste']];
     const aparencia = document.createElement('div');
@@ -212,8 +305,50 @@
       caixa.querySelector('.fm-usuario-nome').textContent = partes[0];
       caixa.querySelector('.fm-usuario-info strong').textContent = eu.nome || '';
       caixa.querySelector('.fm-usuario-info small').textContent = eu.email || '';
+      mostrarFoto(eu.foto);
+      // "Enviar para o chat": manda o link desta tela (lote, divergencia, recebimento...) para um colega ou grupo
+      const pagina = location.pathname.split('/').pop() || 'index.html';
+      if (['ADMIN', 'DEV', 'OPERADOR'].includes(eu.perfil) && pagina !== 'chat.html' && !acoes.querySelector('.fm-compartilhar')) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'fm-compartilhar'; b.title = 'Enviar esta tela para o FaturaChat';
+        b.setAttribute('aria-label', b.title);
+        b.innerHTML = '<svg class="fm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h12v9H8l-4 3V5Z"/><path d="M14 17l3 3 4-6"/></svg><span>Enviar ao FaturaChat</span>';
+        b.addEventListener('click', compartilharNoChat);
+        acoes.insertBefore(b, caixa);
+      }
     }).catch(() => {});
   }
+  // ---------- enviar a tela atual para o chat da equipe ----------
+  async function compartilharNoChat() {
+    let conversas;
+    try {
+      const r = await fetch('/api/chat/conversas', {headers: {Accept: 'application/json'}});
+      conversas = (await r.json()).filter(c => !c.sistema);
+    } catch (_) { toast('Não foi possível abrir o chat', 'erro'); return; }
+    if (!conversas.length) { toast('Você ainda não tem conversas. Abra o FaturaChat e comece uma.', 'info'); return; }
+    const titulo = (document.querySelector('main h1')?.textContent || document.title.split('|')[0]).trim();
+    const d = document.createElement('dialog');
+    d.className = 'fm-dialogo';
+    d.innerHTML = `<form method="dialog"><h2>Enviar esta tela para o FaturaChat</h2>
+      <label class="fm-campo">Para<select name="conversa" required>${conversas.map(c =>
+        `<option value="${c.id}">${esc(c.tipo === 'GRUPO' ? '# ' + c.nome : c.nome)}</option>`).join('')}</select></label>
+      <label class="fm-campo">Comentário (opcional)<textarea name="comentario" rows="3" maxlength="1000" placeholder="Ex.: pode conferir este lote?"></textarea></label>
+      <p class="fm-compartilhar-previa">📄 ${esc(titulo)}<br><small>${esc(location.href)}</small></p>
+      <div class="fm-dialogo-acoes"><button type="button" class="secondary-button" value="cancelar">Cancelar</button>
+      <button type="submit" class="primary-button" value="ok">Enviar</button></div></form>`;
+    document.body.append(d);
+    d.querySelector('[value=cancelar]').addEventListener('click', () => d.close('cancelar'));
+    d.showModal();
+    const escolha = await new Promise(ok => d.addEventListener('close', () => ok(d.returnValue), {once: true}));
+    const form = d.querySelector('form');
+    const conversaId = form.conversa.value, comentario = form.comentario.value.trim();
+    d.remove();
+    if (escolha !== 'ok') return;
+    const texto = `${comentario ? comentario + '\n' : ''}📄 ${titulo}: ${location.href}`;
+    const r = await fetch(`/api/chat/conversas/${conversaId}/mensagens`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({texto})});
+    toast(r.ok ? 'Enviado para o FaturaChat' : 'Não foi possível enviar', r.ok ? 'ok' : 'erro');
+  }
+
   // ---------- busca global (Ctrl+K) ----------
   const sem = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   let paleta = null;

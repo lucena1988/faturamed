@@ -44,13 +44,30 @@ public class ChamadoService {
     }
 
     private void avisar(ChamadoItem chamado, UsuarioAutenticado autor, String tipo, boolean suporte) {
-        jdbc.update("""
+        List<Long> destinatarios = jdbc.queryForList("""
             insert into chamado_aviso(chamado_id,usuario_id,tipo)
             select ?,u.id,? from usuario_acesso u where u.ativo=true and u.id<>?
             and ((?=false and u.id=? and u.perfil<>'MEDICO')
               or (?=true and u.perfil in ('ADMIN','DEV') and (?::bigint is null or u.id=?)))
-            """,chamado.id(),tipo,autor.id(),suporte,chamado.solicitanteId(),suporte,chamado.responsavelId(),chamado.responsavelId());
+            returning usuario_id
+            """,Long.class,chamado.id(),tipo,autor.id(),suporte,chamado.solicitanteId(),suporte,chamado.responsavelId(),chamado.responsavelId());
+        // o mesmo aviso chega no chat da equipe, pelo "Robo FaturaMed", com link para o chamado
+        if (chat != null) {
+            String texto = switch (tipo) {
+                case "RETORNO_SOLICITADO" -> "🔔 O suporte pediu seu retorno no chamado " + chamado.protocolo();
+                case "RESPOSTA_SOLICITANTE" -> "💬 " + autor.nome() + " respondeu o chamado " + chamado.protocolo();
+                case "MENSAGEM_SUPORTE" -> "💬 Nova mensagem do suporte no chamado " + chamado.protocolo();
+                case "CHAMADO_CANCELADO" -> "🚫 O chamado " + chamado.protocolo() + " foi cancelado";
+                default -> "🔔 Atualização no chamado " + chamado.protocolo();
+            } + ": " + chamado.titulo() + " #chamado " + chamado.id();
+            for (Long id : destinatarios) chat.avisarSistema(id, texto);
+        }
     }
+
+    private br.com.faturamed.chat.ChatService chat;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setChat(br.com.faturamed.chat.ChatService chat) { this.chat = chat; }
 
     static final int LIMITE_ARQUIVO = 5 * 1024 * 1024;
     private static final Set<String> FILAS = Set.of("DEV", "ADMIN");

@@ -51,7 +51,7 @@ public class UsuarioService implements UserDetailsService {
         return users.stream().findFirst().orElseThrow(() -> new UsernameNotFoundException("Credenciais invalidas"));
     }
     public List<Usuario> listar() {
-        return jdbc.query("select * from usuario_acesso order by nome,id", (r,n) -> new Usuario(r.getLong("id"),r.getString("email"),r.getString("nome"),
+        return jdbc.query("select * from usuario_acesso where email<>'robo@faturamed.sistema' order by nome,id", (r,n) -> new Usuario(r.getLong("id"),r.getString("email"),r.getString("nome"),
                 r.getString("perfil"),r.getObject("medico_id",Long.class),r.getBoolean("ativo"),r.getLong("versao"),r.getObject("empresa_id",Long.class),
                 r.getObject("hospital_id",Long.class)));
     }

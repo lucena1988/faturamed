@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FaturaChat | FaturaMed</title>
+<link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="chat.css?v=20261111-recursos"><link rel="stylesheet" href="chat-recursos.css?v=20261111-1"><script src="tema.js"></script></head>
+<body><main class="chat-workspace">
+<header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>FaturaChat</h1></div><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+<p id="chat-aviso" class="chat-aviso" role="status" aria-live="polite" hidden></p>
+<section class="chat-painel" id="chat-painel">
+  <aside class="chat-lista" aria-label="Conversas">
+    <div class="chat-lista-topo">
+      <div class="chat-lista-titulo"><h2>Conversas</h2><span class="chat-lista-acoes"><button id="chat-config" type="button" class="chat-config" title="Configurações do chat: áudio, notificações e prazo de guarda" aria-label="Configurações do chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button><button id="chat-nova" type="button" class="chat-nova" title="Nova conversa ou grupo" aria-label="Nova conversa ou grupo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+      <div class="chat-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="chat-busca" type="search" placeholder="Buscar pessoa ou grupo" aria-label="Buscar pessoa ou grupo" maxlength="80"></div>
+      <div class="chat-meu-status"><label for="chat-meu-status-sel">Seu status</label><select id="chat-meu-status-sel"><option value="DISPONIVEL">🟢 Disponível</option><option value="OCUPADO">🔴 Ocupado</option><option value="REUNIAO">🟣 Em reunião</option><option value="AUSENTE">🟡 Ausente</option></select><input id="chat-recado" type="text" maxlength="80" placeholder="Recado (opcional)" aria-label="Recado do status"></div>
+    </div>
+    <ul id="chat-conversas" class="chat-conversas"></ul>
+    <div id="chat-busca-resultados" class="chat-busca-resultados" hidden><p class="chat-busca-titulo">Mensagens encontradas</p><ul id="chat-busca-lista"></ul></div>
+    <p id="chat-vazio" class="chat-vazio" hidden>Nenhuma conversa ainda. Clique em “Nova conversa”.</p>
+  </aside>
+  <section class="chat-conversa" aria-label="Conversa aberta">
+    <div id="chat-sem-conversa" class="chat-sem-conversa">
+      <span class="chat-sem-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h12v9H8l-4 3V5Z"/><path d="M16 9h4v9l-3-2h-7v-2"/></svg></span>
+      <h2>FaturaChat</h2>
+      <p>Escolha uma conversa ao lado ou comece uma nova com um colega ou um grupo.</p>
+      <button id="chat-nova-vazio" type="button" class="primary-button">Nova conversa</button>
+    </div>
+    <div id="chat-aberta" class="chat-aberta" hidden>
+      <header class="chat-cabecalho">
+        <button id="chat-voltar" type="button" class="chat-voltar" aria-label="Voltar às conversas">←</button>
+        <span class="chat-avatar" id="chat-avatar" aria-hidden="true"></span>
+        <div><strong id="chat-nome"></strong><small id="chat-status"></small></div>
+        <button id="chat-silenciar" type="button" class="chat-silenciar chat-cabecalho-acao" aria-pressed="false">🔔</button>
+        <button id="chat-video" type="button" class="primary-button chat-cabecalho-acao" hidden>📹 Vídeo</button>
+        <button id="chat-participantes-abrir" type="button" class="secondary-button chat-cabecalho-acao" hidden>Participantes</button>
+        <a id="chat-exportar" class="chat-exportar chat-cabecalho-acao" href="#" title="Exportar conversa em PDF" aria-label="Exportar conversa em PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg></a>
+      </header>
+      <div id="chat-fixada" class="chat-fixada" hidden><button type="button" class="chat-fixada-ir" title="Ir para a mensagem fixada"><span aria-hidden="true">📌</span><span class="chat-fixada-texto"></span></button><button type="button" class="chat-fixada-soltar" title="Desafixar" aria-label="Desafixar mensagem">✕</button></div>
+      <div id="chat-aviso-sistema" class="chat-aviso-sistema" hidden>🤖 Avisos automáticos do FaturaMed (chamados e outras atualizações). Os links abrem o registro.</div>
+      <div id="chat-mensagens" class="chat-mensagens" aria-live="polite">
+        <button id="chat-anteriores" type="button" class="text-button chat-anteriores" hidden>Carregar mensagens anteriores</button>
+        <ol id="chat-lista-mensagens"></ol>
+        <button id="chat-novas" type="button" class="chat-novas" hidden></button>
+      </div>
+      <p id="chat-digitando" class="chat-digitando" hidden></p>
+      <div id="chat-respondendo" class="chat-respondendo" hidden><div><strong></strong><span></span></div><button type="button" id="chat-respondendo-cancelar" aria-label="Cancelar resposta" title="Cancelar resposta">✕</button></div>
+      <ul id="chat-anexos-previa" class="chat-anexos-previa" aria-label="Arquivos para enviar" hidden></ul>
+      <form id="chat-form" class="chat-form">
+        <div class="chat-emoji">
+          <button id="chat-emoji-abrir" type="button" class="chat-emoji-botao" aria-haspopup="true" aria-expanded="false" aria-controls="chat-emoji-painel" title="Emojis" aria-label="Inserir emoji"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1.8 2 5.2 2 7 0"/><path d="M9 9.5h.01M15 9.5h.01"/></svg></button>
+          <div id="chat-emoji-painel" class="chat-emoji-painel" role="dialog" aria-label="Escolher emoji" hidden></div>
+        </div>
+        <button id="chat-anexar" type="button" class="chat-anexar" title="Anexar imagem, PDF, documento ou planilha (até 10 MB)" aria-label="Anexar arquivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 11.5-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
+        <input id="chat-arquivo" type="file" multiple hidden accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.csv,.txt">
+        <textarea id="chat-texto" rows="1" maxlength="4000" placeholder="Escrever mensagem… (cole imagens com Ctrl+V)" aria-label="Mensagem"></textarea>
+        <button id="chat-enviar" type="submit" class="primary-button">Enviar</button>
+        <button id="chat-gravar" type="button" class="chat-gravar" title="Gravar mensagem de voz" aria-label="Gravar mensagem de voz"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      </form>
+      <div id="chat-gravacao" class="chat-gravacao" role="group" aria-label="Gravando mensagem de voz" hidden>
+        <button id="chat-gravacao-cancelar" type="button" class="chat-gravacao-cancelar" title="Descartar gravação" aria-label="Descartar gravação"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+        <span class="chat-gravacao-ponto" aria-hidden="true"></span>
+        <span id="chat-gravacao-tempo" class="chat-gravacao-tempo" aria-live="off">0:00</span>
+        <span class="chat-gravacao-onda" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="chat-gravacao-dica">Gravando… (máx. 5 min)</span>
+        <button id="chat-gravacao-enviar" type="button" class="chat-gravacao-enviar" title="Enviar áudio" aria-label="Enviar áudio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-7-8-1Z"/></svg></button>
+      </div>
+    </div>
+  </section>
+</section>
+</main>
+<div id="chat-toque" class="chat-toque" role="alertdialog" aria-labelledby="chat-toque-texto" hidden>
+  <span class="chat-toque-icone" aria-hidden="true">📹</span>
+  <p id="chat-toque-texto"></p>
+  <button id="chat-toque-entrar" type="button" class="primary-button">Entrar</button>
+  <button id="chat-toque-recusar" type="button" class="secondary-button">Agora não</button>
+</div>
+<section id="chat-sala" class="chat-sala" aria-label="Videochamada" hidden>
+  <header><strong id="chat-sala-titulo">Videochamada</strong><button id="chat-sala-sair" type="button" class="secondary-button">Sair da chamada</button></header>
+  <div id="chat-sala-video" class="chat-sala-video"></div>
+</section>
+<dialog id="chat-dialogo" aria-labelledby="chat-dialogo-titulo"><header class="review-heading"><h2 id="chat-dialogo-titulo">Nova conversa</h2><button type="button" id="chat-dialogo-fechar">Fechar</button></header>
+<div class="chat-modos" role="tablist" aria-label="Tipo de conversa">
+  <button type="button" role="tab" id="chat-modo-direta" class="chat-modo ativo" aria-selected="true">Conversa 1:1</button>
+  <button type="button" role="tab" id="chat-modo-grupo" class="chat-modo" aria-selected="false">Grupo</button>
+</div>
+<label id="chat-grupo-nome-rotulo" class="chat-grupo-nome" hidden>Nome do grupo<input id="chat-grupo-nome" maxlength="80" placeholder="Ex.: Faturamento"></label>
+<label id="chat-grupo-oficial-rotulo" class="chat-grupo-oficial" hidden><input type="checkbox" id="chat-grupo-oficial"> Grupo oficial <small>(só o ADMIN adiciona ou remove pessoas e fixa mensagens)</small></label>
+<input id="chat-contato-busca" type="search" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome" maxlength="80">
+<ul id="chat-contatos" class="chat-contatos"></ul>
+<div id="chat-grupo-acoes" class="chat-grupo-acoes" hidden><span id="chat-grupo-selecionados">0 pessoas escolhidas</span><button id="chat-grupo-criar" type="button" class="primary-button">Criar grupo</button></div></dialog>
+<dialog id="chat-config-audio" aria-labelledby="chat-config-titulo"><header class="review-heading"><h2 id="chat-config-titulo">Configurações do chat</h2><button type="button" id="chat-config-fechar">Fechar</button></header>
+<p id="chat-config-permissao" class="chat-config-nota" hidden>Para ver os nomes dos aparelhos, permita o acesso ao microfone. <button type="button" id="chat-config-permitir" class="text-button">Permitir</button></p>
+<label class="chat-config-campo">Microfone<select id="chat-config-mic"></select></label>
+<div class="chat-config-nivel" aria-hidden="true"><span id="chat-config-nivel-barra"></span></div>
+<p class="chat-config-nota">Fale algo: a barra acima mostra se o microfone escolhido está captando.</p>
+<label class="chat-config-campo">Saída de som (alto-falante ou fone)<select id="chat-config-saida"></select></label>
+<p id="chat-config-sem-saida" class="chat-config-nota" hidden>Este navegador não permite escolher a saída por aqui; o som vai para a saída padrão do sistema. No Chrome e no Edge a escolha funciona.</p>
+<fieldset class="chat-config-opcoes"><legend>Qualidade da gravação</legend>
+<label><input type="checkbox" id="chat-config-ruido"> Reduzir ruído de fundo <small>(ventilador, teclado, conversas ao redor)</small></label>
+<label><input type="checkbox" id="chat-config-volume"> Ajustar volume automaticamente</label>
+<label><input type="checkbox" id="chat-config-voz"> Tratamento de voz <small>(tira zumbido e chiado, deixa a fala mais clara)</small></label>
+<p class="chat-config-nota">Se a voz ficar robotizada ou cortando, desligue “Reduzir ruído de fundo” e grave um teste.</p>
+</fieldset>
+<fieldset class="chat-config-opcoes"><legend>Notificações</legend>
+<p class="chat-config-nota">Mostra um aviso no canto da tela quando chega mensagem, mesmo com o FaturaMed minimizado (precisa ter uma aba aberta).</p>
+<button type="button" id="chat-config-notificar" class="secondary-button">🔔 Ativar avisos na área de trabalho</button>
+</fieldset>
+<fieldset id="chat-config-retencao-caixa" class="chat-config-opcoes" hidden><legend>Prazo de guarda das mensagens (LGPD)</legend>
+<label class="chat-config-campo">Apagar mensagens e anexos com mais de<select id="chat-config-retencao"><option value="">Sem prazo (guardar tudo)</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">1 ano</option><option value="24">2 anos</option><option value="60">5 anos</option></select></label>
+<p class="chat-config-nota">Só o ADMIN muda. A limpeza roda toda madrugada e vale para todas as conversas.</p>
+</fieldset>
+<div class="chat-config-acoes"><button type="button" id="chat-config-gravar-teste" class="secondary-button">🎙️ Gravar teste (5 s)</button><button type="button" id="chat-config-testar" class="secondary-button">🔊 Testar som de aviso</button></div>
+<p id="chat-config-teste-status" class="chat-config-nota" aria-live="polite"></p>
+</dialog>
+<dialog id="chat-participantes" aria-labelledby="chat-participantes-titulo"><header class="review-heading"><h2 id="chat-participantes-titulo">Participantes</h2><button type="button" id="chat-participantes-fechar">Fechar</button></header>
+<ul id="chat-participantes-lista" class="chat-contatos"></ul>
+<div class="chat-grupo-acoes"><select id="chat-participante-novo" aria-label="Adicionar pessoa ao grupo"></select><button id="chat-participante-adicionar" type="button" class="primary-button">Adicionar</button></div>
+<button id="chat-sair-grupo" type="button" class="text-button chat-sair">Sair do grupo</button></dialog>
+<script src="sidebar.js?v=20261111-faturachat"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="chat.js?v=20261111-faturachat"></script></body></html>

@@ -33,13 +33,14 @@
       ['Empresas', null, 'empresas', '<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-3h4v3"/>'],
       ['Painel do médico', null, 'painel-medico', '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>']], 'cadastros'],
     ['nav-gestao', 'Gestão', [
+      ['FaturaChat', 'chat.html', null, '<path d="M4 5h12v9H8l-4 3V5Z"/><path d="M16 9h4v9l-3-2h-7v-2"/>'],
       ['Central de chamados', 'chamados.html', null, '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
       ['Acessos', 'usuarios.html', null, '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>']], 'gestao']
   ];
 
   function item([label, href, view, icon]) {
     const icone = `<span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span>`;
-    const contador = view === 'divergencias' ? '<span class="nav-count" id="nav-divergencias-count" hidden></span>' : href === 'chamados.html' ? '<span class="nav-count" data-chamados-count hidden></span>' : '';
+    const contador = view === 'divergencias' ? '<span class="nav-count" id="nav-divergencias-count" hidden></span>' : href === 'chamados.html' ? '<span class="nav-count" data-chamados-count hidden></span>' : href === 'chat.html' ? '<span class="nav-count" data-chat-count hidden></span>' : '';
     // No index as visoes trocam por hash (app.js); nas outras paginas o link leva ao index.
     const destino = href || (onIndex ? `#${view}` : `index.html#${view}`);
     const ativo = href ? href === page : onIndex && view === 'dashboard';
@@ -59,10 +60,14 @@
       <a class="nav-item nav-inicio${page === 'inicio.html' ? ' active' : ''}" href="inicio.html" title="Início"${page === 'inicio.html' ? ' aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>Início</a>
       ${groups.map(([id, title, items, modulo]) => `
       <div class="nav-group"${modulo ? ` data-modulo="${modulo}"` : ''} role="group" aria-labelledby="${id}">
-        <button class="nav-group-title" id="${id}" type="button" aria-expanded="true" aria-controls="${id}-itens">${title}${modulo === 'gestao' ? '<span class="nav-count nav-count-grupo" data-chamados-count hidden></span>' : ''}<svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="nav-group-title" id="${id}" type="button" aria-expanded="true" aria-controls="${id}-itens">${title}${modulo === 'gestao' ? '<span class="nav-count nav-count-grupo" data-gestao-count hidden></span>' : ''}<svg class="nav-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="nav-group-items" id="${id}-itens">${items.map(item).join('')}</div>
       </div>`).join('')}
     </nav>
+    <section class="nav-chat" aria-labelledby="nav-chat-titulo" hidden>
+      <a class="nav-chat-titulo" id="nav-chat-titulo" href="chat.html"><span>Mensagens recentes</span><span class="nav-count" data-chat-count hidden></span></a>
+      <ul class="nav-chat-lista" data-chat-recentes></ul>
+    </section>
     <a class="company-identity" href="./assets/faturamed-identidade.jpeg" target="_blank" rel="noopener" aria-label="Identidade da FaturaMed">
       <img src="./assets/faturamed-identidade.jpeg" alt="FaturaMed: faturamento de contas medicas e consultoria medica">
     </a>
@@ -78,7 +83,7 @@
     : Promise.resolve(window.prompt(texto));
 
   // Estilos globais (componentes e cores por modulo) e grupo da pagina atual (usado na trilha do cabecalho)
-  for (const href of ['modulos.css?v=20261110-1', 'ui.css?v=20261109-1', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
+  for (const href of ['modulos.css?v=20261110-1', 'ui.css?v=20261111-chat2', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
     if (document.querySelector(`link[href^="${href.split('?')[0]}"]`)) continue;
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = href;
@@ -96,7 +101,7 @@
   }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261108-6';
+    js.src = 'ui.js?v=20261111-faturachat';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view, icone]) => ({label, grupo: titulo, url: href || `index.html#${view}`, icone})));
@@ -148,9 +153,29 @@
   });
 
   // avisos nao lidos do Service Desk no item Central de chamados (e no grupo Gestao, visivel com o grupo fechado)
+  // contador do grupo Gestao (visivel com o grupo fechado): avisos do Service Desk + mensagens do chat
+  const totais = {chamados: 0, chat: 0};
+  function contadorGestao() {
+    const total = totais.chamados + totais.chat;
+    aside.querySelectorAll('[data-gestao-count]').forEach(el => {
+      el.hidden = total === 0;
+      el.textContent = total > 99 ? '99+' : String(total);
+      el.title = `${totais.chat} mensagem(ns) no chat e ${totais.chamados} aviso(s) no Service Desk`;
+    });
+  }
+  // a tela do chat informa o total em tempo real
+  window.fmChatTotal = total => {
+    totais.chat = total; contadorGestao();
+    aside.querySelectorAll('[data-chat-count]').forEach(el => {
+      el.hidden = total === 0;
+      el.textContent = total > 99 ? '99+' : String(total);
+      el.title = `${total} mensagem(ns) não lida(s) no chat`;
+    });
+  };
   function avisosChamados() {
     fetch('/api/chamados/notificacoes', {headers: {Accept: 'application/json'}}).then(r => r.ok ? r.json() : null).then(caixa => {
       const total = caixa?.naoLidas || 0;
+      totais.chamados = total; contadorGestao();
       aside.querySelectorAll('[data-chamados-count]').forEach(el => {
         el.hidden = total === 0;
         el.textContent = total > 99 ? '99+' : String(total);
@@ -160,4 +185,83 @@
   }
   avisosChamados();
   setInterval(avisosChamados, 60000);
+
+  // mensagens nao lidas do chat da equipe (na propria tela do chat o contador e atualizado em tempo real)
+  if (!document.querySelector('script[src^="chat-som.js"]')) {
+    const som = document.createElement('script');
+    som.src = 'chat-som.js?v=20261111-saida';
+    document.head.append(som);
+  }
+  let comSomAnterior = null;
+  function naoLidasChat() {
+    if (page === 'chat.html') return;
+    fetch('/api/chat/nao-lidas', {headers: {Accept: 'application/json'}}).then(r => r.ok ? r.json() : null).then(dados => {
+      const total = dados?.total || 0;
+      // toca o aviso quando chegam mensagens novas em conversas nao silenciadas
+      const comSom = dados?.comSom || 0;
+      if (comSomAnterior !== null && comSom > comSomAnterior) {
+        window.fmChatSom?.tocar('nao-lidas-' + comSom); recentesChat();
+        // aviso na area de trabalho (com o FaturaMed minimizado), se a pessoa ativou nas configuracoes do chat
+        const u = dados.ultima;
+        try {
+          if (u && 'Notification' in window && Notification.permission === 'granted') {
+            const n = new Notification(`💬 ${u.autorNome}`, {body: u.texto, tag: 'fm-chat-' + u.mensagemId});
+            n.onclick = () => { window.focus(); n.close(); window.open(`chat.html?janela=avulsa#c${u.conversaId}`, 'fm-chat-equipe', 'popup=yes,width=1000,height=720'); };
+          }
+        } catch (_) {}
+      }
+      comSomAnterior = comSom;
+      window.fmChatTotal(total);
+    }).catch(() => {});
+  }
+  naoLidasChat();
+  setInterval(naoLidasChat, 15000);
+
+  // widget "Mensagens recentes" no espaco livre do menu (fora da propria tela do chat)
+  function recentesChat() {
+    const caixa = aside.querySelector('.nav-chat');
+    if (!caixa || page === 'chat.html') return;
+    fetch('/api/chat/conversas', {headers: {Accept: 'application/json'}}).then(r => r.ok ? r.json() : null).then(lista => {
+      const itens = (lista || []).filter(c => c.ultimaMensagem).slice(0, 4);
+      caixa.hidden = itens.length === 0;
+      const ul = caixa.querySelector('[data-chat-recentes]');
+      ul.replaceChildren(...itens.map(c => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.className = 'nav-chat-item' + (c.naoLidas ? ' nao-lida' : '');
+        a.href = `chat.html#c${c.id}`;
+        const grupo = c.tipo === 'GRUPO';
+        const av = document.createElement('span');
+        av.className = 'nav-chat-avatar' + (grupo ? ' grupo' : '');
+        av.textContent = grupo ? '#' : (c.nome || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+        if (!grupo && c.contato?.foto) { const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = `/api/usuarios/${c.contato.id}/foto?v=${c.contato.foto}`; img.addEventListener('error', () => img.remove()); av.append(img); av.classList.add('com-foto'); }
+        const corpo = document.createElement('span');
+        corpo.className = 'nav-chat-corpo';
+        const nome = document.createElement('strong'); nome.textContent = c.nome;
+        const prev = document.createElement('small');
+        const autor = grupo && c.ultimoAutorNome ? c.ultimoAutorNome.split(/\s+/)[0] + ': ' : '';
+        prev.textContent = autor + c.ultimaMensagem;
+        corpo.append(nome, prev);
+        a.append(av, corpo);
+        if (c.naoLidas) { const n = document.createElement('span'); n.className = 'nav-count'; n.textContent = c.naoLidas > 99 ? '99+' : String(c.naoLidas); a.append(n); }
+        a.title = `${c.nome}: ${c.ultimaMensagem}`;
+        li.append(a);
+        return li;
+      }));
+    }).catch(() => {});
+  }
+  recentesChat();
+  setInterval(recentesChat, 30000);
+
+  // Chat da equipe abre em janela propria, para nao tirar a pessoa da tela em que esta trabalhando.
+  // Se o navegador bloquear o pop-up, segue o link normal.
+  aside.addEventListener('click', e => {
+    const link = e.target.closest('a[href^="chat.html"]');
+    if (!link || page === 'chat.html' || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+    const hash = link.getAttribute('href').split('#')[1];
+    const largura = Math.min(1000, screen.availWidth - 40), altura = Math.min(720, screen.availHeight - 60);
+    const janela = window.open(`chat.html?janela=avulsa${hash ? '#' + hash : ''}`, 'fm-chat-equipe',
+      `popup=yes,width=${largura},height=${altura},left=${Math.max(0, screen.availWidth - largura - 20)},top=40`);
+    if (janela) { e.preventDefault(); janela.focus(); }
+  });
 })();
