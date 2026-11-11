@@ -186,6 +186,21 @@ class ChatIntegracaoTest {
         assertEquals("%PDF", new String(pdf, 0, 4, java.nio.charset.StandardCharsets.US_ASCII));
     }
 
+    @Test void mencaoRegistraEContaMesmoSilenciada() {
+        var g = chat.criarGrupo(new ChatService.NovoGrupo("Menções", List.of(bruno.id(), carla.id())), ana);
+        chat.silenciar(g.id(), true, bruno);
+        String nomeBruno = chat.participantesDoGrupo(g.id(), ana).stream().filter(p -> p.id() == bruno.id()).findFirst().orElseThrow().nome();
+        var msg = chat.enviar(g.id(), "@" + nomeBruno.replace(' ', '.') + " confere por favor", ana);
+        assertEquals(List.of(bruno.id()), msg.mencionados());
+        var resumo = chat.resumoNaoLidas(bruno);
+        assertEquals(0, resumo.comSom());
+        assertEquals(1, resumo.mencoes());
+        assertEquals(1, chat.conversas(bruno).stream().filter(c -> c.id() == g.id()).findFirst().orElseThrow().mencoesNaoLidas());
+        assertEquals(0, chat.resumoNaoLidas(carla).mencoes());
+        var todos = chat.enviar(g.id(), "@todos reunião", ana);
+        assertEquals(2, todos.mencionados().size());
+    }
+
     @Test void naoAbreConversaComPerfilExterno() {
         assertThrows(RecursoNaoEncontradoException.class, () -> chat.abrirDireta(Long.MAX_VALUE, ana));
     }

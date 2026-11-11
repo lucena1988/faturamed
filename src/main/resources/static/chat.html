@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FaturaChat | FaturaMed</title>
-<link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="chat.css?v=20261111-recursos"><link rel="stylesheet" href="chat-recursos.css?v=20261111-1"><script src="tema.js"></script></head>
+<link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="chat.css?v=20261111-recursos"><link rel="stylesheet" href="chat-recursos.css?v=20261111-mencao"><script src="tema.js"></script></head>
 <body><main class="chat-workspace">
 <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>FaturaChat</h1></div><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
 <p id="chat-aviso" class="chat-aviso" role="status" aria-live="polite" hidden></p>
@@ -44,6 +44,7 @@
       <div id="chat-respondendo" class="chat-respondendo" hidden><div><strong></strong><span></span></div><button type="button" id="chat-respondendo-cancelar" aria-label="Cancelar resposta" title="Cancelar resposta">✕</button></div>
       <ul id="chat-anexos-previa" class="chat-anexos-previa" aria-label="Arquivos para enviar" hidden></ul>
       <form id="chat-form" class="chat-form">
+        <div id="chat-mencoes" class="chat-mencoes" role="listbox" aria-label="Mencionar pessoa" hidden></div>
         <div class="chat-emoji">
           <button id="chat-emoji-abrir" type="button" class="chat-emoji-botao" aria-haspopup="true" aria-expanded="false" aria-controls="chat-emoji-painel" title="Emojis" aria-label="Inserir emoji"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1.8 2 5.2 2 7 0"/><path d="M9 9.5h.01M15 9.5h.01"/></svg></button>
           <div id="chat-emoji-painel" class="chat-emoji-painel" role="dialog" aria-label="Escolher emoji" hidden></div>
@@ -114,4 +115,4 @@
 <ul id="chat-participantes-lista" class="chat-contatos"></ul>
 <div class="chat-grupo-acoes"><select id="chat-participante-novo" aria-label="Adicionar pessoa ao grupo"></select><button id="chat-participante-adicionar" type="button" class="primary-button">Adicionar</button></div>
 <button id="chat-sair-grupo" type="button" class="text-button chat-sair">Sair do grupo</button></dialog>
-<script src="sidebar.js?v=20261111-faturachat"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="chat.js?v=20261111-faturachat"></script></body></html>
+<script src="sidebar.js?v=20261111-mencao"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="chat.js?v=20261111-mencao"></script></body></html>

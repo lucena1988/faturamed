@@ -68,6 +68,7 @@
       } else if (grupo(c)) prev = `Grupo com ${c.participantes} pessoas`;
       const linha2 = el('span', 'chat-item-linha');
       linha2.append(el('small', null, prev));
+      if (c.mencoesNaoLidas) { const m = el('span', 'chat-mencao-badge', '@'); m.title = 'Você foi mencionado'; linha2.append(m); }
       if (c.naoLidas) linha2.append(el('span', 'nav-count', c.naoLidas > 99 ? '99+' : String(c.naoLidas)));
       corpo.append(linha, linha2);
       b.append(avatarConversa(c), corpo);
@@ -153,6 +154,7 @@
       autorAnterior = m.autorId;
       li.dataset.id = m.id;
       if (m.sistema) li.classList.add('sistema');
+      if ((m.mencionados || []).includes(eu.id)) li.classList.add('mencionou-voce');
       if (m.apagada) {
         li.classList.add('apagada');
         li.append(el('p', 'chat-msg-apagada', '🚫 Mensagem apagada'));
@@ -188,13 +190,82 @@
       else if (m[5]) { no = el('a', 'chat-link', m[5]); no.href = m[5]; no.target = '_blank'; no.rel = 'noopener noreferrer'; }
       else {
         no = el('span', 'chat-mencao', m[6]);
-        if (eu && m[6].slice(1).toLowerCase() === (eu.nome || '').split(/\s+/)[0].toLowerCase()) no.classList.add('voce');
+        if (eu && souEu(m[6].slice(1))) no.classList.add('voce');
       }
       frag.append(no);
       ultimo = m.index + m[0].length;
     }
     if (ultimo < texto.length) frag.append(texto.slice(ultimo));
     return frag;
+  }
+
+  // mencoes: "@Ana" (primeiro nome) ou "@Ana.Souza" (nome completo com pontos); sem acento e sem maiusculas
+  const normalizar = s => (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim().replace(/\s+/g, ' ');
+  const nomeMencao = nome => (nome || '').trim().split(/\s+/).join('.');
+  function souEu(token) {
+    const t = normalizar(token).replace(/[.\-]+$/, '');
+    const nome = normalizar(eu?.nome);
+    return t === 'todos' || t === nome.replace(/ /g, '.') || t === nome.split(' ')[0];
+  }
+
+  // sugestao de nomes ao digitar "@": participantes da conversa (e @todos em grupo)
+  let candidatosMencao = [], mencaoAtiva = -1, cacheParticipantes = {};
+  async function pessoasDaConversa() {
+    if (!atual) return [];
+    if (!grupo(atual)) return atual.contato ? [{id: atual.contato.id, nome: atual.contato.nome, foto: atual.contato.foto}] : [];
+    if (!cacheParticipantes[atual.id]) {
+      try { cacheParticipantes[atual.id] = (await api(`/api/chat/conversas/${atual.id}/participantes`)).filter(p => p.id !== eu.id); }
+      catch (_) { return []; }
+    }
+    return cacheParticipantes[atual.id];
+  }
+  function termoMencao() {
+    const t = $('chat-texto'), antes = t.value.slice(0, t.selectionStart);
+    const m = antes.match(/(^|\s)@([\p{L}.\-]{0,40})$/u);
+    return m ? {termo: m[2], inicio: antes.length - m[2].length - 1} : null;
+  }
+  async function sugerirMencao() {
+    const caixa = $('chat-mencoes');
+    const alvo = termoMencao();
+    if (!alvo || atual?.sistema) { caixa.hidden = true; return; }
+    const termo = normalizar(alvo.termo).replace(/\./g, ' ');
+    const pessoas = await pessoasDaConversa();
+    candidatosMencao = pessoas.filter(p => !termo || normalizar(p.nome).startsWith(termo) || normalizar(p.nome).split(' ').some(parte => parte.startsWith(termo))).slice(0, 8);
+    if (grupo(atual) && 'todos'.startsWith(termo)) candidatosMencao.push({id: 0, nome: 'todos', todos: true});
+    caixa.replaceChildren();
+    if (!candidatosMencao.length) { caixa.hidden = true; return; }
+    mencaoAtiva = 0;
+    candidatosMencao.forEach((p, i) => {
+      const b = el('button', 'chat-mencao-opcao' + (i === 0 ? ' ativo' : '')); b.type = 'button';
+      b.setAttribute('role', 'option');
+      b.append(p.todos ? el('span', 'chat-avatar grupo', '@') : avatar(p.nome, false, false, p.foto, p.id),
+        el('span', null, p.todos ? '@todos — avisar todo o grupo' : p.nome));
+      b.addEventListener('mousedown', e => { e.preventDefault(); escolherMencao(i); });
+      caixa.append(b);
+    });
+    caixa.hidden = false;
+  }
+  function escolherMencao(i) {
+    const p = candidatosMencao[i], alvo = termoMencao();
+    if (!p || !alvo) return;
+    const t = $('chat-texto');
+    const inserir = '@' + (p.todos ? 'todos' : nomeMencao(p.nome)) + ' ';
+    t.value = t.value.slice(0, alvo.inicio) + inserir + t.value.slice(t.selectionStart);
+    t.selectionStart = t.selectionEnd = alvo.inicio + inserir.length;
+    $('chat-mencoes').hidden = true; ajustarAltura(); t.focus();
+  }
+  function teclaMencao(e) {
+    const caixa = $('chat-mencoes');
+    if (caixa.hidden) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      mencaoAtiva = (mencaoAtiva + (e.key === 'ArrowDown' ? 1 : -1) + candidatosMencao.length) % candidatosMencao.length;
+      [...caixa.children].forEach((b, i) => b.classList.toggle('ativo', i === mencaoAtiva));
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); escolherMencao(mencaoAtiva); return true; }
+    if (e.key === 'Escape') { caixa.hidden = true; return true; }
+    return false;
   }
 
   function blocoResposta(r) {
@@ -355,7 +426,7 @@
   function marcarLida() {
     if (!atual || !mensagens.length || document.hidden) return;
     const ultima = mensagens[mensagens.length - 1].id;
-    if (atual.naoLidas) { atual.naoLidas = 0; desenharLista(); }
+    if (atual.naoLidas || atual.mencoesNaoLidas) { atual.naoLidas = 0; atual.mencoesNaoLidas = 0; desenharLista(); }
     api(`/api/chat/conversas/${atual.id}/leitura`, json({ateId: ultima})).catch(() => {});
   }
 
@@ -744,20 +815,23 @@
       if (msg.autorId !== eu.id) { $('chat-digitando').hidden = true; marcarLida(); }
     } else if (msg.autorId !== eu.id) {
       conversa.naoLidas++;
+      if ((msg.mencionados || []).includes(eu.id)) conversa.mencoesNaoLidas = (conversa.mencoesNaoLidas || 0) + 1;
     }
-    if (msg.autorId !== eu.id && (document.hidden || !aberta)) {
-      notificar(conversa, msg);
-      if (!conversa.silenciado) window.fmChatSom?.tocar('msg-' + msg.id);
+    const mencionado = (msg.mencionados || []).includes(eu.id);
+    if (msg.autorId !== eu.id && (document.hidden || !aberta || mencionado)) {
+      notificar(conversa, msg, mencionado);
+      // mencao toca mesmo com a conversa silenciada
+      if (!conversa.silenciado || mencionado) window.fmChatSom?.tocar('msg-' + msg.id);
     }
     conversas.sort((a, b) => (b.ultimaMensagemEm || '').localeCompare(a.ultimaMensagemEm || ''));
     desenharLista();
   }
 
-  function notificar(conversa, msg) {
+  function notificar(conversa, msg, mencionado) {
     try {
       if ('Notification' in window && Notification.permission === 'granted') {
         const corpo = (grupo(conversa) ? primeiroNome(msg.autorNome) + ': ' : '') + (msg.texto || (msg.anexos?.[0]?.tipo.startsWith('audio/') ? '🎤 enviou uma mensagem de voz' : '📎 enviou um arquivo'));
-        const n = new Notification(conversa.nome, {body: corpo.slice(0, 140), tag: 'chat-' + conversa.id});
+        const n = new Notification(mencionado ? `@ ${msg.autorNome} mencionou você` + (grupo(conversa) ? ` em ${conversa.nome}` : '') : conversa.nome, {body: corpo.slice(0, 140), tag: 'chat-' + conversa.id});
         n.onclick = () => { window.focus(); abrir(conversa.id); n.close(); };
       }
     } catch (_) {}
@@ -779,7 +853,7 @@
     fonte.addEventListener('pronto', () => aviso(''));
     fonte.addEventListener('mensagem', e => receberMensagem(JSON.parse(e.data)));
     fonte.addEventListener('chamada', e => tocar(JSON.parse(e.data)));
-    fonte.addEventListener('conversa', () => carregarConversas().catch(() => {}));
+    fonte.addEventListener('conversa', () => { cacheParticipantes = {}; carregarConversas().catch(() => {}); });
     fonte.addEventListener('mensagem-alterada', e => {
       const msg = JSON.parse(e.data);
       trocarMensagem(msg);
@@ -1200,8 +1274,9 @@
     $('chat-mensagens').addEventListener('scroll', () => { if (novasAbaixo && pertoDoFim()) { novasAbaixo = 0; atualizarBotaoNovas(); } }, {passive: true});
     $('chat-voltar').addEventListener('click', () => painel.classList.remove('com-conversa'));
     const texto = $('chat-texto');
-    texto.addEventListener('input', () => { ajustarAltura(); avisarDigitando(); });
-    texto.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chat-form').requestSubmit(); } });
+    texto.addEventListener('input', () => { ajustarAltura(); avisarDigitando(); sugerirMencao(); });
+    texto.addEventListener('keydown', e => { if (teclaMencao(e)) return; if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chat-form').requestSubmit(); } });
+    texto.addEventListener('blur', () => setTimeout(() => { $('chat-mencoes').hidden = true; }, 150));
     document.addEventListener('visibilitychange', marcarLida);
     try {
       eu = await api('/api/auth/me');

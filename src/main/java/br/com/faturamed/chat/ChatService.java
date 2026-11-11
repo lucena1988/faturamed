@@ -48,17 +48,17 @@ public class ChatService {
     public record Conversa(long id, String tipo, String nome, Contato contato, int participantes, boolean souCriador,
                            String ultimaMensagem, Long ultimoAutorId, String ultimoAutorNome,
                            Instant ultimaMensagemEm, long naoLidas, long leituraContato, boolean silenciado,
-                           boolean oficial, boolean sistema, Fixada fixada) {}
+                           boolean oficial, boolean sistema, Fixada fixada, long mencoesNaoLidas) {}
     public record Silencio(boolean silenciado) {}
     public record UltimaNaoLida(long conversaId, long mensagemId, String autorNome, String texto) {}
     /** total: todas as nao lidas; comSom: so das conversas nao silenciadas; ultima: para a notificacao na area de trabalho. */
-    public record NaoLidas(long total, long comSom, UltimaNaoLida ultima) {}
+    public record NaoLidas(long total, long comSom, UltimaNaoLida ultima, long mencoes) {}
     public record Anexo(long id, String nome, String tipo, int tamanho) {}
     public record Resposta(long id, String autorNome, String texto) {}
     public record Reacao(String emoji, List<Long> usuarios, List<String> nomes) {}
     public record Mensagem(long id, long conversaId, long autorId, String autorNome, String texto, Instant criadoEm,
                            List<Anexo> anexos, Long autorFoto, Resposta resposta, List<Reacao> reacoes,
-                           boolean editada, boolean apagada, boolean sistema) {}
+                           boolean editada, boolean apagada, boolean sistema, List<Long> mencionados) {}
     public record ArquivoBaixado(String nome, String tipo, byte[] conteudo) {}
     public record Pagina(List<Mensagem> mensagens, boolean temMais, long leituraContato) {}
     public record NovaConversa(long usuarioId) {}
@@ -104,6 +104,7 @@ public class ChatService {
                    (select coalesce(min(t.ultima_leitura_id),0) from chat_participante t where t.conversa_id=c.id and t.usuario_id<>p.usuario_id) leitura_contato,
                    m.texto ultima_texto, m.autor_id ultimo_autor, ma.nome ultimo_autor_nome,
                    (select count(*) from chat_mensagem x where x.conversa_id=c.id and x.id>p.ultima_leitura_id and x.autor_id<>? and x.apagada_em is null) nao_lidas,
+                   (select count(*) from chat_mencao mc join chat_mensagem x on x.id=mc.mensagem_id where mc.usuario_id=p.usuario_id and x.conversa_id=c.id and x.id>p.ultima_leitura_id and x.apagada_em is null) mencoes_nao_lidas,
                    fx.id fixada_id, fx.texto fixada_texto, fxu.nome fixada_autor
             from chat_participante p
             join chat_conversa c on c.id=p.conversa_id
@@ -130,7 +131,7 @@ public class ChatService {
                     contato, r.getInt("participantes"), criador != null && criador == user.id(),
                     r.getString("ultima_texto"), (Long) r.getObject("ultimo_autor"), r.getString("ultimo_autor_nome"),
                     instante(r, "ultima_mensagem_em"), r.getLong("nao_lidas"), r.getLong("leitura_contato"), r.getBoolean("silenciado"),
-                    r.getBoolean("oficial"), contato != null && contato.id() == robo, fixada);
+                    r.getBoolean("oficial"), contato != null && contato.id() == robo, fixada, r.getLong("mencoes_nao_lidas"));
             }, user.id(), user.id());
     }
 
@@ -158,7 +159,12 @@ public class ChatService {
             """, (r, n) -> new UltimaNaoLida(r.getLong("conversa_id"), r.getLong("id"), r.getString("nome"),
                 r.getString("texto").isEmpty() ? (r.getInt("anexos") > 0 ? "📎 enviou um arquivo" : "") : resumo(r.getString("texto"))),
             user.id(), user.id()).stream().findFirst().orElse(null);
-        return new NaoLidas(totais[0], totais[1], ultima);
+        long mencoes = jdbc.queryForObject("""
+            select count(*) from chat_mencao mc join chat_mensagem m on m.id=mc.mensagem_id
+            join chat_participante p on p.conversa_id=m.conversa_id and p.usuario_id=mc.usuario_id
+            where mc.usuario_id=? and m.id>p.ultima_leitura_id and m.apagada_em is null
+            """, Long.class, user.id());
+        return new NaoLidas(totais[0], totais[1], ultima, mencoes);
     }
 
     @Transactional
@@ -296,6 +302,7 @@ public class ChatService {
                     id, a.nome(), a.tipo(), a.conteudo().length, a.conteudo());
         jdbc.update("update chat_conversa set ultima_mensagem_em=now() where id=?", conversaId);
         jdbc.update("update chat_participante set ultima_leitura_id=? where conversa_id=? and usuario_id=?", id, conversaId, autorId);
+        registrarMencoes(id, limpo, autorId, participantes);
         Mensagem msg = buscarMensagem(id);
         depoisDoCommit(() -> eventos.enviar(participantes, "mensagem", msg));
         return msg;
@@ -309,6 +316,9 @@ public class ChatService {
         if (limpo.isEmpty()) throw new IllegalArgumentException("Escreva o novo texto ou apague a mensagem");
         if (limpo.length() > LIMITE_TEXTO) throw new IllegalArgumentException("Mensagem acima de " + LIMITE_TEXTO + " caracteres");
         jdbc.update("update chat_mensagem set texto=?, editada_em=now() where id=?", limpo, mensagemId);
+        jdbc.update("delete from chat_mencao where mensagem_id=?", mensagemId);
+        registrarMencoes(mensagemId, limpo, user.id(),
+                jdbc.queryForList("select usuario_id from chat_participante where conversa_id=?", Long.class, dono));
         return alterada(mensagemId, dono);
     }
 
@@ -501,6 +511,49 @@ public class ChatService {
         return comDetalhes(List.of(m)).getFirst();
     }
 
+    private static final java.util.regex.Pattern MENCAO = java.util.regex.Pattern.compile("@([\\p{L}][\\p{L}.\\-]{1,40})");
+
+    /**
+     * Quem foi mencionado: "@Ana" (primeiro nome, se for unico na conversa), "@Ana.Souza" (nome completo com pontos)
+     * ou "@todos" (todos os participantes). So vale para quem participa da conversa; o autor nao conta.
+     */
+    static Set<Long> detectarMencoes(String texto, Map<Long, String> participantes, long autorId) {
+        Set<Long> achados = new LinkedHashSet<>();
+        if (texto == null || texto.indexOf('@') < 0) return achados;
+        Map<String, List<Long>> porPrimeiroNome = new HashMap<>();
+        Map<String, Long> porNomeCompleto = new HashMap<>();
+        participantes.forEach((id, nome) -> {
+            String n = normalizar(nome);
+            porNomeCompleto.put(n.replace(' ', '.'), id);
+            porPrimeiroNome.computeIfAbsent(n.split(" ")[0], k -> new ArrayList<>()).add(id);
+        });
+        var m = MENCAO.matcher(texto);
+        while (m.find()) {
+            String token = normalizar(m.group(1)).replaceAll("[.\\-]+$", "");
+            if (token.equals("todos") || token.equals("all")) { achados.addAll(participantes.keySet()); continue; }
+            Long completo = porNomeCompleto.get(token.replace('-', '.'));
+            if (completo != null) { achados.add(completo); continue; }
+            List<Long> primeiro = porPrimeiroNome.get(token);
+            if (primeiro != null && primeiro.size() == 1) achados.add(primeiro.getFirst());
+        }
+        achados.remove(autorId);
+        return achados;
+    }
+
+    private static String normalizar(String s) {
+        return java.text.Normalizer.normalize(s == null ? "" : s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).strip().replaceAll("\\s+", " ");
+    }
+
+    private void registrarMencoes(long mensagemId, String texto, long autorId, List<Long> participantes) {
+        if (texto == null || texto.indexOf('@') < 0 || participantes.isEmpty()) return;
+        Map<Long, String> nomes = new HashMap<>();
+        String ids = String.join(",", participantes.stream().map(String::valueOf).toList());
+        jdbc.query("select id, nome from usuario_acesso where id in (" + ids + ")", r -> { nomes.put(r.getLong("id"), r.getString("nome")); });
+        for (Long id : detectarMencoes(texto, nomes, autorId))
+            jdbc.update("insert into chat_mencao(mensagem_id,usuario_id) values (?,?) on conflict do nothing", mensagemId, id);
+    }
+
     private Mensagem alterada(long mensagemId, long conversaId) {
         Mensagem msg = buscarMensagem(mensagemId);
         List<Long> participantes = jdbc.queryForList("select usuario_id from chat_participante where conversa_id=?", Long.class, conversaId);
@@ -533,10 +586,14 @@ public class ChatService {
         if (mensagens.isEmpty()) return mensagens;
         Map<Long, List<Anexo>> anexos = new HashMap<>();
         Map<Long, Map<String, List<Object[]>>> reacoes = new HashMap<>();
+        Map<Long, List<Long>> mencoes = new HashMap<>();
         String ids = String.join(",", mensagens.stream().map(m -> String.valueOf(m.id())).toList());
         jdbc.query("select id, mensagem_id, nome, tipo, tamanho from chat_anexo where mensagem_id in (" + ids + ") order by id", r -> {
             anexos.computeIfAbsent(r.getLong("mensagem_id"), k -> new ArrayList<>())
                     .add(new Anexo(r.getLong("id"), r.getString("nome"), r.getString("tipo"), r.getInt("tamanho")));
+        });
+        jdbc.query("select mensagem_id, usuario_id from chat_mencao where mensagem_id in (" + ids + ")", r -> {
+            mencoes.computeIfAbsent(r.getLong("mensagem_id"), k -> new ArrayList<>()).add(r.getLong("usuario_id"));
         });
         jdbc.query("select r.mensagem_id, r.emoji, r.usuario_id, u.nome from chat_reacao r join usuario_acesso u on u.id=r.usuario_id"
                 + " where r.mensagem_id in (" + ids + ") order by r.criado_em", r -> {
@@ -548,7 +605,8 @@ public class ChatService {
                     .map(e -> new Reacao(e.getKey(), e.getValue().stream().map(x -> (Long) x[0]).toList(), e.getValue().stream().map(x -> (String) x[1]).toList()))
                     .toList();
             return new Mensagem(m.id(), m.conversaId(), m.autorId(), m.autorNome(), m.texto(), m.criadoEm(),
-                    anexos.getOrDefault(m.id(), List.of()), m.autorFoto(), m.resposta(), lista, m.editada(), m.apagada(), m.sistema());
+                    anexos.getOrDefault(m.id(), List.of()), m.autorFoto(), m.resposta(), lista, m.editada(), m.apagada(), m.sistema(),
+                    mencoes.getOrDefault(m.id(), List.of()));
         }).toList();
     }
 
@@ -613,7 +671,7 @@ public class ChatService {
         }
         return new Mensagem(r.getLong("id"), r.getLong("conversa_id"), r.getLong("autor_id"), r.getString("nome"),
                 apagada ? "" : r.getString("texto"), r.getTimestamp("criado_em").toInstant(), List.of(), (Long) r.getObject("foto"),
-                resposta, List.of(), r.getTimestamp("editada_em") != null, apagada, EMAIL_ROBO.equals(r.getString("email")));
+                resposta, List.of(), r.getTimestamp("editada_em") != null, apagada, EMAIL_ROBO.equals(r.getString("email")), List.of());
     }
 
     private static String resumo(String texto) {

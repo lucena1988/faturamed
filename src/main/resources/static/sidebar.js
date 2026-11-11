@@ -192,13 +192,14 @@
     som.src = 'chat-som.js?v=20261111-saida';
     document.head.append(som);
   }
-  let comSomAnterior = null;
+  let comSomAnterior = null, mencoesAnterior = null, comSomAnteriorTick = null;
   function naoLidasChat() {
     if (page === 'chat.html') return;
     fetch('/api/chat/nao-lidas', {headers: {Accept: 'application/json'}}).then(r => r.ok ? r.json() : null).then(dados => {
       const total = dados?.total || 0;
       // toca o aviso quando chegam mensagens novas em conversas nao silenciadas
       const comSom = dados?.comSom || 0;
+      comSomAnteriorTick = comSomAnterior;
       if (comSomAnterior !== null && comSom > comSomAnterior) {
         window.fmChatSom?.tocar('nao-lidas-' + comSom); recentesChat();
         // aviso na area de trabalho (com o FaturaMed minimizado), se a pessoa ativou nas configuracoes do chat
@@ -211,6 +212,10 @@
         } catch (_) {}
       }
       comSomAnterior = comSom;
+      // mencao (@voce) avisa mesmo com a conversa silenciada
+      const mencoes = dados?.mencoes || 0;
+      if (mencoesAnterior !== null && mencoes > mencoesAnterior && !(comSom > (comSomAnteriorTick ?? comSom))) window.fmChatSom?.tocar('mencao-' + mencoes);
+      mencoesAnterior = mencoes;
       window.fmChatTotal(total);
     }).catch(() => {});
   }
