@@ -1,6 +1,7 @@
 const $ = selector => document.querySelector(selector);
 const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const round2 = v => v == null ? null : Math.round((Number(v) + Number.EPSILON) * 100) / 100;
 const integer = new Intl.NumberFormat('pt-BR');
 const percentage = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 });
 const viewTitles = { dashboard: 'Dashboard', importacoes: 'Importações', divergencias: 'Divergências', layouts: 'Layouts', medicos: 'Médicos', hospitais: 'Hospitais', empresas: 'Empresas', 'painel-medico': 'Painel do médico' };
@@ -75,7 +76,7 @@ function renderValues(visits) {
   const allocated = new Map(report.visitas.filter(visit => visit.hospital)
     .map(visit => [visit.hospital.linha, visit.linhaMedico]));
   $('#kpi-repasse').textContent = knownTotal.length
-    ? currency.format(knownTotal.reduce((sum, row) => sum + Number(row.repasse), 0)) : 'Não informado';
+    ? currency.format(knownTotal.reduce((sum, row) => sum + (round2(row.repasse) || 0), 0)) : 'Não informado';
   $('#kpi-repasse-detail').textContent = knownTotal.length < allHospital.length
     ? `Total informado; ${allHospital.length - knownTotal.length} registros sem repasse`
     : filtered ? 'Total do hospital no período' : 'Total da planilha do hospital';
@@ -91,8 +92,8 @@ function renderValues(visits) {
       return !candidates.length || candidates.some(row => row.repasse == null || !Number.isFinite(Number(row.repasse)));
     }).length;
     $(`#kpi-valor-${suffix}`).textContent = rows.length || corrected.length || !selected.length
-      ? currency.format(rows.reduce((sum, row) => sum + Number(row.repasse), 0)
-        + corrected.reduce((sum, visit) => sum + Number(effectiveRepasse(visit)), 0)) : 'Não informado';
+      ? currency.format(rows.reduce((sum, row) => sum + (round2(row.repasse) || 0), 0)
+        + corrected.reduce((sum, visit) => sum + (round2(effectiveRepasse(visit)) || 0), 0)) : 'Não informado';
     $(`#kpi-valor-${suffix}-detail`).textContent = missing
       ? `${missing} visitas sem valor informado`
       : selected.some(visit => visit.camposRevisados) ? 'Repasse com ajustes da revisão'
