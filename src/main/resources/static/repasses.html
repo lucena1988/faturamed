@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Repasse por procedimento | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="painel-medico.css?v=20261029-ui"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
+<body><main class="account-workspace">
+  <header class="account-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Repasse por procedimento</h1></div><a href="conciliacao.html">Conciliação</a></header>
+  <p>Fechamento Faturado: o repasse vem da planilha do hospital (<strong>Vl. a Repassar</strong> ou <strong>Regra</strong>). Quando a planilha não traz o repasse, vale o cadastro abaixo. A busca vai do mais específico ao mais genérico: hospital + código, código, hospital + tipo e, por último, tipo.</p>
+  <form id="repasse-form" class="doctor-toolbar">
+    <input type="hidden" name="id">
+    <label class="select-field">Hospital<select name="hospitalId" id="repasse-hospital"><option value="">Todos os hospitais</option></select></label>
+    <label class="select-field">Exame / procedimento específico<input name="codigoProcedimento" list="repasse-procedimentos" maxlength="300" placeholder="Busque por código ou nome (opcional)" autocomplete="off"></label>
+    <datalist id="repasse-procedimentos"></datalist>
+    <label class="select-field">Tipo (vale para todos do tipo)<select name="tipoProcedimento"><option value="">Qualquer</option><option value="VISITA">Visita</option><option value="EXAME">Exame</option><option value="CONSULTA">Consulta</option><option value="OUTRO">Outro</option></select></label>
+    <label class="select-field">Forma<select name="forma" id="repasse-forma"><option value="PERCENTUAL">Percentual do valor</option><option value="VALOR">Valor fixo</option></select></label>
+    <label class="select-field">Repasse<input name="valor" type="number" step="0.01" min="0" required placeholder="Ex.: 85"></label>
+    <label class="select-field">Início da vigência<input name="vigenciaInicio" type="date"></label>
+    <label class="select-field">Fim da vigência<input name="vigenciaFim" type="date"></label>
+    <label class="select-field">Observação<input name="observacao" maxlength="300"></label>
+    <label><input name="ativo" type="checkbox" checked> Ativo</label>
+    <button class="primary-button" type="submit" id="repasse-salvar">Salvar repasse</button>
+    <button class="text-button" type="button" id="repasse-limpar">Novo</button>
+  </form>
+  <p id="repasse-message" role="status" aria-live="polite"></p>
+  <details id="tuss-box" class="doctor-section"><summary><strong>Tabela TUSS</strong> · <span id="tuss-status">carregando...</span></summary>
+    <p>Importe a planilha oficial da ANS (Padrão TISS, tabela 22, procedimentos e eventos em saúde) em .xlsx, .xls ou .csv. A busca de exame/procedimento passa a usar a TUSS completa. Cada importação vira uma nova versão; vale sempre a mais recente.</p>
+    <form id="tuss-form" class="doctor-toolbar">
+      <label class="select-field">Versão<input name="versao" required maxlength="80" placeholder="Ex.: TUSS 202611"></label>
+      <label class="select-field">Fonte<input name="fonte" maxlength="1000" placeholder="Ex.: ANS - Padrão TISS"></label>
+      <label class="select-field">Arquivo<input name="arquivo" type="file" accept=".xlsx,.xls,.csv,.txt" required></label>
+      <button class="primary-button" type="submit" id="tuss-enviar">Importar TUSS</button>
+    </form>
+    <p id="tuss-message" role="status" aria-live="polite"></p>
+  </details>
+  <div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Exame / procedimento</th><th>Tipo</th><th>Repasse</th><th>Vigência</th><th>Situação</th><th>Observação</th><th>Ação</th></tr></thead><tbody id="repasse-rows"></tbody></table></div>
+</main><script src="sidebar.js?v=20261112-dock3"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="repasses.js?v=20261111-3"></script></body></html>

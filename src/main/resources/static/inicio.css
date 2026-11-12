@@ -210,3 +210,85 @@ a.ini-chip:hover span { transform: translateX(3px); }
 .ini-topo2 .ini-chip.critico { background: rgba(240, 120, 140, .18); color: #ffc4cf; border-color: rgba(240, 120, 140, .45); }
 .ini-topo2 .ini-chip.atencao { background: rgba(239, 180, 80, .18); color: #ffdc9a; border-color: rgba(239, 180, 80, .45); }
 .ini-topo2 .ini-chip.ok { background: rgba(94, 220, 160, .16); color: #aef0cd; border-color: rgba(94, 220, 160, .4); }
+
+/* Fechamento Faturado: barra de filtros alinhada (rotulo em cima, campos com a mesma altura) */
+.ini-cab-filtro > .ini-ff-filtros { display: grid; grid-template-columns: minmax(170px, 1fr) minmax(200px, 1.4fr) auto; gap: 10px; align-items: end; min-width: min(100%, 560px); }
+.ini-ff-filtro { display: grid; gap: 4px; }
+.ini-ff-filtro span, .ini-ff-periodo-rotulo { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.ini-ff-filtro select { width: 100%; height: 32px; min-height: 0; padding: 0 26px 0 10px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); text-overflow: ellipsis; }
+.ini-ff-periodo { display: grid; gap: 4px; }
+.ini-ff-periodo .ini-periodo-ctl { height: 32px; }
+.ini-area-total a { white-space: nowrap; }
+@media (max-width: 760px) { .ini-ff-filtros { grid-template-columns: 1fr 1fr; min-width: 0; width: 100%; } .ini-ff-periodo { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .ini-ff-filtros { grid-template-columns: 1fr; } }
+
+/* Composicao por tipo (Fechamento Faturado) */
+.ini-comp-blocos { display: flex; gap: 3px; height: 74px; border-radius: 10px; overflow: hidden; margin: 6px 0 12px; }
+.ini-comp-blocos > div { min-width: 0; padding: 7px 8px; display: grid; align-content: start; gap: 1px; background: var(--cor); color: rgba(0,0,0,.8); font-size: 12px; overflow: hidden; animation: ini-entra .5s ease both; }
+.ini-comp-blocos b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-comp-blocos small { opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-comp-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ini-comp-kpis div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.ini-comp-kpis span { font-size: 11px; color: var(--muted); }
+.ini-comp-kpis strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ini-comp-lista { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; font-size: 12.5px; }
+.ini-comp-lista li { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 8px; align-items: center; }
+.ini-comp-lista i { width: 10px; height: 10px; border-radius: 3px; background: var(--cor); }
+.ini-comp-lista em { font-style: normal; color: var(--muted); }
+
+/* Fechamento Faturado: area empilhada suave */
+.ini-ff-grafico { position: relative; height: 230px; margin: 14px 0 26px; }
+.ini-ff-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ini-ff-grade line { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
+.ini-ff-camada { opacity: .78; transition: opacity .2s; animation: ini-ff-surge .7s ease both; }
+.ini-ff-borda { opacity: .95; }
+.ini-ff-svg:hover .ini-ff-camada { opacity: .55; }
+.ini-ff-svg .ini-ff-camada:hover { opacity: .95; }
+@keyframes ini-ff-surge { from { opacity: 0; transform: translateY(16px); } }
+.ini-ff-media { stroke: var(--amber); stroke-width: 1.2; stroke-dasharray: 5 5; }
+.ini-ff-media-rot { position: absolute; right: 0; transform: translateY(-120%); font-size: 11px; color: var(--amber); }
+.ini-ff-alvos { position: absolute; inset: 0; pointer-events: none; }
+.ini-ff-alvos span { position: absolute; top: 0; bottom: 0; left: var(--x); width: var(--larg); transform: translateX(-50%); pointer-events: auto; border-radius: 6px; }
+.ini-ff-alvos span:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.ini-ff-alvos b { position: absolute; left: 50%; transform: translate(-50%, -6px); font-size: 11.5px; color: var(--text); opacity: 0; transition: opacity .15s; }
+.ini-ff-alvos span:hover b { opacity: 1; }
+.ini-ff-eixo { position: absolute; left: 0; right: 0; bottom: -22px; height: 16px; }
+.ini-ff-eixo small { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.ini-ff-eixo small:first-child { transform: none; }
+.ini-ff-eixo small:last-child { transform: translateX(-100%); }
+
+/* grade padronizada: producao larga e os demais em pares lado a lado, com a mesma altura */
+.ini-graficos { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.ini-painel-duplo { grid-column: span 1; display: flex; flex-direction: column; min-height: 360px; }
+.ini-painel-duplo > :last-child { flex: 1; }
+[data-card="faturado"] .ini-cab-filtro { flex-direction: column; align-items: stretch; }
+[data-card="faturado"] .ini-cab-filtro > .ini-ff-filtros { min-width: 0; width: 100%; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+[data-card="faturado"] .ini-ff-grafico { height: 210px; }
+[data-card="composicao"] .ini-comp-blocos { height: 84px; }
+@media (max-width: 1080px) { .ini-graficos { grid-template-columns: 1fr; } }
+
+/* os 4 cards em pares com o mesmo tamanho (quadrados lado a lado) */
+.ini-painel-duplo { height: 440px; min-height: 0; overflow: hidden; }
+.ini-painel-duplo > .ini-cab { flex: none; }
+.ini-painel-duplo > :last-child { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+[data-card="faturado"] .ini-cab-filtro { gap: 12px; }
+[data-card="faturado"] #inicio-ff { justify-content: flex-start; }
+[data-card="faturado"] .ini-ff-grafico { height: auto; flex: 1; min-height: 180px; margin: 10px 0 26px; }
+[data-card="faturado"] .ini-area-total { margin: 0; font-size: 12px; line-height: 1.5; }
+[data-card="composicao"] #inicio-comp { justify-content: flex-start; padding-top: 6px; }
+[data-card="composicao"] .ini-comp-blocos { height: 96px; }
+[data-card="composicao"] .ini-comp-lista { margin-top: 16px; gap: 9px; }
+@media (max-width: 1080px) { .ini-painel-duplo { height: auto; min-height: 360px; } }
+[data-card="faturado"] .ini-cab-filtro > div { flex: none; }
+
+/* rodape do Fechamento Faturado: legenda em chips e resumo numa linha */
+.ini-ff-rodape { display: grid; gap: 8px; }
+.ini-ff-legenda { display: flex; flex-wrap: wrap; gap: 6px; }
+.ini-ff-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--cor) 12%, transparent); font-size: 12px; color: var(--text); white-space: nowrap; }
+.ini-ff-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--cor); }
+.ini-ff-chip b { font-variant-numeric: tabular-nums; }
+.ini-ff-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.ini-ff-resumo b { color: var(--text); font-variant-numeric: tabular-nums; }
+.ini-ff-resumo a { margin-left: auto; color: var(--green); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.ini-ff-resumo a:hover { text-decoration: underline; }
+[data-card="faturado"] .ini-ff-grafico { margin-bottom: 30px; }

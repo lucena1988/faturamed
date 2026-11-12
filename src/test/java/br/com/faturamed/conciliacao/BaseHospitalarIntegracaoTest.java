@@ -36,6 +36,7 @@ class BaseHospitalarIntegracaoTest {
     @Autowired EmpresaClienteService empresas;
     @Autowired ExclusaoRelatorioService exclusoes;
     @Autowired PainelEmpresaService painel;
+    @Autowired RepasseProcedimentoService repasses;
     long hospital, ana, bruno;
     UsuarioAutenticado usuario;
 
@@ -598,5 +599,23 @@ class BaseHospitalarIntegracaoTest {
         recebimentos.estornar(nova,2,financeiro.historico().getFirst().id(),new RecebimentoService.Estorno("Estorno para conferir documentacao",financeiro.versao()),usuario);
         assertThat(extratos.buscar(nova,new ExtratoMedicoService.Filtros(null,null,null,null),medicoUser).resumo().recebidoAcumulado()).isEqualByComparingTo("0");
         assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO)).isEqualTo(1);
+    }
+
+    @Test void fechamentoFaturadoUsaRepasseCadastradoQuandoPlanilhaNaoTraz() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Setor");
+        service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,List.of("123","2026-09-01",nome(ana),"40101010","ECG convencional","200","Faturado"))),usuario);
+        assertThat(jdbc.queryForObject("select tipo_procedimento from visita_base_hospitalar where hospital_id=?",String.class,hospital)).isEqualTo("EXAME");
+        repasses.salvar(null,new RepasseProcedimentoService.Dados(hospital,null,"EXAME",new BigDecimal("60"),null,null,null,true,"teste"));
+        long relatorio=service.importarProducao(hospital,ana,"2026-09",producao(),usuario).relatorioId();
+        var json=jdbc.queryForObject("select relatorio::text from conciliacao_visitas where id=?",String.class,relatorio);
+        var visita=new com.fasterxml.jackson.databind.ObjectMapper().readTree(json).get("visitas").get(0);
+        assertThat(visita.get("status").asText()).isEqualTo("PAGA");
+        assertThat(new BigDecimal(visita.get("repasse").asText())).isEqualByComparingTo("120");
+        assertThat(visita.get("hospital").get("origemRepasse").asText()).isEqualTo("CADASTRO");
+        assertThat(visita.get("hospital").get("tipo").asText()).isEqualTo("EXAME");
+    }
+
+    @Test void visitasAntigasFicamComoTipoVisita() {
+        assertThat(jdbc.queryForObject("select count(*) from visita_base_hospitalar where tipo_procedimento is null",Long.class)).isZero();
     }
 }

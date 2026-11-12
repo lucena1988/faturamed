@@ -33,16 +33,18 @@ public class BaseHospitalarService {
     private final RevisaoVisitasService revisoes;
     private final AtualizacaoHospitalarService atualizacoes;
     private final EmpresaClienteService empresas;
+    private final RepasseProcedimentoService repasses;
 
     public BaseHospitalarService(JdbcTemplate jdbc, ObjectMapper json, LeitorPlanilhaVisitas leitor,
             ConciliadorVisitas motor, HospitalCadastroService hospitais, MedicoCadastroService medicos,
             IdentificacaoProducaoService identificacao, VinculoBaseHospitalar vinculos, RevisaoVisitasService revisoes, AtualizacaoHospitalarService atualizacoes,
-            EmpresaClienteService empresas) {
+            EmpresaClienteService empresas, RepasseProcedimentoService repasses) {
         this.jdbc=jdbc; this.json=json; this.leitor=leitor; this.motor=motor; this.hospitais=hospitais;
         this.medicos=medicos; this.identificacao=identificacao; this.vinculos=vinculos;
         this.revisoes=revisoes;
         this.atualizacoes=atualizacoes;
         this.empresas=empresas;
+        this.repasses=repasses;
     }
 
     @Transactional(rollbackFor=Exception.class)
@@ -55,7 +57,7 @@ public class BaseHospitalarService {
         if(!List.of("NOVO","ATUALIZAR").contains(Objects.toString(modoHospital,""))) throw new IllegalArgumentException("Modo hospitalar invalido");
         validarHospital(hospitalId); competencia = normalizarCompetencia(competencia); vinculos.bloquear(hospitalId);
         var linhas=leitor.ler(arquivo,true);
-        var registros=motor.conciliar("Base", "", arquivo.getOriginalFilename(), List.of(), linhas).hospitalSemProducao();
+        var registros=motor.conciliar("Base", "", arquivo.getOriginalFilename(), List.of(), repasses.complementar(hospitalId,linhas)).hospitalSemProducao();
         String hash=hash(arquivo);
         var repetidos=jdbc.queryForList("select id from arquivo_base_hospitalar where hospital_id=? and tipo='HOSPITAL' and competencia=? and hash=?",hospitalId,competencia,hash);
         if(!repetidos.isEmpty()) return new Resultado(numero(repetidos.getFirst(),"id"),null,0,0,true);
@@ -77,9 +79,9 @@ public class BaseHospitalarService {
             Integer anteriorId=semelhantes.isEmpty()?null:(int)numero(semelhantes.getFirst(),"id");
             if(anteriorId!=null) divergencias++;
             jdbc.update("""
-                    insert into visita_base_hospitalar(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_nome,campos,anterior_id,decisao,arquivo_atual_id,linha_atual)
-                    values(?,?,?,?,?,?,?::jsonb,?,?,?,?)
-                    """,arquivoId,hospitalId,registro.linha(),registro.atendimento(),registro.data(),registro.medico(),json.writeValueAsString(linha.campos()),anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE",arquivoId,registro.linha());
+                    insert into visita_base_hospitalar(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_nome,campos,anterior_id,decisao,arquivo_atual_id,linha_atual,tipo_procedimento)
+                    values(?,?,?,?,?,?,?::jsonb,?,?,?,?,?)
+                    """,arquivoId,hospitalId,registro.linha(),registro.atendimento(),registro.data(),registro.medico(),json.writeValueAsString(linha.campos()),anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE",arquivoId,registro.linha(),registro.tipo());
         }
         jdbc.update("update arquivo_base_hospitalar set quantidade_registros=? where id=?",registros.size(),arquivoId);
         String mes=competencia;
@@ -136,6 +138,8 @@ public class BaseHospitalarService {
             if(medicoId!=null && !Objects.equals(identificar(texto(registro,"medico_nome"),cadastros),medicoId)) continue;
             hospitalLinhas.add(new LeitorPlanilhaVisitas.Linha((int)numero(registro,"id"),json.readValue(texto(registro,"campos"),new TypeReference<>(){})));
         }
+        // Sem repasse na planilha, vale o repasse cadastrado para o procedimento.
+        hospitalLinhas=new ArrayList<>(repasses.complementar(hospitalId,hospitalLinhas));
         if(Objects.equals(jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospitalId),0L))
             throw new IllegalArgumentException("Importe primeiro a planilha do hospital");
         var base=medicoId==null?conciliarColetiva(hospital.nome(),nome,producao,hospitalLinhas,cadastros)
@@ -289,16 +293,21 @@ public class BaseHospitalarService {
                 anterior.camposRevisados(),anterior.medicoProducao());
     }
 
+    private LeitorPlanilhaVisitas.Linha complementado(int visitaId,LeitorPlanilhaVisitas.Linha linha) {
+        Long hospitalId=jdbc.queryForObject("select hospital_id from visita_base_hospitalar where id=?",Long.class,visitaId);
+        return repasses.complementar(hospitalId,List.of(linha)).getFirst();
+    }
+
     private ConciliadorVisitas.RegistroHospital registroHospital(int id) throws Exception {
         String campos=jdbc.queryForObject("select campos::text from visita_base_hospitalar where id=?",String.class,id);
-        var linha=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<>(){}));
+        var linha=complementado(id,new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<>(){})));
         return motor.conciliar("Base","","",List.of(),List.of(linha)).hospitalSemProducao().getFirst();
     }
 
     private ConciliadorVisitas.Visita atualizarVinculada(ConciliadorVisitas.Relatorio relatorio,ConciliadorVisitas.Visita anterior) throws Exception {
         int id=anterior.hospital().linha();
         String campos=jdbc.queryForObject("select campos::text from visita_base_hospitalar where id=?",String.class,id);
-        var hospital=new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<>(){}));
+        var hospital=complementado(id,new LeitorPlanilhaVisitas.Linha(id,json.readValue(campos,new TypeReference<>(){})));
         Long medico=medicos.identificar(anterior,medicos.listar());
         return identificacao.conciliar(relatorio.hospital(),relatorio.arquivoMedico(),"Base hospitalar",
                 List.of(new LeitorPlanilhaVisitas.Linha(anterior.linhaMedico(),anterior.original())),List.of(hospital),medico).visitas().getFirst();
@@ -313,7 +322,7 @@ public class BaseHospitalarService {
     public List<Map<String,Object>> visitas(long hospitalId) {
         return jdbc.queryForList("""
                 select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,v.arquivo_atual_id,v.linha_atual,
-                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,
+                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.tipo_procedimento,
                 case when v.decisao='EM_ANALISE' then 'DIVERGENTE'
                      when v.decisao in ('DUPLICADO_PAGO_OUTRO_MES','DUPLICADO_MESMA_COMPETENCIA') then v.decisao
                      when b.visita_id is not null and coalesce(

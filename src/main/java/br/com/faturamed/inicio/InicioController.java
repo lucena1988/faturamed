@@ -5,6 +5,7 @@ import br.com.faturamed.conciliacao.RevisaoVisitasService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,6 +73,102 @@ public class InicioController {
         r.put("chamadosSla", slaChamados(Periodo.ler(chamados, null)));
         r.put("lotesPorDia", serieProducao(periodoProducao));
         return r;
+    }
+
+    /** Situacao do procedimento no Fechamento Faturado (precisa de v = visita e b = vinculo). */
+    private static final String SITUACAO_FF = """
+            case when v.decisao = 'EM_ANALISE'
+                   or exists (select 1 from visita_base_hospitalar r where r.anterior_id = v.id and r.decisao = 'EM_ANALISE') then 'divergente'
+                 when b.visita_id is not null and coalesce(
+                   (select depois->>'status' from revisao_visita where conciliacao_id = b.relatorio_id and linha_medico = b.linha_producao order by id desc limit 1),
+                   (select item->>'status' from conciliacao_visitas c, jsonb_array_elements(c.relatorio->'visitas') item
+                     where c.id = b.relatorio_id and (item->>'linhaMedico')::integer = b.linha_producao)) = 'DIVERGENTE' then 'divergente'
+                 when b.visita_id is not null then 'conciliado'
+                 else 'aguardando' end""";
+
+    /**
+     * Fechamento Faturado: procedimentos da base hospitalar por intervalo e situacao
+     * (conciliado, aguardando producao, divergente), com filtro de hospital e de exame/procedimento.
+     * exame: vazio (todos), "tipo:EXAME" (todos de um tipo) ou "cod:40101010" (procedimento especifico).
+     * periodo "tudo" agrupa por mes desde o primeiro procedimento. Em dias usa a data do procedimento;
+     * em horas e minutos, o momento da importacao do arquivo.
+     */
+    @GetMapping("/api/inicio/fechamento-faturado")
+    public Map<String, Object> fechamentoFaturado(@RequestParam(required = false) String periodo,
+            @RequestParam(required = false) Long hospitalId, @RequestParam(required = false) String exame) {
+        var p = Periodo.ler(periodo, new Periodo(15, 'd'));
+        var filtro = new StringBuilder();
+        List<Object> args = new java.util.ArrayList<>();
+        if (hospitalId != null) { filtro.append(" and v.hospital_id = ?"); args.add(hospitalId); }
+        String ex = exame == null ? "" : exame.trim();
+        if (ex.startsWith("tipo:")) { filtro.append(" and v.tipo_procedimento = ?"); args.add(ex.substring(5).toUpperCase()); }
+        else if (ex.startsWith("cod:")) {
+            filtro.append(" and regexp_replace(trim(coalesce(v.campos->>'cod produto','')), '^([0-9]+)\\.0+$', '\\1') = ?");
+            args.add(ex.substring(4).trim());
+        }
+        String validos = "from visita_base_hospitalar v join arquivo_base_hospitalar a on a.id = v.arquivo_id"
+                + " left join vinculo_base_hospitalar b on b.visita_id = v.id"
+                + " where v.decisao in ('ORIGINAL','VISITA_DISTINTA','EM_ANALISE') " + filtro;
+        // Datas do primeiro e do ultimo procedimento com estes filtros (ajuda quando o periodo nao tem dados).
+        var limites = jdbc.queryForMap("select min(v.data_visita) as primeira, max(v.data_visita) as ultima " + validos, args.toArray());
+        var r = new LinkedHashMap<String, Object>();
+        r.put("primeiraData", limites.get("primeira"));
+        r.put("ultimaData", limites.get("ultima"));
+        String colunas = """
+                count(base.momento) as total,
+                  count(*) filter (where situacao = 'conciliado') as conciliado,
+                  count(*) filter (where situacao = 'aguardando') as aguardando,
+                  count(*) filter (where situacao = 'divergente') as divergente""";
+        var tipos = new LinkedHashMap<String, Long>();
+        if ("tudo".equalsIgnoreCase(Objects.toString(periodo, "").trim())) {
+            r.put("agrupamento", "mes");
+            if (limites.get("primeira") == null) { r.put("serie", List.of()); r.put("porTipo", tipos); return r; }
+            List<Object> argsMes = new java.util.ArrayList<>(args); argsMes.add(limites.get("primeira")); argsMes.add(limites.get("ultima"));
+            r.put("serie", jdbc.queryForList("""
+                    with base as (select date_trunc('month', v.data_visita)::date as momento, %s as situacao %s)
+                    select to_char(d, 'MM/YYYY') as dia, %s
+                    from generate_series(date_trunc('month', ?::date), date_trunc('month', greatest(current_date, ?::date)), interval '1 month') d
+                    left join base on base.momento = d::date group by d order by d""".formatted(SITUACAO_FF, validos, colunas), argsMes.toArray()));
+            jdbc.query("select v.tipo_procedimento, count(*) " + validos + " group by 1 order by 2 desc", rs -> { tipos.put(rs.getString(1), rs.getLong(2)); }, args.toArray());
+            r.put("porTipo", tipos);
+            r.put("composicao", composicao(validos, args));
+            return r;
+        }
+        boolean dias = p.unidade() == 'd';
+        String momento = dias ? "v.data_visita" : "date_trunc('%s', a.criado_em)".formatted(p.passo());
+        String series = dias
+                ? "generate_series(current_date - (?::int - 1), current_date, interval '1 day')"
+                : "generate_series(date_trunc('%1$s', now()) - (?::int - 1) * interval '1 %1$s', date_trunc('%1$s', now()), interval '1 %1$s')".formatted(p.passo());
+        List<Object> argsSerie = new java.util.ArrayList<>(args); argsSerie.add(p.quantidade());
+        r.put("serie", jdbc.queryForList("""
+                with base as (select %s as momento, %s as situacao %s)
+                select %s as dia, %s
+                from %s d left join base on base.momento = d%s
+                group by d order by d""".formatted(momento, SITUACAO_FF, validos, dias ? "to_char(d, 'DD/MM')" : "to_char(d, 'HH24:MI')",
+                colunas, series, dias ? "::date" : ""), argsSerie.toArray()));
+        List<Object> argsTipo = new java.util.ArrayList<>(args); argsTipo.add(dias ? (Object) p.quantidade() : (Object) p.minutos());
+        jdbc.query("select v.tipo_procedimento, count(*) " + validos + " and "
+                + (dias ? "v.data_visita >= current_date - (?::int - 1)" : "a.criado_em >= now() - ? * interval '1 minute'") + " group by 1 order by 2 desc",
+                rs -> { tipos.put(rs.getString(1), rs.getLong(2)); }, argsTipo.toArray());
+        r.put("porTipo", tipos);
+        r.put("composicao", composicao(validos + " and " + (dias ? "v.data_visita >= current_date - (?::int - 1)" : "a.criado_em >= now() - ? * interval '1 minute'"), argsTipo));
+        return r;
+    }
+
+    /**
+     * Composicao por tipo: quantidade, conciliados, valor do hospital, repasse informado na planilha
+     * (Vl. a Repassar ou Valor Tot x Regra) e quantos nao trazem repasse (usam o repasse cadastrado).
+     */
+    private List<Map<String, Object>> composicao(String validos, List<Object> args) {
+        String num = "nullif(regexp_replace(trim(coalesce(v.campos->>'%s','')), '[^0-9.\\-]', '', 'g'), '')::numeric";
+        String valor = num.formatted("valor tot"), repasse = num.formatted("vl. a repassar"), regra = num.formatted("regra");
+        return jdbc.queryForList("""
+                select v.tipo_procedimento as tipo, count(*) as total,
+                  count(*) filter (where (%1$s) = 'conciliado') as conciliado,
+                  coalesce(sum(%2$s), 0) as valor,
+                  coalesce(sum(coalesce(%3$s, %2$s * case when %4$s > 1 then %4$s / 100 else %4$s end)), 0) as repasse_planilha,
+                  count(*) filter (where %3$s is null and %4$s is null) as sem_repasse_planilha
+                %5$s group by 1 order by 2 desc""".formatted(SITUACAO_FF, valor, repasse, regra, validos), args.toArray());
     }
 
     /**

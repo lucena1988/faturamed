@@ -97,7 +97,7 @@ public class AtualizadorConciliacao {
     }
     private boolean decimal(BigDecimal a,BigDecimal b) { return a==null?b==null:b!=null&&a.compareTo(b)==0; }
     private ConciliadorVisitas.RegistroHospital comLinha(ConciliadorVisitas.RegistroHospital h,int linha) {
-        return new ConciliadorVisitas.RegistroHospital(linha,h.atendimento(),h.data(),h.paciente(),h.convenio(),h.medico(),h.codigo(),h.procedimento(),h.conta(),h.setor(),h.valorTotal(),h.regra(),h.repasse());
+        return new ConciliadorVisitas.RegistroHospital(linha,h.atendimento(),h.data(),h.paciente(),h.convenio(),h.medico(),h.codigo(),h.procedimento(),h.conta(),h.setor(),h.valorTotal(),h.regra(),h.repasse(),h.tipo(),h.origemRepasse());
     }
     private LeitorPlanilhaVisitas.Linha linha(ConciliadorVisitas.RegistroHospital h) {
         Map<String,String> m=new HashMap<>();m.put("atendimento",h.atendimento());m.put("data consumo",h.data().toString());m.put("paciente",h.paciente());m.put("operadora",h.convenio());m.put("medico",h.medico());m.put("cod produto",h.codigo());m.put("produto",h.procedimento());m.put("conta paciente",h.conta());m.put("setor",h.setor());

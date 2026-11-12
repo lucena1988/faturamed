@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
   <link rel="stylesheet" href="identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="tema.css?v=20261103-sino">
-  <link rel="stylesheet" href="inicio.css?v=20261110-27">
+  <link rel="stylesheet" href="inicio.css?v=20261112-ff11">
   <script src="tema.js?v=20261009-1"></script>
 </head>
 <body>
@@ -37,15 +37,24 @@
         <div class="ini-cab ini-cab-filtro"><div><h2 id="inicio-area-titulo">Produção nos últimos 15 dias</h2><small>Lotes por data de produção</small></div><span class="ini-periodo-ctl" data-periodo="producao" data-padrao="15d" data-nome="Período da produção"></span></div>
         <div class="ini-area" id="inicio-area"></div>
       </article>
-      <article class="ini-painel" data-card="ciclo">
-        <div class="ini-cab ini-cab-filtro"><div><h2>Ciclo das visitas</h2><small id="inicio-ciclo-sub">Último relatório</small></div><span class="ini-periodo-ctl" data-periodo="visitas" data-padrao="" data-extra="Último relatório" data-nome="Período do ciclo das visitas"></span></div>
-        <div class="ini-donut" id="inicio-donut"></div>
+      <article class="ini-painel ini-painel-duplo" data-card="faturado">
+        <div class="ini-cab ini-cab-filtro"><div><h2 id="inicio-ff-titulo">Fechamento Faturado nos últimos 15 dias</h2><small id="inicio-ff-sub">Procedimentos do hospital por data</small></div>
+          <div class="ini-ff-filtros">
+            <label class="ini-ff-filtro"><span>Hospital</span><select id="inicio-ff-hospital" aria-label="Hospital do Fechamento Faturado"><option value="">Todos os hospitais</option></select></label>
+            <label class="ini-ff-filtro"><span>Exame / procedimento</span><select id="inicio-ff-exame" aria-label="Exame ou procedimento do Fechamento Faturado"><option value="">Todos</option></select></label>
+            <div class="ini-ff-periodo"><span class="ini-ff-periodo-rotulo">Período</span><span class="ini-periodo-ctl" data-periodo="faturado" data-padrao="15d" data-extra="Todo o período" data-nome="Período do Fechamento Faturado"></span></div>
+          </div></div>
+        <div class="ini-area" id="inicio-ff"></div>
       </article>
-      <article class="ini-painel" data-card="esteira">
+      <article class="ini-painel ini-painel-duplo" data-card="composicao">
+        <div class="ini-cab"><div><h2>Composição por tipo</h2><small id="inicio-comp-sub">Mesmos filtros do Fechamento Faturado</small></div></div>
+        <div id="inicio-comp"></div>
+      </article>
+      <article class="ini-painel ini-painel-duplo" data-card="esteira">
         <div class="ini-cab ini-cab-filtro"><div><h2>Esteira de lotes</h2><small id="inicio-esteira-sub">Do rascunho ao envio · todo o período</small></div><span class="ini-periodo-ctl" data-periodo="lotes" data-padrao="" data-extra="Todo o período" data-nome="Período da esteira de lotes"></span></div>
         <div id="inicio-esteira"></div>
       </article>
-      <article class="ini-painel" data-card="servicedesk">
+      <article class="ini-painel ini-painel-duplo" data-card="servicedesk">
         <div class="ini-cab ini-cab-filtro"><div><h2>Service Desk</h2><small id="inicio-chamados-sub">Chamados por situação · todo o período</small></div><span class="ini-periodo-ctl" data-periodo="chamados" data-padrao="" data-extra="Todo o período" data-nome="Período do Service Desk"></span></div>
         <div id="inicio-chamados"></div>
       </article>
@@ -57,7 +66,7 @@
       <div class="ini-modulos" id="inicio-modulos"></div>
     </section>
   </main>
-  <script src="sidebar.js?v=20261110-avisos"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
-  <script src="inicio.js?v=20261110-21"></script>
+  <script src="sidebar.js?v=20261112-dock3"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
+  <script src="inicio.js?v=20261112-ff11"></script>
 </body>
 </html>

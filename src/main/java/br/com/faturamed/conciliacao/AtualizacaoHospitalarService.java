@@ -37,8 +37,8 @@ public class AtualizacaoHospitalarService {
         String depois=json.writeValueAsString(origem.campos());
         jdbc.update("insert into atualizacao_visita_hospitalar(visita_id,arquivo_id,linha,usuario_id,antes,depois) values(?,?,?,?,?::jsonb,?::jsonb)",
                 visitaId,arquivoId,origem.numero(),usuarioId,compativeis.getFirst().get("campos").toString(),depois);
-        jdbc.update("update visita_base_hospitalar set campos=?::jsonb,medico_nome=?,arquivo_atual_id=?,linha_atual=? where id=?",
-                depois,registro.medico(),arquivoId,origem.numero(),visitaId);
+        jdbc.update("update visita_base_hospitalar set campos=?::jsonb,medico_nome=?,arquivo_atual_id=?,linha_atual=?,tipo_procedimento=? where id=?",
+                depois,registro.medico(),arquivoId,origem.numero(),registro.tipo(),visitaId);
         return true;
     }
 

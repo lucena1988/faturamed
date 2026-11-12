@@ -294,11 +294,5 @@ main .topbar > .session-actions > a { text-decoration: none; }
 .fm-recorte-zoom input { flex: 1; accent-color: var(--primary); }
 
 /* botao "Enviar para o chat" no cabecalho */
-.fm-compartilhar { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: .88rem; cursor: pointer; }
-.fm-compartilhar:hover { background: var(--primary-soft); border-color: var(--primary-soft-line); }
-.fm-compartilhar .fm-ico { width: 16px; height: 16px; }
-@media (max-width: 900px) { .fm-compartilhar span { display: none; } }
 .fm-campo { display: grid; gap: 6px; font-size: .9rem; font-weight: 600; }
 .fm-campo select, .fm-campo textarea { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-weight: 400; }
-.fm-compartilhar-previa { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--surface-soft); font-size: .9rem; overflow-wrap: anywhere; }
-.fm-compartilhar-previa small { color: var(--muted); }

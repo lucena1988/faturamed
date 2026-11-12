@@ -3,7 +3,7 @@
   const PERFIS = {ADMIN: 'Administrador', DEV: 'Desenvolvedor', OPERADOR: 'Operador'};
   const MODULOS = [
     ['producao', 'Fechamento por Produção', 'Lotes, conferência e envio da produção.'],
-    ['visitas', 'Visitas hospitalares', 'Base hospitalar, importações e conciliação.'],
+    ['visitas', 'Fechamento Faturado', 'Base hospitalar, importações e conciliação de procedimentos.'],
     ['financeiro', 'Financeiro', 'Recebimentos e fila de cobrança.'],
     ['cadastros', 'Cadastros', 'Médicos, hospitais e empresas.'],
     ['gestao', 'Gestão', 'Central de chamados e acessos.']
@@ -55,12 +55,12 @@
     if (r.visitasDivergentes) lista.push(['critico', plural(r.visitasDivergentes, 'divergência', 'divergências'), 'index.html#dashboard', ICONES.visitas]);
     if (r.chamadosBloqueados) lista.push(['critico', plural(r.chamadosBloqueados, 'chamado bloqueado', 'chamados bloqueados'), 'chamados.html', ICONES.chamados]);
     const pendVisitas = (r.visitasAtencao || 0) - (r.visitasDivergentes || 0);
-    if (pendVisitas > 0) lista.push(['atencao', plural(pendVisitas, 'visita pendente', 'visitas pendentes'), 'index.html#dashboard', ICONES.visitas]);
+    if (pendVisitas > 0) lista.push(['atencao', plural(pendVisitas, 'procedimento pendente', 'procedimentos pendentes'), 'index.html#dashboard', ICONES.visitas]);
     const abertos = (r.chamadosAbertos || 0) - (r.chamadosBloqueados || 0);
     if (abertos > 0) lista.push(['atencao', plural(abertos, 'chamado aberto', 'chamados abertos'), 'chamados.html', ICONES.chamados]);
     if (r.lotesPendentes) lista.push(['atencao', plural(r.lotesPendentes, 'lote a enviar', 'lotes a enviar'), 'producao.html', ICONES.lotes]);
     if (r.solicitacoesPendentes) lista.push(['atencao', plural(r.solicitacoesPendentes, 'solicitação de médico', 'solicitações de médicos'), 'solicitacoes-medicos.html', ICONES.solicitacoes]);
-    const emDia = [[!r.visitasAtencao, 'Visitas em dia', ICONES.visitas], [!r.chamadosAbertos, 'Service Desk em dia', ICONES.chamados], [!r.lotesPendentes, 'Lotes em dia', ICONES.lotes], [!r.solicitacoesPendentes, 'Solicitações em dia', ICONES.solicitacoes]];
+    const emDia = [[!r.visitasAtencao, 'Faturado em dia', ICONES.visitas], [!r.chamadosAbertos, 'Service Desk em dia', ICONES.chamados], [!r.lotesPendentes, 'Lotes em dia', ICONES.lotes], [!r.solicitacoesPendentes, 'Solicitações em dia', ICONES.solicitacoes]];
     emDia.forEach(([ok, texto, icone]) => { if (ok) lista.push(['ok', texto, null, icone]); });
     const urgentes = lista.filter(c => c[0] !== 'ok').length;
     $('#inicio-frase').textContent = urgentes ? 'O que precisa de você primeiro:' : 'Tudo em dia por aqui.';
@@ -72,28 +72,6 @@
 
 
 
-  // ciclo das visitas: medidor semicircular (pagas, pendentes e divergentes em faixas) com ponteiro no % pago
-  function donut(r) {
-    const partes = [['Pagas', r.visitasPagas || 0, 'var(--green)'], ['Pendentes', r.visitasPendentes || 0, 'var(--amber)'], ['Divergentes', r.visitasDivergentes || 0, 'var(--rose)']];
-    const total = partes.reduce((a, p) => a + p[1], 0);
-    if (r.relatorioHospital) $('#inicio-ciclo-sub').textContent = `Último relatório · ${r.relatorioHospital}`;
-    if (!total) { $('#inicio-donut').innerHTML = '<p class="ini-vazio">Nenhuma visita conciliada ainda.</p>'; return; }
-    const ARCO = 'M20 100 A80 80 0 0 1 180 100';
-    let inicio = 0;
-    const faixas = partes.map(([, v, cor], i) => {
-      const tam = v / total * 100, f = v ? `<path d="${ARCO}" pathLength="100" style="stroke:${cor};--i:${i}" stroke-dasharray="${Math.max(0, tam - .6).toFixed(2)} 100" stroke-dashoffset="${(-inicio).toFixed(2)}"/>` : '';
-      inicio += tam; return f;
-    }).join('');
-    const pct = Math.round((r.visitasPagas || 0) / total * 100), div = r.visitasDivergentes || 0;
-    $('#inicio-donut').innerHTML = `<svg class="ini-medidor" viewBox="0 0 200 128" role="img" aria-label="${pct}% das visitas pagas">
-        <path class="trilho" d="${ARCO}"/>${faixas}
-        <g class="ponteiro" style="--giro:${(pct * 1.8).toFixed(1)}deg"><line x1="100" y1="100" x2="34" y2="100"/><circle cx="100" cy="100" r="7"/></g>
-        <text x="20" y="122" class="escala">0%</text><text x="180" y="122" class="escala">100%</text>
-        <text x="100" y="80" class="centro${div && !pct ? ' alerta' : ''}">${pct}%</text></svg>
-      <p class="ini-medidor-rotulo">das visitas pagas</p>
-      <ul>${partes.map(([nome, v, cor]) => `<li><i style="background:${cor}"></i>${nome}<b data-contar="${Number(v) || 0}">0</b></li>`).join('')}</ul>
-      <p class="ini-donut-rodape">${num(total)} visitas${div ? ` · ${num(div)} divergente(s) · <a href="index.html#dashboard">Revisar divergências →</a>` : ''}</p>`;
-  }
 
   // producao: barras empilhadas por situacao do lote (rascunho, conferido, enviado) em cada dia
   const SITUACOES = [['enviado', 'Enviado', 'var(--green)'], ['conferido', 'Conferido', 'var(--blue)'], ['rascunho', 'Rascunho', 'var(--amber)']];
@@ -184,31 +162,127 @@
   }
 
   // atualiza (e anima) somente o card cujo periodo foi alterado; os outros ficam como estao
-  const CARD_DO_PERIODO = {producao: 'producao', visitas: 'ciclo', lotes: 'esteira', chamados: 'servicedesk'};
+  const CARD_DO_PERIODO = {producao: 'producao', faturado: 'faturado', lotes: 'esteira', chamados: 'servicedesk'};
   async function aplicarPeriodo(base, alvo) {
-    const p = {producao: valorPeriodo('producao') || '15d', visitas: valorPeriodo('visitas'), lotes: valorPeriodo('lotes'), chamados: valorPeriodo('chamados')};
+    if (alvo === 'faturado') { await faturado(); return; }
+    const p = {producao: valorPeriodo('producao') || '15d', lotes: valorPeriodo('lotes'), chamados: valorPeriodo('chamados')};
     const qs = Object.entries(p).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
     const r = await FaturamedAuth.request(`/api/inicio/resumo?${qs}`);
     const card = $(`[data-card="${CARD_DO_PERIODO[alvo]}"]`);
     if (alvo === 'lotes') { esteira(r, p.lotes); contar(card); return; }
     if (alvo === 'chamados') { servicedesk(r, p.chamados); contar(card); return; }
-    if (alvo === 'visitas') { cicloPeriodo(r, p.visitas, base); contar(card); return; }
     unidadeProducao = p.producao.slice(-1);
     const rot = rotuloPeriodo(p.producao);
     $('#inicio-area-titulo').textContent = `Produção · ${rot.charAt(0).toUpperCase() + rot.slice(1)}`;
     $('#inicio-area-titulo').nextElementSibling.textContent = unidadeProducao === 'd' ? 'Lotes por data de produção' : 'Lotes pelo momento do registro';
     area(r);
   }
-  function cicloPeriodo(r, periodo, base) {
-    const p = {visitas: periodo};
-    if (p.visitas) {
-      donut({visitasPagas: r.visitasPagasPeriodo, visitasPendentes: r.visitasPendentesPeriodo, visitasDivergentes: r.visitasDivergentesPeriodo,
-        visitasAtencao: r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo});
-      const rv = rotuloPeriodo(p.visitas);
-      $('#inicio-ciclo-sub').textContent = `${rv.charAt(0).toUpperCase() + rv.slice(1)} · ${num(r.relatoriosPeriodo)} relatório(s)`;
-      if (!(r.visitasPagasPeriodo + r.visitasPendentesPeriodo + r.visitasDivergentesPeriodo))
-        $('#inicio-donut').innerHTML = `<p class="ini-vazio">Nenhum relatório de conciliação ${noPeriodo(p.visitas)}.</p>`;
-    } else donut(base);
+  // --- Fechamento Faturado: procedimentos do hospital por periodo, com filtro de hospital e exame ---
+  const SIT_FF = [['conciliado', 'Conciliado', 'var(--green)'], ['aguardando', 'Aguardando produção', 'var(--amber)'], ['divergente', 'Divergente', 'var(--rose)']];
+  const TIPOS_FF = {VISITA: 'Visitas', EXAME: 'Exames', CONSULTA: 'Consultas', OUTRO: 'Outros'};
+  let geracaoFF = 0;
+  async function opcoesExame() {
+    const sel = $('#inicio-ff-exame'), atual = sel.value, hospital = $('#inicio-ff-hospital').value;
+    const procs = await FaturamedAuth.request(`/api/fechamento-faturado/repasses/procedimentos${hospital ? `?hospitalId=${hospital}` : ''}`).catch(() => []);
+    const porTipo = {};
+    procs.forEach(p => (porTipo[p.tipo || 'OUTRO'] ||= []).push(p));
+    sel.innerHTML = '<option value="">Todos</option>'
+      + `<optgroup label="Por tipo">${Object.entries(TIPOS_FF).map(([k, n]) => `<option value="tipo:${k}">Todos: ${n.toLowerCase()}</option>`).join('')}</optgroup>`
+      + Object.entries(TIPOS_FF).filter(([k]) => porTipo[k]).map(([k, n]) => `<optgroup label="${n}">${porTipo[k].map(p =>
+        `<option value="cod:${esc(p.codigo)}">${esc(p.codigo)} · ${esc(p.descricao || '')}</option>`).join('')}</optgroup>`).join('');
+    sel.value = [...sel.options].some(o => o.value === atual) ? atual : '';
+  }
+  async function montarFiltrosFaturado() {
+    const hosp = await FaturamedAuth.request('/api/hospitais').catch(() => []);
+    $('#inicio-ff-hospital').insertAdjacentHTML('beforeend', hosp.map(h => `<option value="${h.id}">${esc(h.nome)}</option>`).join(''));
+    await opcoesExame();
+    $('#inicio-ff-hospital').addEventListener('change', async () => { await opcoesExame(); faturado().catch(() => {}); });
+    $('#inicio-ff-exame').addEventListener('change', () => faturado().catch(() => {}));
+  }
+  // Composicao por tipo: blocos proporcionais, valores e lista com % conciliado (mesmos filtros do card grande)
+  const CORES_TIPO = {EXAME: 'var(--blue)', VISITA: 'var(--green)', CONSULTA: 'var(--amber)', OUTRO: 'var(--muted)'};
+  const brl = n => Number(n || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: Number(n) >= 1000 ? 0 : 2});
+  // composicao segue os filtros do Fechamento Faturado (hospital, exame e periodo)
+  let geracaoComp = 0;
+  async function carregarComposicao() {
+    const g = ++geracaoComp, periodo = valorPeriodo('faturado') || 'tudo';
+    const hospital = $('#inicio-ff-hospital').value, exame = $('#inicio-ff-exame').value;
+    const qs = new URLSearchParams({periodo}); if (hospital) qs.set('hospitalId', hospital); if (exame) qs.set('exame', exame);
+    const r = await FaturamedAuth.request(`/api/inicio/fechamento-faturado?${qs}`);
+    if (g !== geracaoComp) return;
+    const filtros = [hospital && $('#inicio-ff-hospital').selectedOptions[0].textContent, exame && $('#inicio-ff-exame').selectedOptions[0].textContent].filter(Boolean);
+    composicao(r, filtros, periodo === 'tudo' ? 'todo o período' : rotuloPeriodo(periodo));
+  }
+  function composicao(r, filtros, rot) {
+    const lista = r.composicao || [], alvo = $('#inicio-comp');
+    $('#inicio-comp-sub').textContent = `${rot.charAt(0).toUpperCase() + rot.slice(1)}${filtros.length ? ` · ${filtros.join(' · ')}` : ''}`;
+    const total = lista.reduce((a, t) => a + Number(t.total), 0);
+    if (!total) { alvo.innerHTML = '<p class="ini-vazio">Sem procedimentos com estes filtros.</p>'; return; }
+    const soma = k => lista.reduce((a, t) => a + Number(t[k] || 0), 0);
+    const semRepasse = soma('sem_repasse_planilha');
+    alvo.innerHTML = `<div class="ini-comp-blocos" role="img" aria-label="Procedimentos por tipo">${lista.map((t, i) => {
+        const pct = Math.round(t.total / total * 100);
+        return `<div style="flex:${Number(t.total)};--cor:${CORES_TIPO[t.tipo] || 'var(--muted)'};animation-delay:${i * 80}ms" title="${esc(TIPOS_FF[t.tipo] || t.tipo)}: ${num(t.total)} (${pct}%)">${pct >= 12 ? `<b>${esc(TIPOS_FF[t.tipo] || t.tipo)}</b><small>${num(t.total)} · ${pct}%</small>` : ''}</div>`;
+      }).join('')}</div>
+      <div class="ini-comp-kpis">
+        <div><span>Valor hospital</span><strong>${brl(soma('valor'))}</strong></div>
+        <div><span>Repasse na planilha</span><strong>${brl(soma('repasse_planilha'))}</strong></div>
+        <div title="Linhas sem Vl. a Repassar nem Regra: usam o repasse cadastrado"><span>Usam repasse cadastrado</span><strong>${Math.round(semRepasse / total * 100)}%</strong></div>
+      </div>
+      <ul class="ini-comp-lista">${lista.map(t => `<li style="--cor:${CORES_TIPO[t.tipo] || 'var(--muted)'}"><i></i><span>${esc(TIPOS_FF[t.tipo] || t.tipo)} <em>${num(t.total)}</em></span><em>${Math.round(t.conciliado / t.total * 100)}% conciliado</em><b>${brl(t.valor)}</b></li>`).join('')}</ul>`;
+  }
+  async function faturado() {
+    const g = ++geracaoFF, periodo = valorPeriodo('faturado') || 'tudo', tudo = periodo === 'tudo';
+    const hospital = $('#inicio-ff-hospital').value, exame = $('#inicio-ff-exame').value;
+    const qs = new URLSearchParams({periodo}); if (hospital) qs.set('hospitalId', hospital); if (exame) qs.set('exame', exame);
+    const r = await FaturamedAuth.request(`/api/inicio/fechamento-faturado?${qs}`);
+    if (g !== geracaoFF) return;
+    const un = tudo ? 'M' : periodo.slice(-1), rot = tudo ? 'todo o período' : rotuloPeriodo(periodo), unidade = tudo ? 'mês' : un === 'd' ? 'dia' : un === 'h' ? 'hora' : 'minuto';
+    $('#inicio-ff-titulo').textContent = `Fechamento Faturado · ${rot.charAt(0).toUpperCase() + rot.slice(1)}`;
+    const filtros = [hospital && $('#inicio-ff-hospital').selectedOptions[0].textContent, exame && $('#inicio-ff-exame').selectedOptions[0].textContent].filter(Boolean);
+    $('#inicio-ff-sub').textContent = `${un === 'd' ? 'Procedimentos do hospital por data' : un === 'M' ? 'Procedimentos do hospital por mês' : 'Procedimentos pelo momento da importação'}${filtros.length ? ` · ${filtros.join(' · ')}` : ''}`;
+    const dias = r.serie || [], alvo = $('#inicio-ff');
+    const v = dias.map(d => Number(d.total) || 0), total = v.reduce((a, b) => a + b, 0);
+    const dataBr = d => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
+    carregarComposicao().catch(() => {});
+    if (!total) { alvo.innerHTML = `<p class="ini-vazio">Nenhum procedimento ${tudo ? 'importado' : noPeriodo(periodo)}${filtros.length ? ' com estes filtros' : ''}.${r.ultimaData && !tudo ? ` O último é de <b>${dataBr(r.ultimaData)}</b>; aumente o período ou escolha <b>Todo o período</b>.` : ''}</p>`; return; }
+    const max = Math.max(1, ...v), media = total / v.length, passo = Math.max(1, Math.ceil(dias.length / 7)), pico = Math.max(...v);
+    const somas = Object.fromEntries(SIT_FF.map(([k]) => [k, dias.reduce((a, d) => a + (Number(d[k]) || 0), 0)]));
+    const pct = Math.round(somas.conciliado / total * 100);
+    const dica = (d, i) => `${d.dia}: ${num(v[i])} procedimento(s)` + SIT_FF.map(([k, nome]) => Number(d[k]) ? ` · ${nome} ${num(d[k])}` : '').join('');
+    const tipos = Object.entries(r.porTipo || {}).map(([k, n]) => `${TIPOS_FF[k] || k} <b>${num(n)}</b>`).join(' · ');
+    // area empilhada suave: divergente embaixo, aguardando no meio, conciliado em cima
+    const W = 1000, H = 200, topo = max * 1.12, n = dias.length;
+    const xs = dias.map((_, i) => n === 1 ? W / 2 : i * W / (n - 1));
+    const y = val => H - val / topo * H;
+    const curva = pts => pts.map(([x, yy], i) => {
+      if (!i) return `M${x},${yy}`;
+      const [x0, y0] = pts[i - 1], dx = (x - x0) / 2;
+      return `C${x0 + dx},${y0} ${x - dx},${yy} ${x},${yy}`;
+    }).join(' ');
+    const ordem = SIT_FF.slice().reverse(); // divergente, aguardando, conciliado
+    let base = dias.map(() => 0);
+    const camadas = ordem.map(([k, nome, cor]) => {
+      const cima = dias.map((d, i) => base[i] + (Number(d[k]) || 0));
+      const sup = xs.map((x, i) => [x, y(cima[i])]), inf = xs.map((x, i) => [x, y(base[i])]).reverse();
+      const d = `${curva(sup)} L${inf[0][0]},${inf[0][1]} ${curva(inf).replace(/^M[^C]*/, '')} Z`;
+      base = cima;
+      return `<path d="${d}" fill="${cor}" class="ini-ff-camada"><title>${nome}</title></path><path d="${curva(sup)}" fill="none" stroke="${cor}" stroke-width="2" vector-effect="non-scaling-stroke" class="ini-ff-borda"/>`;
+    }).join('');
+    const yMedia = y(media).toFixed(1);
+    alvo.innerHTML = `<div class="ini-ff-grafico" role="img" aria-label="${total} procedimentos em ${n} períodos, por situação">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="ini-ff-svg">
+        <g class="ini-ff-grade">${[0.25, 0.5, 0.75].map(f => `<line x1="0" x2="${W}" y1="${H * f}" y2="${H * f}" vector-effect="non-scaling-stroke"/>`).join('')}</g>
+        ${camadas}
+        <line x1="0" x2="${W}" y1="${yMedia}" y2="${yMedia}" class="ini-ff-media" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <span class="ini-ff-media-rot" style="top:${(yMedia / H * 100).toFixed(1)}%">média ${media.toLocaleString('pt-BR', {maximumFractionDigits: 1})}</span>
+      <div class="ini-ff-alvos" style="--larg:${(100 / n).toFixed(2)}%">${dias.map((d, i) => `<span title="${esc(dica(d, i))}" style="--x:${n === 1 ? 50 : (i / (n - 1) * 100).toFixed(2)}%"><b style="bottom:${(v[i] / topo * 100).toFixed(1)}%">${v[i] ? num(v[i]) : ''}</b></span>`).join('')}</div>
+      <div class="ini-ff-eixo">${dias.map((d, i) => i % passo ? '' : `<small style="left:${n === 1 ? 50 : (i / (n - 1) * 100).toFixed(2)}%">${esc(d.dia)}</small>`).join('')}</div>
+    </div><div class="ini-ff-rodape">
+      <div class="ini-ff-legenda">${SIT_FF.map(([k, nome, cor]) => `<span class="ini-ff-chip" style="--cor:${cor}"><i></i>${nome}<b>${num(somas[k])}</b></span>`).join('')}</div>
+      <div class="ini-ff-resumo"><span><b>${num(total)}</b> procedimentos</span><span><b>${pct}%</b> conciliados</span><span>pico <b>${num(pico)}</b>/${unidade}</span>${somas.divergente ? `<a href="index.html#divergencias">Revisar divergências →</a>` : ''}</div>
+    </div>`;
   }
 
 
@@ -286,7 +360,8 @@
     modulos(perfil); montarPeriodos(); aplicarOrdens();
     try {
       const r = await FaturamedAuth.request('/api/inicio/resumo');
-      donut(r); area(r); aplicarOrdens();
+      area(r); aplicarOrdens();
+      montarFiltrosFaturado(); faturado().catch(() => { $('#inicio-ff').innerHTML = '<p class="ini-vazio">Não foi possível carregar o Fechamento Faturado.</p>'; });
       $('.ini-graficos').addEventListener('periodo', e => aplicarPeriodo(r, e.target.dataset.periodo).catch(() => { $('#inicio-msg').textContent = 'Não foi possível aplicar o período agora.'; }));
       esteira(r, ''); servicedesk(r, '');
       chips(r);

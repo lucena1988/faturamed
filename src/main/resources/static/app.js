@@ -94,7 +94,7 @@ function renderValues(visits) {
       ? currency.format(rows.reduce((sum, row) => sum + Number(row.repasse), 0)
         + corrected.reduce((sum, visit) => sum + Number(effectiveRepasse(visit)), 0)) : 'Não informado';
     $(`#kpi-valor-${suffix}-detail`).textContent = missing
-      ? `${missing} visitas sem valor informado`
+      ? `${missing} procedimentos sem valor informado`
       : selected.some(visit => visit.camposRevisados) ? 'Repasse com ajustes da revisão'
       : status === 'DIVERGENTE' ? 'Repasse dos registros em conferência' : 'Repasse informado pelo hospital';
   }
@@ -238,11 +238,11 @@ function renderDashboard() {
   for(const field of ['recebido','saldo']){
     const known=visits.filter(v=>v.financeiro?.[field]!=null),missing=visits.filter(v=>field==='recebido'?v.financeiro?.[field]==null:v.status==='PAGA'&&v.financeiro?.[field]==null).length;
     $(`#kpi-${field}`).textContent=known.length||!visits.length?currency.format(known.reduce((s,v)=>s+Number(v.financeiro[field]),0)):'Não informado';
-    $(`#kpi-${field}-detail`).textContent=missing?`${missing} visitas com financeiro não confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos';
+    $(`#kpi-${field}-detail`).textContent=missing?`${missing} procedimentos com financeiro não confirmado`:field==='saldo'?'Saldo do faturamento confirmado':'Recebimentos registrados, descontados os estornos';
   }
   $('#kpi-total').textContent = integer.format(visits.length);
   $('#kpi-total-detail').textContent = `${new Set(visits.map(v => v.atendimento)).size} atendimentos`;
-  $('#kpi-pagas-detail').textContent = `${percentage.format(paidRate)} das visitas`;
+  $('#kpi-pagas-detail').textContent = `${percentage.format(paidRate)} dos procedimentos`;
   for (const [status, suffix] of [['PAGA', 'pagas'], ['PENDENTE', 'pendentes'], ['DIVERGENTE', 'divergentes']]) {
     $(`#kpi-${suffix}`).textContent = integer.format(counts[status]);
     $(`#legend-${suffix}`).textContent = integer.format(counts[status]);
@@ -252,7 +252,7 @@ function renderDashboard() {
   const amber = green + (visits.length ? counts.PENDENTE / visits.length * 100 : 0);
   $('#status-donut').style.background = visits.length
     ? `conic-gradient(var(--green) 0 ${green}%, var(--amber) ${green}% ${amber}%, var(--rose) ${amber}% 100%)` : 'var(--line)';
-  $('#queue-count').textContent = `${counts.DIVERGENTE + counts.PENDENTE} visitas para conferência`;
+  $('#queue-count').textContent = `${counts.DIVERGENTE + counts.PENDENTE} procedimentos para conferência`;
   const navCount = $('#nav-divergencias-count');
   navCount.textContent = integer.format(counts.DIVERGENTE);
   navCount.hidden = !counts.DIVERGENTE;
@@ -280,8 +280,8 @@ function renderChart() {
     const fill = element('i'); fill.style.width = `${count / maximum * 100}%`; bar.append(fill);
     row.append(element('span', label), bar, element('strong', integer.format(count))); chart.append(row);
   }
-  $('#chart-context').textContent = `${integer.format(currentVisits().length)} visitas`;
-  if (!groups.size) chart.append(element('p', 'Sem visitas neste período.'));
+  $('#chart-context').textContent = `${integer.format(currentVisits().length)} procedimentos`;
+  if (!groups.size) chart.append(element('p', 'Sem procedimentos neste período.'));
 }
 function fillAttentionTable(table, visits, detailed) {
   table.replaceChildren();
