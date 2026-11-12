@@ -1,5 +1,6 @@
 const message = document.querySelector('#message');
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 });
+const round2 = v => v == null ? null : Math.round((Number(v) + Number.EPSILON) * 100) / 100;
 let report;
 let reportId;
 let reportsHistory=[];
@@ -132,8 +133,12 @@ function renderRows() {
   doctorDownload.href = `/api/conciliacoes/visitas/${reportId}/relatorio.xlsx?${new URLSearchParams(doctor.value.startsWith('id:')?{medicoId:doctor.value.slice(3)}:{medico:doctor.value})}`;
   if(ambiguous) document.querySelector('#delivery-status').textContent='Nome ambiguo no cadastro. Vincule as visitas ao médico correto na revisão antes de exportar.';
   const stats = document.querySelector('#stats'); stats.replaceChildren();
+  const repasseTotal = !doctor.value
+    ? report.repasseCorrespondente
+    : selectedDoctor.filter(v => v.status === 'PAGA')
+        .reduce((sum, v) => sum + (round2(v.repasse ?? v.hospital?.repasse) || 0), 0);
   for (const [label, value] of ['PAGA', 'PENDENTE', 'DIVERGENTE'].map(status => [status, selectedDoctor.filter(v => v.status === status).length])
-    .concat([['Repasse correspondente', money.format(selectedDoctor.filter(v => v.status === 'PAGA').reduce((sum, v) => sum + Number(v.repasse ?? v.hospital?.repasse ?? 0), 0))]])) {
+    .concat([['Repasse correspondente', money.format(repasseTotal)]])) {
     const item = node('div', label); item.append(node('strong', value)); stats.append(item);
   }
   const rows = document.querySelector('#rows'); rows.replaceChildren();
