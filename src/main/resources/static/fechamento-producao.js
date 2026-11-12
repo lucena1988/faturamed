@@ -12,7 +12,8 @@
   const data = d => d ? new Date(d + 'T00:00').toLocaleDateString('pt-BR') : '—';
   const msg = (t, erro) => { if (t) fmUi.toast(t, erro ? 'erro' : 'sucesso'); };
   const ETAPAS = [{chave: 'AGUARDANDO', rotulo: 'Enviado'}, {chave: 'APROVADO', rotulo: 'Aprovado'}, {chave: 'NF_EMITIDA', rotulo: 'NF emitida'}];
-  const hoje = () => new Date().toISOString().slice(0, 10);
+  const pad = n => String(n).padStart(2, '0');
+  const hoje = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
   async function api(url, opcoes = {}) {
     const r = await fetch(url, opcoes);
     if (r.status === 204) return null;
@@ -284,12 +285,14 @@
 
   proteger(async () => {
     await carregarCadastros();
-    const hoje = new Date();
     const f = $('#form-previa').elements;
-    f.inicio.value = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).toISOString().slice(0, 10);
-    f.fim.value = new Date(hoje.getFullYear(), hoje.getMonth(), 0).toISOString().slice(0, 10);
+    const dataAtual = hoje();
+    f.inicio.value = dataAtual;
+    f.fim.value = dataAtual;
     const params = new URLSearchParams(location.search);
     if (params.get('hospitalId')) { $('#regras-hospital').value = params.get('hospitalId'); $('#form-previa').elements.hospitalId.value = params.get('hospitalId'); }
+    if (params.get('inicio')) f.inicio.value = params.get('inicio');
+    if (params.get('fim')) f.fim.value = params.get('fim');
     await Promise.all([listarFechamentos(), listarRegras(), listarContestacoes()]);
     if (params.get('aba') === 'regras') document.querySelector('.fp-aba[data-aba=regras]').click();
   })();
