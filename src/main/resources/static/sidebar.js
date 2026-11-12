@@ -221,8 +221,8 @@
   // FaturaChat de bolso (icone no topo + gaveta + trilho de avatares) substitui o antigo widget do menu
   function recentesChat() { window.fmChatDock?.atualizar(); }
   if (page !== 'chat.html' && !document.querySelector('script[src^="chat-dock.js"]')) {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261112-9'; document.head.append(css);
-    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261112-10'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261112-12'; document.head.append(css);
+    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261112-13'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
   }
 
   // Chat da equipe abre em janela propria, para nao tirar a pessoa da tela em que esta trabalhando.

@@ -21,6 +21,7 @@
     <div class="fmc-conversa-vista" hidden><ol class="fmc-msgs" aria-live="polite"></ol>
       <div class="fmc-anexos" hidden></div>
       <div class="fmc-emojis" hidden role="dialog" aria-label="Emojis"></div>
+      <div class="fmc-mencoes" hidden role="listbox" aria-label="Mencionar"></div>
       <form class="fmc-envio">
         <button type="button" class="fmc-acao fmc-emoji-botao" title="Emojis" aria-label="Emojis">🙂</button>
         <button type="button" class="fmc-acao fmc-clipe" title="Anexar arquivo (ou cole uma imagem com Ctrl+V)" aria-label="Anexar arquivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 8"/></svg></button>
@@ -60,9 +61,56 @@
     try {
       const r = await fetch('/api/chat/conversas', {headers: {Accept: 'application/json'}});
       if (!r.ok) return;
-      conversas = (await r.json()).filter(c => !c.sistema);
+      const novas = (await r.json()).filter(c => !c.sistema);
+      avisarNovas(novas);
+      conversas = novas;
       renderTrilho(); if (!gaveta.hidden && !aberta) renderLista();
     } catch (_) {}
+  }
+
+  // ---------- bolinhas dispensadas (x): somem do trilho ate chegar mensagem nova na conversa ----------
+  const CHAVE_OCULTAS = 'fm-chat-ocultas';
+  const ocultas = (() => { try { return JSON.parse(localStorage.getItem(CHAVE_OCULTAS) || '{}'); } catch (_) { return {}; } })();
+  const salvarOcultas = () => { try { localStorage.setItem(CHAVE_OCULTAS, JSON.stringify(ocultas)); } catch (_) {} };
+  const instante = c => c.ultimaMensagemEm ? new Date(c.ultimaMensagemEm).getTime() : 0;
+  function oculta(c) {
+    const quando = ocultas[c.id];
+    if (quando == null) return false;
+    if (instante(c) > quando) { delete ocultas[c.id]; salvarOcultas(); return false; } // chegou mensagem nova: volta
+    return true;
+  }
+  function dispensar(id) {
+    const c = conversas.find(x => x.id === id); if (!c) return;
+    ocultas[id] = instante(c); salvarOcultas(); renderTrilho();
+  }
+
+  // ---------- balao de previa quando chega mensagem nova ----------
+  let ultimaVista = null; // id da conversa -> instante da ultima mensagem ja conhecida
+  const avisos = document.createElement('div');
+  avisos.className = 'fmc-avisos'; avisos.setAttribute('aria-live', 'polite');
+  document.body.append(avisos);
+  function avisarNovas(novas) {
+    const antes = ultimaVista;
+    ultimaVista = new Map(novas.map(c => [c.id, instante(c)]));
+    if (!antes) return; // primeira carga: nao avisa o historico
+    novas.filter(c => c.naoLidas && !c.silenciado && instante(c) > (antes.get(c.id) || 0) && c.id !== aberta)
+      .slice(0, 3).forEach(mostrarAviso);
+  }
+  function mostrarAviso(c) {
+    avisos.querySelector(`[data-id="${c.id}"]`)?.remove();
+    const el = document.createElement('div');
+    el.className = 'fmc-aviso'; el.dataset.id = c.id; el.setAttribute('role', 'button'); el.tabIndex = 0;
+    const autor = c.tipo === 'GRUPO' && c.ultimoAutorNome ? `<em>${esc(c.ultimoAutorNome.split(/\s+/)[0])}:</em> ` : '';
+    el.innerHTML = `${avatar(c)}<span class="fmc-aviso-corpo"><strong>${esc(c.nome)}</strong><small>${autor}${esc(c.ultimaMensagem || '')}</small></span>
+      <button type="button" class="fmc-aviso-fechar" aria-label="Fechar aviso">×</button><i class="fmc-aviso-tempo"></i>`;
+    const sair = () => { el.classList.add('saindo'); setTimeout(() => el.remove(), 220); };
+    el.addEventListener('click', e => { if (e.target.closest('.fmc-aviso-fechar')) { sair(); return; } sair(); abrir(c.id); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { sair(); abrir(c.id); } });
+    let timer = setTimeout(sair, 7000);
+    el.addEventListener('mouseenter', () => { clearTimeout(timer); el.classList.add('pausado'); });
+    el.addEventListener('mouseleave', () => { el.classList.remove('pausado'); timer = setTimeout(sair, 3000); });
+    avisos.prepend(el);
+    while (avisos.children.length > 3) avisos.lastElementChild.remove();
   }
   function avatar(c, classe = '') {
     const grupo = c.tipo === 'GRUPO';
@@ -79,17 +127,21 @@
     fab.classList.toggle('ativo', trilhoAberto);
     fab.setAttribute('aria-expanded', String(trilhoAberto));
     document.querySelectorAll('.fmc-botao').forEach(b => b.setAttribute('aria-expanded', String(trilhoAberto)));
-    const recentes = conversas.filter(c => c.ultimaMensagem).slice(0, 7);
-    trilho.innerHTML = recentes.map((c, i) => `<button type="button" class="fmc-trilho-item${c.naoLidas ? ' nao-lida' : ''}" data-id="${c.id}" style="--i:${i}" aria-label="${esc(c.nome)}${c.naoLidas ? `, ${c.naoLidas} não lida(s)` : ''}">
+    const recentes = conversas.filter(c => c.ultimaMensagem && !oculta(c)).slice(0, 7);
+    trilho.innerHTML = recentes.map((c, i) => `<div class="fmc-trilho-item${c.naoLidas ? ' nao-lida' : ''}" role="button" tabindex="0" data-id="${c.id}" style="--i:${i}" aria-label="${esc(c.nome)}${c.naoLidas ? `, ${c.naoLidas} não lida(s)` : ''}">
         ${avatar(c)}${c.naoLidas ? `<b class="fmc-ponto">${c.naoLidas > 9 ? '9+' : c.naoLidas}</b>` : ''}
-        <span class="fmc-previa" role="tooltip"><strong>${esc(c.nome)}</strong><small>${esc((c.tipo === 'GRUPO' && c.ultimoAutorNome ? c.ultimoAutorNome.split(/\s+/)[0] + ': ' : '') + c.ultimaMensagem)}</small><em>${c.ultimaMensagemEm ? hora(c.ultimaMensagemEm) : ''}</em></span></button>`).join('')
+        <span class="fmc-dispensar" role="button" tabindex="0" title="Tirar do balão (volta quando chegar mensagem nova)" aria-label="Tirar ${esc(c.nome)} do balão">×</span>
+        <span class="fmc-previa" role="tooltip"><strong>${esc(c.nome)}</strong><small>${esc((c.tipo === 'GRUPO' && c.ultimoAutorNome ? c.ultimoAutorNome.split(/\s+/)[0] + ': ' : '') + c.ultimaMensagem)}</small><em>${c.ultimaMensagemEm ? hora(c.ultimaMensagemEm) : ''}</em></span></div>`).join('')
       + `<button type="button" class="fmc-trilho-mais" style="--i:${recentes.length}" aria-label="Todas as conversas" title="Todas as conversas">⋯</button>`;
   }
   function alternarTrilho(forcar) {
     trilhoAberto = typeof forcar === 'boolean' ? forcar : !trilhoAberto;
     renderTrilho(); posicionar();
   }
+  trilho.addEventListener('keydown', e => {    if (e.key !== 'Enter' && e.key !== ' ') return;    const x = e.target.closest('.fmc-dispensar'); if (x) { e.preventDefault(); dispensar(Number(x.closest('.fmc-trilho-item').dataset.id)); return; }    const item = e.target.closest('.fmc-trilho-item'); if (item) { e.preventDefault(); abrir(Number(item.dataset.id)); }  });
   trilho.addEventListener('click', e => {
+    const x = e.target.closest('.fmc-dispensar');
+    if (x) { e.stopPropagation(); dispensar(Number(x.closest('.fmc-trilho-item').dataset.id)); return; }
     const item = e.target.closest('.fmc-trilho-item');
     if (item) { abrir(Number(item.dataset.id)); return; }
     if (e.target.closest('.fmc-trilho-mais')) abrir();
@@ -97,7 +149,7 @@
   // clicar fora (em qualquer ponto do site) fecha o painel da conversa e o trilho
   document.addEventListener('click', e => {
     const caminho = e.composedPath ? e.composedPath() : [e.target];
-    if (caminho.some(el => el === gaveta || el === trilho || el === fab)) return;
+    if (caminho.some(el => el === gaveta || el === trilho || el === fab || el === avisos)) return;
     if (document.querySelector('dialog[open]')) return;
     if (!gaveta.hidden) fechar();
     if (trilhoAberto) alternarTrilho(false);
@@ -192,7 +244,7 @@
         const minha = eu && m.autorId === eu.id;
         const anexos = (m.anexos || []).map(a => String(a.tipo || '').startsWith('image/') ? `<a class="fmc-img" href="/api/chat/anexos/${a.id}" target="_blank" rel="noopener" title="${esc(a.nome)}"><img alt="${esc(a.nome)}" loading="lazy" src="/api/chat/anexos/${a.id}"></a>` : `<a href="/api/chat/anexos/${a.id}" target="_blank" rel="noopener">📎 ${esc(a.nome)}</a>`).join('');
         return `<li class="fmc-msg${minha ? ' minha' : ''}">${minha ? '' : `<span class="fmc-autor">${esc(m.autorNome)}</span>`}
-          <p>${m.apagada ? '<em>Mensagem apagada</em>' : esc(m.texto || '').replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')}</p>${anexos}<time>${hora(m.criadoEm)}${m.editada ? ' · editada' : ''}</time></li>`;
+          <p>${m.apagada ? '<em>Mensagem apagada</em>' : esc(m.texto || '').replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/(^|\s)(@[\p{L}.\-]+)/gu, '$1<span class="fmc-marca">$2</span>')}</p>${anexos}<time>${hora(m.criadoEm)}${m.editada ? ' · editada' : ''}</time></li>`;
       }).join('') : '<li class="fmc-vazio">Nenhuma mensagem ainda. Diga oi!</li>';
       if (rolar || noFim) lista.scrollTop = lista.scrollHeight;
       if (nova) fetch(`/api/chat/conversas/${id}/leitura`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ateId: nova})})
@@ -200,8 +252,65 @@
     } catch (_) {}
   }
   const campo = $('.fmc-envio textarea');
-  campo.addEventListener('input', () => { campo.style.height = 'auto'; campo.style.height = Math.min(120, campo.scrollHeight) + 'px'; });
-  campo.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('.fmc-envio').requestSubmit(); } });
+  // ---------- mencoes: ao digitar "@" sugere os participantes (e @todos em grupo) ----------
+  const normalizar = s => (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim().replace(/\s+/g, ' ');
+  const nomeMencao = nome => (nome || '').trim().split(/\s+/).join('.');
+  const cacheParticipantes = {};
+  let candidatos = [], ativo = 0;
+  async function pessoasDaConversa() {
+    const c = conversas.find(x => x.id === aberta); if (!c) return [];
+    if (c.tipo !== 'GRUPO') return c.contato ? [{id: c.contato.id, nome: c.contato.nome}] : [];
+    if (!cacheParticipantes[c.id]) {
+      try {
+        if (!eu) eu = await fetch('/api/auth/me').then(r => r.json()).catch(() => ({}));
+        const r = await fetch(`/api/chat/conversas/${c.id}/participantes`, {headers: {Accept: 'application/json'}});
+        cacheParticipantes[c.id] = r.ok ? (await r.json()).filter(p => p.id !== eu?.id) : [];
+      } catch (_) { return []; }
+    }
+    return cacheParticipantes[c.id];
+  }
+  function termoMencao() {
+    const antes = campo.value.slice(0, campo.selectionStart);
+    const m = antes.match(/(^|\s)@([\p{L}.\-]{0,40})$/u);
+    return m ? {termo: m[2], inicio: antes.length - m[2].length - 1} : null;
+  }
+  async function sugerirMencao() {
+    const caixa = $('.fmc-mencoes'), alvo = termoMencao();
+    if (!alvo) { caixa.hidden = true; return; }
+    const termo = normalizar(alvo.termo).replace(/\./g, ' ');
+    const pessoas = await pessoasDaConversa();
+    candidatos = pessoas.filter(p => !termo || normalizar(p.nome).startsWith(termo) || normalizar(p.nome).split(' ').some(x => x.startsWith(termo))).slice(0, 6);
+    const c = conversas.find(x => x.id === aberta);
+    if (c?.tipo === 'GRUPO' && 'todos'.startsWith(termo)) candidatos.push({id: 0, nome: 'todos', todos: true});
+    if (!candidatos.length) { caixa.hidden = true; return; }
+    ativo = 0;
+    caixa.innerHTML = candidatos.map((p, i) => `<button type="button" role="option" class="fmc-mencao${i === 0 ? ' ativo' : ''}" data-i="${i}">
+      <span class="fmc-av mini ${p.todos ? 'grupo' : ''}">${p.todos ? '@' : esc(iniciais(p.nome))}${!p.todos && p.foto ? `<img alt="" src="/api/usuarios/${p.id}/foto?v=${p.foto}" onerror="this.remove()">` : ''}</span>
+      <span>${p.todos ? '@todos — avisar todo o grupo' : esc(p.nome)}</span></button>`).join('');
+    caixa.hidden = false;
+  }
+  function escolherMencao(i) {
+    const p = candidatos[i], alvo = termoMencao(); if (!p || !alvo) return;
+    const inserir = '@' + (p.todos ? 'todos' : nomeMencao(p.nome)) + ' ';
+    campo.value = campo.value.slice(0, alvo.inicio) + inserir + campo.value.slice(campo.selectionStart);
+    campo.selectionStart = campo.selectionEnd = alvo.inicio + inserir.length;
+    $('.fmc-mencoes').hidden = true; campo.focus();
+  }
+  function teclaMencao(e) {
+    const caixa = $('.fmc-mencoes'); if (caixa.hidden) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); ativo = (ativo + (e.key === 'ArrowDown' ? 1 : -1) + candidatos.length) % candidatos.length;
+      [...caixa.children].forEach((b, i) => b.classList.toggle('ativo', i === ativo)); return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); escolherMencao(ativo); return true; }
+    if (e.key === 'Escape') { caixa.hidden = true; e.stopPropagation(); return true; }
+    return false;
+  }
+  $('.fmc-mencoes').addEventListener('mousedown', e => { const b = e.target.closest('.fmc-mencao'); if (b) { e.preventDefault(); escolherMencao(Number(b.dataset.i)); } });
+  campo.addEventListener('keydown', e => { if (teclaMencao(e)) return; if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('.fmc-envio').requestSubmit(); } });
+  campo.addEventListener('input', () => { campo.style.height = 'auto'; campo.style.height = Math.min(120, campo.scrollHeight) + 'px'; sugerirMencao(); });
+  campo.addEventListener('click', sugerirMencao);
+  campo.addEventListener('blur', () => setTimeout(() => { $('.fmc-mencoes').hidden = true; }, 150));
   // ---------- anexos (clipe e Ctrl+V de imagem) ----------
   let pendentes = [];
   const LIMITE = 10 * 1024 * 1024;
@@ -274,5 +383,5 @@
 
   window.fmChatDock = {total: mostrarTotal, atualizar: carregarConversas, abrir};
   carregarConversas();
-  setInterval(carregarConversas, 30000);
+  setInterval(carregarConversas, 15000);
 })();
