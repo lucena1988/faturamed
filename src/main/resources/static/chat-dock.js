@@ -326,8 +326,37 @@
     const caixa = $('.fmc-anexos');
     caixa.hidden = !pendentes.length;
     caixa.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
-    caixa.innerHTML = pendentes.map((f, i) => `<span class="fmc-anexo">${f.type.startsWith('image/') ? `<img alt="" src="${URL.createObjectURL(f)}">` : '<i>📄</i>'}
-      <small title="${esc(f.name)}">${esc(f.name)}</small><button type="button" data-i="${i}" aria-label="Remover ${esc(f.name)}">×</button></span>`).join('');
+    caixa.replaceChildren();
+    pendentes.forEach((f, i) => {
+      const item = document.createElement('span');
+      item.className = 'fmc-anexo';
+
+      if (f.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = URL.createObjectURL(f);
+        item.appendChild(img);
+      } else {
+        const icon = document.createElement('i');
+        icon.textContent = '📄';
+        item.appendChild(icon);
+      }
+
+      const nome = String(f.name ?? '');
+      const small = document.createElement('small');
+      small.title = nome;
+      small.textContent = nome;
+      item.appendChild(small);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.i = String(i);
+      btn.setAttribute('aria-label', `Remover ${nome}`);
+      btn.textContent = '×';
+      item.appendChild(btn);
+
+      caixa.appendChild(item);
+    });
   }
   $('.fmc-anexos').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) { pendentes.splice(Number(b.dataset.i), 1); renderPendentes(); } });
   $('.fmc-clipe').addEventListener('click', () => $('.fmc-arquivo').click());
