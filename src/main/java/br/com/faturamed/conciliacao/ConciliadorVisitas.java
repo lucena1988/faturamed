@@ -11,7 +11,23 @@ public class ConciliadorVisitas {
     public record Chave(String atendimento, LocalDate data) {}
     public record RegistroHospital(int linha, String atendimento, LocalDate data, String paciente,
             String convenio, String medico, String codigo, String procedimento, String conta,
-            String setor, BigDecimal valorTotal, BigDecimal regra, BigDecimal repasse) {}
+            String setor, BigDecimal valorTotal, BigDecimal regra, BigDecimal repasse, String tipo, String origemRepasse) {
+        public RegistroHospital {
+            // Relatorios antigos (antes do Fechamento Faturado) so tinham visitas e repasse da planilha.
+            if (tipo == null) tipo = TipoProcedimento.VISITA.name();
+            if (origemRepasse == null && repasse != null) origemRepasse = ORIGEM_PLANILHA;
+        }
+        public RegistroHospital(int linha, String atendimento, LocalDate data, String paciente,
+                String convenio, String medico, String codigo, String procedimento, String conta,
+                String setor, BigDecimal valorTotal, BigDecimal regra, BigDecimal repasse) {
+            this(linha, atendimento, data, paciente, convenio, medico, codigo, procedimento, conta, setor, valorTotal, regra, repasse,
+                    TipoProcedimento.classificar("", codigo, procedimento).name(), repasse == null ? null : ORIGEM_PLANILHA);
+        }
+    }
+    public static final String ORIGEM_PLANILHA = "PLANILHA";
+    public static final String ORIGEM_CADASTRO = "CADASTRO";
+    /** Coluna interna gravada pelo complemento de repasse cadastrado (nao vem da planilha). */
+    public static final String CAMPO_ORIGEM_REPASSE = "origem repasse";
     public record Visita(int linhaMedico, String atendimento, LocalDate data, Status status, String motivo,
             Map<String, String> original, RegistroHospital hospital, List<RegistroHospital> candidatos,
             CamposRevisados camposRevisados, MedicoProducao medicoProducao) {
@@ -68,14 +84,22 @@ public class ConciliadorVisitas {
             List<LeitorPlanilhaVisitas.Linha> medico, List<LeitorPlanilhaVisitas.Linha> hospitalLinhas) {
         Map<Chave, List<RegistroHospital>> porChave = new LinkedHashMap<>();
         for (var linha : hospitalLinhas) {
+            BigDecimal valorTotal = numero(linha.campo("Valor Tot"), linha.numero());
+            BigDecimal regra = percentual(numero(linha.campo("Regra"), linha.numero()));
+            BigDecimal repasse = numero(linha.campo("Vl. A Repassar"), linha.numero());
+            String origem = repasse == null ? null
+                    : linha.campo(CAMPO_ORIGEM_REPASSE).isBlank() ? ORIGEM_PLANILHA : linha.campo(CAMPO_ORIGEM_REPASSE).toUpperCase(Locale.ROOT);
+            // Sem o valor de repasse, mas com o percentual (Regra) na planilha: repasse = Valor Tot x Regra.
+            if (repasse == null && regra != null && valorTotal != null) { repasse = valorTotal.multiply(regra); origem = ORIGEM_PLANILHA; }
+            String codigo = LeitorPlanilhaVisitas.identificador(linha.campo("Cod Produto"));
+            String tipo = TipoProcedimento.classificar(linha.campo(TipoProcedimento.CAMPO).isBlank() ? linha.campo("Tipo Procedimento") : linha.campo(TipoProcedimento.CAMPO), codigo, linha.campo("Produto")).name();
             var registro = new RegistroHospital(linha.numero(),
                     LeitorPlanilhaVisitas.identificador(linha.campo("Atendimento")),
                     LeitorPlanilhaVisitas.data(linha.campo("Data Consumo"), linha.numero()),
                     linha.campo("Paciente"), linha.campo("Operadora"), linha.campo("Medico"),
-                    LeitorPlanilhaVisitas.identificador(linha.campo("Cod Produto")), linha.campo("Produto"),
+                    codigo, linha.campo("Produto"),
                     LeitorPlanilhaVisitas.identificador(linha.campo("Conta Paciente")), linha.campo("Setor"),
-                    numero(linha.campo("Valor Tot"), linha.numero()), numero(linha.campo("Regra"), linha.numero()),
-                    numero(linha.campo("Vl. A Repassar"), linha.numero()));
+                    valorTotal, regra, repasse, tipo, origem);
             porChave.computeIfAbsent(new Chave(registro.atendimento(), registro.data()), k -> new ArrayList<>()).add(registro);
         }
         var registros = porChave.values().stream().flatMap(List::stream).toList();
@@ -113,6 +137,9 @@ public class ConciliadorVisitas {
             } else if (candidatos.size() > 1) {
                 status = Status.DIVERGENTE;
                 motivo = "Mais de um registro hospitalar para o atendimento; conferir data, medico, procedimento e conta";
+            } else if (!unico.medico().isBlank() && !unico.codigo().isBlank() && unico.valorTotal() != null && unico.repasse() == null) {
+                status = Status.DIVERGENTE;
+                motivo = "Sem repasse na planilha do hospital e sem repasse cadastrado para o procedimento";
             } else if (unico.medico().isBlank() || unico.codigo().isBlank() || unico.valorTotal() == null || unico.repasse() == null) {
                 status = Status.DIVERGENTE;
                 motivo = "Registro hospitalar com dados incompletos";
@@ -196,6 +223,12 @@ public class ConciliadorVisitas {
                     || LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(h.procedimento())))).toList();
         // Keep mismatching candidates visible for review instead of reporting an absent visit.
         return filtrados.isEmpty() ? candidatos : filtrados;
+    }
+
+    /** A coluna Regra pode vir como fracao (0,85) ou como percentual (85). */
+    static BigDecimal percentual(BigDecimal regra) {
+        if (regra == null) return null;
+        return regra.compareTo(BigDecimal.ONE) > 0 ? regra.movePointLeft(2) : regra;
     }
 
     private static BigDecimal numero(String valor, int linha) {

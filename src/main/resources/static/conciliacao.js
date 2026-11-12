@@ -34,7 +34,7 @@ const queuePriority = ['DUPLICIDADE', 'AMBIGUIDADE', 'DADOS_DIVERGENTES', 'VALOR
   'CONFERENCIA_MANUAL', 'SEM_CORRESPONDENCIA', 'AGUARDANDO_FATURAMENTO'];
 const reviewDialog = document.querySelector('#review-dialog');
 const actionLabels = { CONFIRMAR_CORRESPONDENCIA: 'Correspondência confirmada', MANTER_PENDENTE: 'Mantida pendente',
-  MANTER_DIVERGENTE: 'Mantida divergente', RESTAURAR_AUTOMATICO: 'Resultado automatico restaurado', AJUSTAR_DADOS: 'Dados da visita ajustados',
+  MANTER_DIVERGENTE: 'Mantida divergente', RESTAURAR_AUTOMATICO: 'Resultado automatico restaurado', AJUSTAR_DADOS: 'Dados do procedimento ajustados',
   CORRESPONDENCIA_AUTOMATICA: 'Correspondência automatica após revisão' };
 async function request(url, options) {
   const response = await fetch(url, options);
@@ -122,16 +122,16 @@ function renderRows() {
     for (const [label, count] of counters) { const item = node('div', label); item.append(node('strong', count)); counts.append(item); }
     const delivery = document.querySelector('#delivery-status');
     delivery.dataset.state = pending ? 'attention' : 'ready';
-    delivery.textContent = !selectedDoctor.length ? 'Nenhuma visita neste filtro de médico.'
-      : pending ? `${pending} visitas precisam de conferência antes do envio${doctor.value && doctor.value !== '__SEM_MEDICO__' ? ' ao medico selecionado' : ''}.`
+    delivery.textContent = !selectedDoctor.length ? 'Nenhum procedimento neste filtro de médico.'
+      : pending ? `${pending} procedimentos precisam de conferência antes do envio${doctor.value && doctor.value !== '__SEM_MEDICO__' ? ' ao medico selecionado' : ''}.`
       : 'Sem pendências de conferência neste filtro de médico.';
-    if (doctor.value && doctor.value !== '__SEM_MEDICO__' && unassigned) delivery.textContent += ` ${unassigned} visitas sem médico permanecem na conferência interna.`;
+    if (doctor.value && doctor.value !== '__SEM_MEDICO__' && unassigned) delivery.textContent += ` ${unassigned} procedimentos sem médico permanecem na conferência interna.`;
   }
   const doctorDownload = document.querySelector('#download-doctor');
   const ambiguous=cadastroCandidates(doctor.value).length>1;
   doctorDownload.hidden = !doctor.value || doctor.value === '__SEM_MEDICO__' || ambiguous;
   doctorDownload.href = `/api/conciliacoes/visitas/${reportId}/relatorio.xlsx?${new URLSearchParams(doctor.value.startsWith('id:')?{medicoId:doctor.value.slice(3)}:{medico:doctor.value})}`;
-  if(ambiguous) document.querySelector('#delivery-status').textContent='Nome ambiguo no cadastro. Vincule as visitas ao médico correto na revisão antes de exportar.';
+  if(ambiguous) document.querySelector('#delivery-status').textContent='Nome ambiguo no cadastro. Vincule os procedimentos ao médico correto na revisão antes de exportar.';
   const stats = document.querySelector('#stats'); stats.replaceChildren();
   const repasseTotal = !doctor.value
     ? report.repasseCorrespondente
@@ -148,8 +148,9 @@ function renderRows() {
     const repasse = visit.camposRevisados ? visit.repasse : visit.repasse ?? h?.repasse;
     const values = [visit.linhaMedico, visit.data ? visit.data.split('-').reverse().join('/') : 'Não informada', visit.atendimento,
       visit.medico ?? h?.medico ?? visit.original.medico ?? '', visit.procedimento ?? h?.procedimento ?? visit.original['procedimento/mat-med'] ?? '',
+      ({ VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro' })[h?.tipo] || (h ? 'Visita' : '—'),
       (visit.camposRevisados ? visit.codigoProcedimento : visit.codigoProcedimento ?? h?.codigo) || 'Não informado',
-      total == null ? '' : money.format(total), repasse == null ? '' : money.format(repasse), visit.status, visit.motivo,
+      total == null ? '' : money.format(total), repasse == null ? '' : money.format(repasse) + (!visit.camposRevisados && h?.origemRepasse === 'CADASTRO' ? ' (cadastro)' : ''), visit.status, visit.motivo,
       categoryLabels[progress.get(visit.linhaMedico)?.categoria] || 'Carregando...', originLabels[progress.get(visit.linhaMedico)?.origem] || 'Carregando...'];
     const row = document.createElement('tr');
     const headers = document.querySelectorAll('#results thead th');
@@ -165,7 +166,7 @@ function renderRows() {
     action.append(button); row.append(action);
     rows.append(row);
   }
-  document.querySelector('#count').textContent = `${filtered.length} de ${selectedDoctor.length} visitas${doctor.value ? ' no filtro de medico' : ''}`;
+  document.querySelector('#count').textContent = `${filtered.length} de ${selectedDoctor.length} procedimentos${doctor.value ? ' no filtro de medico' : ''}`;
 }
 function renderQueue(selectedDoctor, filtered) {
   const container = document.querySelector('#queue-categories'); container.replaceChildren();
@@ -194,8 +195,8 @@ function renderQueue(selectedDoctor, filtered) {
   document.querySelector('#queue-start').disabled = !ready || historical || !visibleQueue.length;
   document.querySelector('#queue-message').textContent = !ready ? 'Carregando fila...'
     : historical ? 'Relatório historico: abra a versao mais recente para revisar.'
-    : visibleQueue.length ? `${visibleQueue.length} visitas a conferir nos filtros atuais. Prioridade: ${categoryLabels[progress.get(visibleQueue[0].linhaMedico)?.categoria] || 'conferencia'}.`
-    : 'Nenhuma visita a conferir nos filtros atuais.';
+    : visibleQueue.length ? `${visibleQueue.length} procedimentos a conferir nos filtros atuais. Prioridade: ${categoryLabels[progress.get(visibleQueue[0].linhaMedico)?.categoria] || 'conferencia'}.`
+    : 'Nenhum procedimento a conferir nos filtros atuais.';
 }
 document.querySelector('#queue-start').addEventListener('click', () => {
   if (!visibleQueue.length) return;
@@ -317,7 +318,7 @@ async function openReview(line) {
     }));
     doctorSelect.value=doctorId(current)??'';
     const group = report.visitas.filter(v => v.atendimento === current.atendimento);
-    document.querySelector('#review-group-title').textContent = `Atendimento ${current.atendimento} - ${group.length} visitas`;
+    document.querySelector('#review-group-title').textContent = `Atendimento ${current.atendimento} - ${group.length} procedimentos`;
     for (const visit of group) {
       const row = node('tr');
       if (visit.linhaMedico === line) row.className = 'review-current';
@@ -326,7 +327,7 @@ async function openReview(line) {
       const cell = node('td'); const button = node('button', visit.linhaMedico === line ? 'Em revisão' : 'Revisar');
       button.type = 'button'; button.disabled = visit.linhaMedico === line;
       button.setAttribute('aria-label', `Revisar visita do grupo linha ${visit.linhaMedico}`);
-      button.addEventListener('click', async () => { if (!reviewSaving && await fmConfirmar('Trocar de visita? Alterações não salvas serao descartadas.')) openReview(visit.linhaMedico); });
+      button.addEventListener('click', async () => { if (!reviewSaving && await fmConfirmar('Trocar de procedimento? Alterações não salvas serao descartadas.')) openReview(visit.linhaMedico); });
       cell.append(button); row.append(cell); document.querySelector('#review-group').append(row);
     }
     for (const [id, value] of [['edit-date', current.data], ['edit-attendance', current.atendimento],
@@ -337,7 +338,7 @@ async function openReview(line) {
     document.querySelector('#review-title').textContent = `Atendimento ${detail.atual.atendimento} - linha ${line}`;
     const original = detail.original;
     const summary = document.querySelector('#review-summary');
-    for (const [label, value] of [['Data da visita', original.data ? original.data.split('-').reverse().join('/') : 'Não informada'],
+    for (const [label, value] of [['Data', original.data ? original.data.split('-').reverse().join('/') : 'Não informada'],
       ['Status automatico', original.status], ['Status atual', detail.atual.status],
       ['Medico na producao', original.original.medico || 'Não informado'],
       ['Procedimento na producao', original.original['procedimento/mat-med'] || 'Não informado'],
@@ -543,7 +544,7 @@ document.querySelector('#review-form').addEventListener('submit', async event =>
           status: document.querySelector('#edit-status').value, motivo: document.querySelector('#edit-reason').value,
           medicoCadastroId: document.querySelector('#edit-doctor-id').value?Number(document.querySelector('#edit-doctor-id').value):null } : null }) });
     showReport(id, result.relatorio); reviewDialog.close();
-    message.textContent = `Revisão da linha ${line} salva. ${result.automaticas || 0} visitas preenchidas automaticamente. Indicadores e relatório atualizados.`;
+    message.textContent = `Revisão da linha ${line} salva. ${result.automaticas || 0} procedimentos preenchidas automaticamente. Indicadores e relatório atualizados.`;
   } catch (error) {
     document.querySelector('#review-message').textContent = error.message;
     if (error.status === 409) {

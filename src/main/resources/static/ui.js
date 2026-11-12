@@ -306,49 +306,8 @@
       caixa.querySelector('.fm-usuario-info strong').textContent = eu.nome || '';
       caixa.querySelector('.fm-usuario-info small').textContent = eu.email || '';
       mostrarFoto(eu.foto);
-      // "Enviar para o chat": manda o link desta tela (lote, divergencia, recebimento...) para um colega ou grupo
-      const pagina = location.pathname.split('/').pop() || 'index.html';
-      if (['ADMIN', 'DEV', 'OPERADOR'].includes(eu.perfil) && pagina !== 'chat.html' && !acoes.querySelector('.fm-compartilhar')) {
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'fm-compartilhar'; b.title = 'Enviar esta tela para o FaturaChat';
-        b.setAttribute('aria-label', b.title);
-        b.innerHTML = '<svg class="fm-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h12v9H8l-4 3V5Z"/><path d="M14 17l3 3 4-6"/></svg><span>Enviar ao FaturaChat</span>';
-        b.addEventListener('click', compartilharNoChat);
-        acoes.insertBefore(b, caixa);
-      }
     }).catch(() => {});
   }
-  // ---------- enviar a tela atual para o chat da equipe ----------
-  async function compartilharNoChat() {
-    let conversas;
-    try {
-      const r = await fetch('/api/chat/conversas', {headers: {Accept: 'application/json'}});
-      conversas = (await r.json()).filter(c => !c.sistema);
-    } catch (_) { toast('Não foi possível abrir o chat', 'erro'); return; }
-    if (!conversas.length) { toast('Você ainda não tem conversas. Abra o FaturaChat e comece uma.', 'info'); return; }
-    const titulo = (document.querySelector('main h1')?.textContent || document.title.split('|')[0]).trim();
-    const d = document.createElement('dialog');
-    d.className = 'fm-dialogo';
-    d.innerHTML = `<form method="dialog"><h2>Enviar esta tela para o FaturaChat</h2>
-      <label class="fm-campo">Para<select name="conversa" required>${conversas.map(c =>
-        `<option value="${c.id}">${esc(c.tipo === 'GRUPO' ? '# ' + c.nome : c.nome)}</option>`).join('')}</select></label>
-      <label class="fm-campo">Comentário (opcional)<textarea name="comentario" rows="3" maxlength="1000" placeholder="Ex.: pode conferir este lote?"></textarea></label>
-      <p class="fm-compartilhar-previa">📄 ${esc(titulo)}<br><small>${esc(location.href)}</small></p>
-      <div class="fm-dialogo-acoes"><button type="button" class="secondary-button" value="cancelar">Cancelar</button>
-      <button type="submit" class="primary-button" value="ok">Enviar</button></div></form>`;
-    document.body.append(d);
-    d.querySelector('[value=cancelar]').addEventListener('click', () => d.close('cancelar'));
-    d.showModal();
-    const escolha = await new Promise(ok => d.addEventListener('close', () => ok(d.returnValue), {once: true}));
-    const form = d.querySelector('form');
-    const conversaId = form.conversa.value, comentario = form.comentario.value.trim();
-    d.remove();
-    if (escolha !== 'ok') return;
-    const texto = `${comentario ? comentario + '\n' : ''}📄 ${titulo}: ${location.href}`;
-    const r = await fetch(`/api/chat/conversas/${conversaId}/mensagens`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({texto})});
-    toast(r.ok ? 'Enviado para o FaturaChat' : 'Não foi possível enviar', r.ok ? 'ok' : 'erro');
-  }
-
   // ---------- busca global (Ctrl+K) ----------
   const sem = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   let paleta = null;

@@ -16,13 +16,14 @@
       ['Visão geral', 'painel-producao.html', null, '<path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/>'],
       ['Lotes de produção', 'producao.html', null, '<path d="M4 4h16v16H4z"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/>'],
       ['Fechamento e envio', 'fechamento-producao.html', null, '<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>']], 'producao'],
-    ['nav-producao', 'Visitas hospitalares', [
+    ['nav-producao', 'Fechamento Faturado', [
       ['Dashboard', null, 'dashboard', '<path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/>'],
       ['Base hospitalar', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
       ['Importações', null, 'importacoes', '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/>'],
-      ['Conciliação de visitas', 'conciliacao.html', null, '<path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/>'],
+      ['Conciliação', 'conciliacao.html', null, '<path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/>'],
       ['Divergências', null, 'divergencias', '<path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/>'],
       ['Solicitações dos médicos', 'solicitacoes-medicos.html', null, '<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 9h8M8 12h5"/>'],
+      ['Repasse por procedimento', 'repasses.html', null, '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
       ['Layouts', null, 'layouts', '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>']], 'visitas'],
     ['nav-financeiro', 'Financeiro', [
       ['Recebimentos', 'recebimentos.html', null, '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/>'],
@@ -33,7 +34,6 @@
       ['Empresas', null, 'empresas', '<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-3h4v3"/>'],
       ['Painel do médico', null, 'painel-medico', '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>']], 'cadastros'],
     ['nav-gestao', 'Gestão', [
-      ['FaturaChat', 'chat.html', null, '<path d="M4 5h12v9H8l-4 3V5Z"/><path d="M16 9h4v9l-3-2h-7v-2"/>'],
       ['Central de chamados', 'chamados.html', null, '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
       ['Acessos', 'usuarios.html', null, '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>']], 'gestao']
   ];
@@ -64,10 +64,6 @@
         <div class="nav-group-items" id="${id}-itens">${items.map(item).join('')}</div>
       </div>`).join('')}
     </nav>
-    <section class="nav-chat" aria-labelledby="nav-chat-titulo" hidden>
-      <a class="nav-chat-titulo" id="nav-chat-titulo" href="chat.html"><span>Mensagens recentes</span><span class="nav-count" data-chat-count hidden></span></a>
-      <ul class="nav-chat-lista" data-chat-recentes></ul>
-    </section>
     <a class="company-identity" href="./assets/faturamed-identidade.jpeg" target="_blank" rel="noopener" aria-label="Identidade da FaturaMed">
       <img src="./assets/faturamed-identidade.jpeg" alt="FaturaMed: faturamento de contas medicas e consultoria medica">
     </a>
@@ -83,7 +79,7 @@
     : Promise.resolve(window.prompt(texto));
 
   // Estilos globais (componentes e cores por modulo) e grupo da pagina atual (usado na trilha do cabecalho)
-  for (const href of ['modulos.css?v=20261110-1', 'ui.css?v=20261111-chat2', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
+  for (const href of ['modulos.css?v=20261110-1', 'ui.css?v=20261112-semcomp', 'vidro.css?v=20261107-2', 'temas.css?v=20261107-1', 'efeitos.css?v=20261107-1', 'icones3d.css?v=20261108-1', 'tatil.css?v=20261108-1']) {
     if (document.querySelector(`link[href^="${href.split('?')[0]}"]`)) continue;
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = href;
@@ -101,7 +97,7 @@
   }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261111-faturachat';
+    js.src = 'ui.js?v=20261112-semcomp';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view, icone]) => ({label, grupo: titulo, url: href || `index.html#${view}`, icone})));
@@ -156,16 +152,16 @@
   // contador do grupo Gestao (visivel com o grupo fechado): avisos do Service Desk + mensagens do chat
   const totais = {chamados: 0, chat: 0};
   function contadorGestao() {
-    const total = totais.chamados + totais.chat;
+    const total = totais.chamados; // o chat tem contador proprio no icone do topo
     aside.querySelectorAll('[data-gestao-count]').forEach(el => {
       el.hidden = total === 0;
       el.textContent = total > 99 ? '99+' : String(total);
-      el.title = `${totais.chat} mensagem(ns) no chat e ${totais.chamados} aviso(s) no Service Desk`;
+      el.title = `${totais.chamados} aviso(s) no Service Desk`;
     });
   }
   // a tela do chat informa o total em tempo real
   window.fmChatTotal = total => {
-    totais.chat = total; contadorGestao();
+    totais.chat = total; contadorGestao(); window.fmChatDock?.total(total);
     aside.querySelectorAll('[data-chat-count]').forEach(el => {
       el.hidden = total === 0;
       el.textContent = total > 99 ? '99+' : String(total);
@@ -222,41 +218,12 @@
   naoLidasChat();
   setInterval(naoLidasChat, 15000);
 
-  // widget "Mensagens recentes" no espaco livre do menu (fora da propria tela do chat)
-  function recentesChat() {
-    const caixa = aside.querySelector('.nav-chat');
-    if (!caixa || page === 'chat.html') return;
-    fetch('/api/chat/conversas', {headers: {Accept: 'application/json'}}).then(r => r.ok ? r.json() : null).then(lista => {
-      const itens = (lista || []).filter(c => c.ultimaMensagem).slice(0, 4);
-      caixa.hidden = itens.length === 0;
-      const ul = caixa.querySelector('[data-chat-recentes]');
-      ul.replaceChildren(...itens.map(c => {
-        const li = document.createElement('li');
-        const a = document.createElement('a');
-        a.className = 'nav-chat-item' + (c.naoLidas ? ' nao-lida' : '');
-        a.href = `chat.html#c${c.id}`;
-        const grupo = c.tipo === 'GRUPO';
-        const av = document.createElement('span');
-        av.className = 'nav-chat-avatar' + (grupo ? ' grupo' : '');
-        av.textContent = grupo ? '#' : (c.nome || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
-        if (!grupo && c.contato?.foto) { const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = `/api/usuarios/${c.contato.id}/foto?v=${c.contato.foto}`; img.addEventListener('error', () => img.remove()); av.append(img); av.classList.add('com-foto'); }
-        const corpo = document.createElement('span');
-        corpo.className = 'nav-chat-corpo';
-        const nome = document.createElement('strong'); nome.textContent = c.nome;
-        const prev = document.createElement('small');
-        const autor = grupo && c.ultimoAutorNome ? c.ultimoAutorNome.split(/\s+/)[0] + ': ' : '';
-        prev.textContent = autor + c.ultimaMensagem;
-        corpo.append(nome, prev);
-        a.append(av, corpo);
-        if (c.naoLidas) { const n = document.createElement('span'); n.className = 'nav-count'; n.textContent = c.naoLidas > 99 ? '99+' : String(c.naoLidas); a.append(n); }
-        a.title = `${c.nome}: ${c.ultimaMensagem}`;
-        li.append(a);
-        return li;
-      }));
-    }).catch(() => {});
+  // FaturaChat de bolso (icone no topo + gaveta + trilho de avatares) substitui o antigo widget do menu
+  function recentesChat() { window.fmChatDock?.atualizar(); }
+  if (page !== 'chat.html' && !document.querySelector('script[src^="chat-dock.js"]')) {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261112-12'; document.head.append(css);
+    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261112-13'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
   }
-  recentesChat();
-  setInterval(recentesChat, 30000);
 
   // Chat da equipe abre em janela propria, para nao tirar a pessoa da tela em que esta trabalhando.
   // Se o navegador bloquear o pop-up, segue o link normal.

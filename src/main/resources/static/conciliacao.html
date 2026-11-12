@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conciliação de visitas | Faturamed</title>
+  <title>Conciliação | Fechamento Faturado | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
   <link rel="stylesheet" href="conciliacao.css?v=20261103-exclusao">
   <link rel="stylesheet" href="identidade.css?v=20261103-tema">
@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
-    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação de visitas</h1></div>
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação · Fechamento Faturado</h1></div>
       <a href="/#medicos">Cadastro de médicos</a><a href="solicitacoes-medicos.html">Solicitações dos médicos</a><a id="download" hidden>Baixar relatório geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
     <p><a href="base-hospitalar.html">Importar hospital e produção médica</a> · Importe primeiro a base hospitalar e depois a produção individual ou coletiva. Os relatórios e históricos continuam disponíveis abaixo.</p>
     <p id="message" role="status" aria-live="polite"></p>
@@ -23,7 +23,7 @@
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
-      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e procedimentos sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
@@ -38,10 +38,10 @@
         <span id="count"></span>
         <a id="download-doctor" hidden>Baixar relatório do médico XLSX</a>
       </div>
-      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Tipo</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="conciliation-history"><h2>Relatórios anteriores</h2><ul id="history"></ul></section>
-    <dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog" class="delete-form"><h2 id="delete-title">Excluir relatório definitivamente</h2><p id="delete-summary"></p><p class="delete-warning">Serão apagados também as publicações para o médico e a empresa, ciências, pedidos de revisão, recebimentos, pagamentos, comprovantes e contatos de cobrança deste relatório. As visitas do hospital continuam guardadas. Esta ação não pode ser desfeita e fica registrada em auditoria.</p><p id="delete-versions"></p><label>Confirme com a sua senha<input id="delete-password" type="password" required autocomplete="current-password" maxlength="72"></label><div class="delete-actions"><button type="button" id="delete-cancel" class="history-open">Cancelar</button><button type="submit" class="delete-confirm history-delete">Excluir definitivamente</button></div></form></dialog>
+    <dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog" class="delete-form"><h2 id="delete-title">Excluir relatório definitivamente</h2><p id="delete-summary"></p><p class="delete-warning">Serão apagados também as publicações para o médico e a empresa, ciências, pedidos de revisão, recebimentos, pagamentos, comprovantes e contatos de cobrança deste relatório. Os procedimentos do hospital continuam guardados. Esta ação não pode ser desfeita e fica registrada em auditoria.</p><p id="delete-versions"></p><label>Confirme com a sua senha<input id="delete-password" type="password" required autocomplete="current-password" maxlength="72"></label><div class="delete-actions"><button type="button" id="delete-cancel" class="history-open">Cancelar</button><button type="submit" class="delete-confirm history-delete">Excluir definitivamente</button></div></form></dialog>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">
     <form id="review-form">
@@ -62,7 +62,7 @@
       <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Médico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
       <div class="review-fields">
         <label>Decisao<select id="review-action" required>
-          <option value="AJUSTAR_DADOS">Ajustar dados da visita</option>
+          <option value="AJUSTAR_DADOS">Ajustar dados do procedimento</option>
           <option value="CONFIRMAR_CORRESPONDENCIA">Confirmar correspondência</option>
           <option value="MANTER_PENDENTE">Manter pendente</option>
           <option value="MANTER_DIVERGENTE">Manter divergente</option>
@@ -93,7 +93,7 @@
       <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="sidebar.js?v=20261110-avisos"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
+  <script src="sidebar.js?v=20261112-dock3"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
   <script src="liberacao.js?v=20261103-empresas"></script>
   <script src="conciliacao.js?v=20261112-ch0013"></script>
 </body>

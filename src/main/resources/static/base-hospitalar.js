@@ -1,3 +1,4 @@
+const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro' };
 (() => {
   const find = id => document.getElementById(id);
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
@@ -20,7 +21,7 @@
     find('visits').replaceChildren();
     for (const visit of filtered) {
       const row = element('tr');
-      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado', labels[visit.situacao], visit.anterior_id || '—']) row.append(element('td', value));
+      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, TIPOS_PROCEDIMENTO[visit.tipo_procedimento] || 'Visita', visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado', labels[visit.situacao], visit.anterior_id || '—']) row.append(element('td', value));
       const actions = element('td');
       if (visit.decisao === 'EM_ANALISE') actions.append(button('Analisar repetição', async () => openDecision(visit)));
       actions.append(button('Histórico', async () => {
@@ -34,7 +35,7 @@
       if (visit.arquivo_atual_id && visit.arquivo_atual_id !== visit.arquivo_id) actions.append(link('Última atualização', `/api/base-hospitalar/arquivos/${visit.arquivo_atual_id}/original`));
       row.append(actions); find('visits').append(row);
     }
-    find('count').textContent = `${filtered.length} ocorrências · IDs das visitas distintas são preservados`;
+    find('count').textContent = `${filtered.length} ocorrências · IDs dos procedimentos distintos são preservados`;
   }
   function renderCompetencias(files) {
     const box = find('competencias'), groups = new Map();
@@ -74,7 +75,7 @@
       if (file.relatorio_id) {
         actions.append(link('Abrir conciliação', `/conciliacao.html?relatorio=${file.relatorio_id}`));
         actions.append(button('Atualizar conciliação', async () => {
-          if (busy || !await fmConfirmar('Criar uma nova versão com as visitas hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
+          if (busy || !await fmConfirmar('Criar uma nova versão com os procedimentos hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
           await perform(async () => {
             const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
             const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});
@@ -157,7 +158,7 @@
       await perform(async () => {
         showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
         const result = await request(`/api/base-hospitalar/${endpoint}`, {method:'POST', body:data});
-        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} visitas atualizadas mantendo o ID; ${result.divergencias} divergências para análise.` + (result.foraDaCompetencia > 0 ? ` Atenção: ${result.foraDaCompetencia} visitas têm data fora da competência informada.` : '');
+        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} procedimentos atualizadas mantendo o ID; ${result.divergencias} divergências para análise.` + (result.foraDaCompetencia > 0 ? ` Atenção: ${result.foraDaCompetencia} procedimentos têm data fora da competência informada.` : '');
         const nodes = [element('span', `${text} `)];
         if (result.relatorioId) nodes.push(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
         showMessage(result.repetido || result.divergencias > 0 ? 'warning' : 'success', ...nodes);

@@ -29,7 +29,8 @@ public class LeitorPlanilhaVisitas {
         }
         try (InputStream input = arquivo.getInputStream()) {
             List<Aba> abas = nome.endsWith(".xlsb") ? lerBinario(input) : lerXlsx(input);
-            // O modelo do hospital repete o detalhe na aba de apresentacao.
+            // O modelo do hospital repete o detalhe na aba de apresentacao. O repasse (Vl. a Repassar ou Regra)
+            // e opcional: sem ele, vale o repasse cadastrado para o procedimento.
             if (hospital) abas.sort(Comparator.comparing(a -> !a.nome().equalsIgnoreCase("Planilha2")));
             for (Aba aba : abas) {
                 for (int i = 0; i < Math.min(50, aba.linhas().size()); i++) {
@@ -39,7 +40,7 @@ public class LeitorPlanilhaVisitas {
                     // A producao pode vir sem a coluna Atendimento; a data (Dt.) passa a identificar a visita.
                     boolean cabecalhoProducao = !hospital && (campos.contains("atendimento") || campos.contains("dt."));
                     if (!cabecalhoProducao && (!campos.contains("atendimento") || !hospital || !campos.contains("data consumo"))) continue;
-                    if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "vl. a repassar", "setor"))) {
+                    if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "setor"))) {
                         throw new IllegalArgumentException("Cabecalho do hospital incompleto");
                     }
                     List<Linha> resultado = new ArrayList<>();

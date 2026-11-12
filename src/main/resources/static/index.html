@@ -55,7 +55,7 @@
         <section class="cycle" aria-labelledby="cycle-title">
           <div class="cycle-heading">
             <h2 id="cycle-title">Ciclo da conta</h2>
-            <p>Repasse das visitas do relatório e período selecionados, da produção ao recebimento.</p>
+            <p>Repasse dos procedimentos do relatório e período selecionados, da produção ao recebimento.</p>
           </div>
           <div class="cycle-strip">
             <article class="cycle-stage" data-tone="neutral">
@@ -83,7 +83,7 @@
               <span class="cycle-label">Divergentes</span>
               <strong id="kpi-valor-divergentes">...</strong>
               <span class="cycle-count"><b id="kpi-divergentes">...</b> visitas</span>
-              <small>Visitas que exigem conferência</small>
+              <small>Procedimentos que exigem conferência</small>
               <small id="kpi-valor-divergentes-detail"></small>
             </article>
             <article class="cycle-stage" data-tone="info">
@@ -100,7 +100,7 @@
           <section class="panel wide attention-panel">
             <div class="panel-header">
               <div>
-                <h2>Visitas que pedem atenção</h2>
+                <h2>Procedimentos que pedem atenção</h2>
                 <p id="queue-count">Pendências e divergências.</p>
               </div>
               <button class="text-button" type="button" data-view-link="divergencias">Ver todas</button>
@@ -160,10 +160,10 @@
             <div class="panel-header">
               <div>
                 <h2>Nova importacao</h2>
-                <p>Visitas hospitalares</p>
+                <p>Fechamento Faturado</p>
               </div>
             </div>
-            <p>Primeiro armazene as visitas do hospital com IDs permanentes. Depois importe a produção individual ou coletiva por atendimento, data e identificação médica.</p>
+            <p>Primeiro armazene os procedimentos do hospital com IDs permanentes. Depois importe a produção individual ou coletiva por atendimento, data e identificação médica.</p>
             <a class="primary-button" href="base-hospitalar.html">Abrir base hospitalar e importar</a>
           </section>
 
@@ -286,7 +286,7 @@
           <article class="kpi-card"><span class="kpi-label">Valor em conferencia</span><strong id="doctor-blocked">-</strong><small id="doctor-blocked-detail"></small></article>
           <article class="kpi-card"><span class="kpi-label">Visitas sem valor definido</span><strong id="doctor-unknown">-</strong><small>Valor ou correspondência nao confirmados</small></article>
         </div>
-        <section class="doctor-section"><h2>Resumo do hospital</h2><div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Visitas</th><th>Faturado</th><th>Aguardando</th><th>Em conferencia</th></tr></thead><tbody id="doctor-hospitals"></tbody></table></div></section>
+        <section class="doctor-section"><h2>Resumo do hospital</h2><div class="doctor-table"><table><thead><tr><th>Hospital</th><th>Procedimentos</th><th>Faturado</th><th>Aguardando</th><th>Em conferencia</th></tr></thead><tbody id="doctor-hospitals"></tbody></table></div></section>
         <section class="doctor-section"><h2>Pendências da producao</h2><div class="doctor-toolbar"><label class="select-field">Situação<select id="doctor-status"><option value="">Todas as pendencias</option><option value="PENDENTE">Aguardando faturamento</option><option value="DIVERGENTE">Em conferencia</option></select></label><label class="select-field">Atendimento<input id="doctor-search" type="search"></label><span id="doctor-count"></span></div><div class="doctor-table"><table><thead><tr><th>Atendimento</th><th>Data</th><th>Procedimento</th><th>Repasse</th><th>Situação</th><th>Motivo</th></tr></thead><tbody id="doctor-visits"></tbody></table></div></section>
       </section>
       <section class="view conciliation-workspace medicos-module" id="hospitais-view" data-view="hospitais" data-hospitais>
@@ -322,7 +322,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./auth.js?v=20261110-semfab"></script>
   <script src="./painel-medico.js?v=20261103-todos"></script>
-  <script src="./sidebar.js?v=20261110-avisos"></script>
+  <script src="./sidebar.js?v=20261112-dock3"></script>
   <script src="./menu.js?v=20261029-3"></script>
   <script src="./app.js?v=20261112-ch0013"></script>
   <script src="./medicos.js?v=20261104-uf"></script>
