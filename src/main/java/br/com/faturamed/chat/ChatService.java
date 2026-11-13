@@ -545,12 +545,34 @@ public class ChatService {
                 .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).strip().replaceAll("\\s+", " ");
     }
 
+    /** Papeis mencionaveis: "@admin", "@dev", "@operador" (e plurais) e "@equipe" (toda a equipe interna da conversa). */
+    static final Map<String, Set<String>> PAPEIS = Map.of(
+            "admin", Set.of("ADMIN"), "admins", Set.of("ADMIN"), "administradores", Set.of("ADMIN"),
+            "dev", Set.of("DEV"), "devs", Set.of("DEV"), "desenvolvedores", Set.of("DEV"),
+            "operador", Set.of("OPERADOR"), "operadores", Set.of("OPERADOR"),
+            "equipe", Set.of("ADMIN", "DEV", "OPERADOR"));
+
+    static Set<Long> detectarPapeis(String texto, Map<Long, String> perfis, long autorId) {
+        Set<Long> achados = new LinkedHashSet<>();
+        if (texto == null || texto.indexOf('@') < 0) return achados;
+        var m = MENCAO.matcher(texto);
+        while (m.find()) {
+            Set<String> alvo = PAPEIS.get(normalizar(m.group(1)).replaceAll("[.\\-]+$", ""));
+            if (alvo != null) perfis.forEach((id, perfil) -> { if (alvo.contains(perfil)) achados.add(id); });
+        }
+        achados.remove(autorId);
+        return achados;
+    }
+
     private void registrarMencoes(long mensagemId, String texto, long autorId, List<Long> participantes) {
         if (texto == null || texto.indexOf('@') < 0 || participantes.isEmpty()) return;
         Map<Long, String> nomes = new HashMap<>();
         String ids = String.join(",", participantes.stream().map(String::valueOf).toList());
-        jdbc.query("select id, nome from usuario_acesso where id in (" + ids + ")", r -> { nomes.put(r.getLong("id"), r.getString("nome")); });
-        for (Long id : detectarMencoes(texto, nomes, autorId))
+        Map<Long, String> perfis = new HashMap<>();
+        jdbc.query("select id, nome, perfil from usuario_acesso where id in (" + ids + ")", r -> { nomes.put(r.getLong("id"), r.getString("nome")); perfis.put(r.getLong("id"), r.getString("perfil")); });
+        Set<Long> mencionados = new LinkedHashSet<>(detectarMencoes(texto, nomes, autorId));
+        mencionados.addAll(detectarPapeis(texto, perfis, autorId));
+        for (Long id : mencionados)
             jdbc.update("insert into chat_mencao(mensagem_id,usuario_id) values (?,?) on conflict do nothing", mensagemId, id);
     }
 

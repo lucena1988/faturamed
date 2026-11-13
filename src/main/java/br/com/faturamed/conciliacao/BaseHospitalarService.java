@@ -34,17 +34,19 @@ public class BaseHospitalarService {
     private final AtualizacaoHospitalarService atualizacoes;
     private final EmpresaClienteService empresas;
     private final RepasseProcedimentoService repasses;
+    private final org.springframework.context.ApplicationEventPublisher publicador;
 
     public BaseHospitalarService(JdbcTemplate jdbc, ObjectMapper json, LeitorPlanilhaVisitas leitor,
             ConciliadorVisitas motor, HospitalCadastroService hospitais, MedicoCadastroService medicos,
             IdentificacaoProducaoService identificacao, VinculoBaseHospitalar vinculos, RevisaoVisitasService revisoes, AtualizacaoHospitalarService atualizacoes,
-            EmpresaClienteService empresas, RepasseProcedimentoService repasses) {
+            EmpresaClienteService empresas, RepasseProcedimentoService repasses, org.springframework.context.ApplicationEventPublisher publicador) {
         this.jdbc=jdbc; this.json=json; this.leitor=leitor; this.motor=motor; this.hospitais=hospitais;
         this.medicos=medicos; this.identificacao=identificacao; this.vinculos=vinculos;
         this.revisoes=revisoes;
         this.atualizacoes=atualizacoes;
         this.empresas=empresas;
         this.repasses=repasses;
+        this.publicador=publicador;
     }
 
     @Transactional(rollbackFor=Exception.class)
@@ -86,6 +88,7 @@ public class BaseHospitalarService {
         jdbc.update("update arquivo_base_hospitalar set quantidade_registros=? where id=?",registros.size(),arquivoId);
         String mes=competencia;
         int fora=(int)registros.stream().filter(r->!r.data().toString().startsWith(mes)).count();
+        publicador.publishEvent(new FechamentoFaturadoEventos.PlanilhaHospitalImportada(hospitalId,hospitais.buscar(hospitalId).nome(),competencia,registros.size(),usuario.id()));
         return new Resultado(arquivoId,null,registros.size(),divergencias,false,atualizadas,fora);
     }
 
@@ -126,7 +129,9 @@ public class BaseHospitalarService {
         long arquivoId=salvarArquivo(hospitalId,"PRODUCAO",medicoId,competencia,arquivo,hash,usuario.id());
         jdbc.update("update arquivo_base_hospitalar set relatorio_id=? where id=?",relatorioId,arquivoId);
         vinculos.sincronizar(relatorioId,relatorio);
-        return new Resultado(arquivoId,relatorioId,relatorio.visitas().size(),(int)relatorio.visitas().stream().filter(visita->visita.status()==ConciliadorVisitas.Status.DIVERGENTE).count(),false);
+        int divergentesGeradas=(int)relatorio.visitas().stream().filter(visita->visita.status()==ConciliadorVisitas.Status.DIVERGENTE).count();
+        publicador.publishEvent(new FechamentoFaturadoEventos.ConciliacaoGerada(relatorioId,relatorio.hospital(),relatorio.visitas().size(),divergentesGeradas,usuario.id()));
+        return new Resultado(arquivoId,relatorioId,relatorio.visitas().size(),divergentesGeradas,false);
     }
 
     private ConciliadorVisitas.Relatorio calcular(long hospitalId,Long medicoId,String nome,List<LeitorPlanilhaVisitas.Linha> producao,Long proprioRelatorio) throws Exception {

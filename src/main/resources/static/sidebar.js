@@ -97,7 +97,7 @@
   }
   if (!document.querySelector('script[src^="ui.js"]')) {
     const js = document.createElement('script');
-    js.src = 'ui.js?v=20261112-semcomp';
+    js.src = 'ui.js?v=20261112-busca';
     document.head.append(js);
   }
   window.fmNavItens = groups.flatMap(([, titulo, itens]) => itens.map(([label, href, view, icone]) => ({label, grupo: titulo, url: href || `index.html#${view}`, icone})));
@@ -185,7 +185,7 @@
   // mensagens nao lidas do chat da equipe (na propria tela do chat o contador e atualizado em tempo real)
   if (!document.querySelector('script[src^="chat-som.js"]')) {
     const som = document.createElement('script');
-    som.src = 'chat-som.js?v=20261111-saida';
+    som.src = 'chat-som.js?v=20261112-np';
     document.head.append(som);
   }
   let comSomAnterior = null, mencoesAnterior = null, comSomAnteriorTick = null;
@@ -201,7 +201,7 @@
         // aviso na area de trabalho (com o FaturaMed minimizado), se a pessoa ativou nas configuracoes do chat
         const u = dados.ultima;
         try {
-          if (u && 'Notification' in window && Notification.permission === 'granted') {
+          if (u && 'Notification' in window && Notification.permission === 'granted' && localStorage.getItem('fm-chat-mudo') !== '1' && !window.fmChatSom?.emNaoPerturbe?.()) {
             const n = new Notification(`💬 ${u.autorNome}`, {body: u.texto, tag: 'fm-chat-' + u.mensagemId});
             n.onclick = () => { window.focus(); n.close(); window.open(`chat.html?janela=avulsa#c${u.conversaId}`, 'fm-chat-equipe', 'popup=yes,width=1000,height=720'); };
           }
@@ -218,11 +218,16 @@
   naoLidasChat();
   setInterval(naoLidasChat, 15000);
 
+  // cartoes de referencia do chat (#lote, #chamado, #relatorio, #div): painel rapido e chat completo
+  if (!document.querySelector('script[src^="chat-refs.js"]')) {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-refs.css?v=20261112-1'; document.head.append(css);
+    const js = document.createElement('script'); js.src = 'chat-refs.js?v=20261112-1'; document.head.append(js);
+  }
   // FaturaChat de bolso (icone no topo + gaveta + trilho de avatares) substitui o antigo widget do menu
   function recentesChat() { window.fmChatDock?.atualizar(); }
   if (page !== 'chat.html' && !document.querySelector('script[src^="chat-dock.js"]')) {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261112-12'; document.head.append(css);
-    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261112-13'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261112-31'; document.head.append(css);
+    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261112-31'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
   }
 
   // Chat da equipe abre em janela propria, para nao tirar a pessoa da tela em que esta trabalhando.

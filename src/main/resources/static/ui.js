@@ -348,10 +348,20 @@
       ativo = 0; desenhar();
       if (termo.length < 2) return;
       clearTimeout(timer);
-      timer = setTimeout(() => fetch('/api/busca?q=' + encodeURIComponent(termo), {cache: 'no-store'}).then(r => r.ok ? r.json() : [])
-        .then(dados => { if (minha !== geracao) return; resultados = [...(resposta ? [{tipo: 'Resposta', titulo: resposta.titulo, detalhe: resposta.detalhe, url: resposta.url, resposta: true}] : []), ...dados, ...paginas(termo)]; ativo = 0; desenhar(); }).catch(() => {}), 200);
+      timer = setTimeout(() => Promise.all([
+          fetch('/api/busca?q=' + encodeURIComponent(termo), {cache: 'no-store'}).then(r => r.ok ? r.json() : []).catch(() => []),
+          // mensagens do FaturaChat (so com 3+ letras, como na busca do chat)
+          termo.length >= 3 ? fetch('/api/chat/busca?q=' + encodeURIComponent(termo), {cache: 'no-store'}).then(r => r.ok ? r.json() : []).catch(() => []) : []
+        ]).then(([dados, chat]) => {
+          if (minha !== geracao) return;
+          const mensagens = (chat || []).slice(0, 5).map(m => ({tipo: 'Mensagem', titulo: `${m.autorNome}: ${String(m.texto || '').slice(0, 90)}`,
+            detalhe: `${m.conversaNome} · ${new Date(m.criadoEm).toLocaleDateString('pt-BR')}`, url: `chat.html#c${m.conversaId}`, conversaId: m.conversaId}));
+          resultados = [...(resposta ? [{tipo: 'Resposta', titulo: resposta.titulo, detalhe: resposta.detalhe, url: resposta.url, resposta: true}] : []), ...dados, ...mensagens, ...paginas(termo)];
+          ativo = 0; desenhar();
+        }), 200);
     };
-    const ir = i => { const r = resultados[i]; if (r) { paleta.close(); location.href = r.url.startsWith('/') ? r.url : '/' + r.url; } };
+    // mensagem do chat abre no painel rapido (sem sair da tela); o resto navega
+    const ir = i => { const r = resultados[i]; if (!r) return; paleta.close(); if (r.conversaId && window.fmChatDock) { window.fmChatDock.abrir(r.conversaId); return; } location.href = r.url.startsWith('/') ? r.url : '/' + r.url; };
     input.addEventListener('input', buscar);
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown') { e.preventDefault(); ativo = Math.min(ativo + 1, resultados.length - 1); desenhar(); }
