@@ -28,4 +28,12 @@ class ChatMencoesTest {
         assertTrue(ChatService.detectarMencoes("@Ana eu mesma", PARTICIPANTES, 1L).isEmpty());
         assertTrue(ChatService.detectarMencoes(null, PARTICIPANTES, 1L).isEmpty());
     }
+
+    @Test void mencionaPorPapel() {
+        Map<Long, String> perfis = Map.of(1L, "ADMIN", 2L, "OPERADOR", 3L, "DEV", 4L, "OPERADOR");
+        assertEquals(Set.of(2L, 4L), ChatService.detectarPapeis("@operadores podem conferir?", perfis, 1L));
+        assertEquals(Set.of(1L), ChatService.detectarPapeis("@admin aprova?", perfis, 2L));
+        assertEquals(Set.of(2L, 3L, 4L), ChatService.detectarPapeis("@equipe reunião", perfis, 1L));
+        assertTrue(ChatService.detectarPapeis("@financeiro e @Ana", perfis, 1L).isEmpty());
+    }
 }

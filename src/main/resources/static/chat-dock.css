@@ -123,7 +123,6 @@ main :is(.account-heading, .conciliation-heading, .topbar) .session-actions { po
 @media (max-width: 760px) { .fmc-fab { right: 12px; top: 12px; width: 48px; height: 48px; } .fmc-trilho { right: 12px; top: 70px; } }
 @media print { .fmc-trilho, .fmc-gaveta, .fmc-botao, .fmc-fab { display: none !important; } }
 .fmc-trilho-item:hover .fmc-previa, .fmc-trilho-item:focus-visible .fmc-previa { opacity: 1; transform: translateY(-50%); }
-@media (max-width: 1500px) { main :is(.account-heading, .conciliation-heading, .topbar) .session-actions { margin-right: 64px; } }
 
 /* x para tirar a bolinha do trilho (volta quando chega mensagem nova) */
 .fmc-trilho-item { display: block; }
@@ -159,3 +158,184 @@ main :is(.account-heading, .conciliation-heading, .topbar) .session-actions { po
 .fmc-mencao { width: 100%; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .fmc-mencao.ativo, .fmc-mencao:hover { background: color-mix(in srgb, var(--green) 14%, transparent); }
 .fmc-msg .fmc-marca { color: var(--green); font-weight: 700; }
+
+/* balao encaixado no cabecalho da tela (ultimo item, depois do menu da conta) */
+.fmc-fab.no-topo { position: relative; top: auto; right: auto; flex: none; width: 44px; height: 44px; margin-left: 2px;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--green) 38%, transparent), 0 1px 3px rgba(0,0,0,.15); }
+.fmc-fab.no-topo .fmc-icone { width: 24px; height: 24px; }
+.fmc-fab.no-topo .fmc-badge { top: -4px; right: -4px; }
+.fmc-fab.no-topo:hover { transform: translateY(-1px) scale(1.04); }
+/* coluna de avatares e avisos abrem logo abaixo do balao, onde quer que ele esteja */
+.fmc-trilho { top: var(--fmc-ancora-topo, 88px); right: calc(var(--fmc-ancora-centro, 51px) - 27px); }
+.fmc-avisos { top: var(--fmc-ancora-topo, 18px); right: var(--fmc-ancora-dir, 96px); }
+.conciliation-heading > .fmc-fab.no-topo, .account-heading > .fmc-fab.no-topo { align-self: center; }
+/* coluna e avisos acima do cabecalho da tela (z 70); o menu da conta continua por cima (z 80) */
+.fmc-trilho { z-index: 75; }
+.fmc-avisos { z-index: 76; }
+/* painel da conversa tambem acima do cabecalho da tela (z 70); menu da conta segue por cima (z 80) */
+.fmc-gaveta { z-index: 74; }
+/* blindagem: algumas telas (ex.: .conciliation-workspace) pintam qualquer botao com a cor primaria e cantos quadrados */
+.fmc-fab, .fmc-fab:hover, .conciliation-workspace .fmc-fab, .conciliation-workspace .fmc-fab:hover {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--green) 85%, #fff) 0%, var(--green) 55%, color-mix(in srgb, var(--green) 70%, #000) 100%) !important;
+  border: 0 !important; border-radius: 50% !important; padding: 0 !important; min-height: 0 !important; color: #fff !important; }
+.fmc-fab.no-topo { width: 44px !important; height: 44px !important; }
+.conciliation-workspace :is(.fmc-gaveta, .fmc-trilho, .fmc-avisos) button { background: none; color: inherit; }
+
+/* balao arrastavel */
+.fmc-fab { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.fmc-fab.livre { position: fixed !important; right: auto !important; bottom: auto !important; z-index: 77; width: 52px !important; height: 52px !important; margin: 0; }
+.fmc-fab.livre .fmc-icone { width: 27px; height: 27px; }
+.fmc-fab.arrastando { cursor: grabbing; transition: none !important; transform: scale(1.08) !important; box-shadow: 0 18px 36px color-mix(in srgb, var(--green) 45%, transparent), 0 4px 10px rgba(0,0,0,.25) !important; opacity: .95; }
+.fmc-trilho.para-cima { top: auto; bottom: var(--fmc-ancora-base, 96px); transform-origin: bottom center; }
+.fmc-trilho.para-cima:not(.aberto) { transform: translateY(14px) scale(.96); }
+.fmc-avisos.para-cima { top: auto; bottom: var(--fmc-ancora-base, 96px); }
+.fmc-avisos.a-direita { right: auto; left: var(--fmc-ancora-esq, 96px); }
+.fmc-gaveta.a-direita { right: auto; left: var(--fmc-esq, 16px); transform-origin: top left; }
+
+/* ===== Balao 3D "tecnologico" ===== */
+.fmc-fab, .fmc-fab:hover, .conciliation-workspace .fmc-fab, .conciliation-workspace .fmc-fab:hover {
+  background: radial-gradient(circle at 32% 28%, #7fe0b8 0%, #2fae80 28%, #17785a 62%, #0b4a3a 100%) !important;
+  box-shadow: inset 0 -6px 12px rgba(0, 0, 0, .35), inset 0 4px 8px rgba(255, 255, 255, .35),
+              0 10px 24px color-mix(in srgb, #1f9a72 50%, transparent), 0 2px 6px rgba(0, 0, 0, .25) !important;
+  overflow: visible; isolation: isolate;
+  transition: transform .25s cubic-bezier(.2, .9, .3, 1.3), box-shadow .25s ease !important; }
+/* anel conico girando em volta (efeito "tech") */
+.fmc-fab-anel { position: absolute; inset: -4px; border-radius: 50%; z-index: -1; pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0 20%, #8ff0d0 30%, transparent 42% 62%, #5fc8ff 72%, transparent 84%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+  opacity: .75; animation: fmc-gira 6s linear infinite; }
+@keyframes fmc-gira { to { transform: rotate(1turn); } }
+/* nucleo: grade sutil de circuito dentro da esfera */
+.fmc-fab-nucleo { position: absolute; inset: 3px; border-radius: 50%; pointer-events: none; opacity: .22;
+  background: radial-gradient(circle, rgba(255,255,255,.9) 1px, transparent 1.3px) 0 0 / 7px 7px;
+  -webkit-mask: radial-gradient(circle at 50% 60%, #000 30%, transparent 72%); mask: radial-gradient(circle at 50% 60%, #000 30%, transparent 72%); }
+/* reflexo de vidro no topo */
+.fmc-fab-brilho { position: absolute; left: 18%; top: 8%; width: 64%; height: 38%; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0)); filter: blur(.4px); }
+.fmc-fab .fmc-icone { position: relative; z-index: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+.fmc-fab .fmc-icone-balao { fill: rgba(255,255,255,.14); stroke: #fff; stroke-width: 2.1; }
+.fmc-fab .fmc-icone-pulso { stroke: #b8ffe6; stroke-width: 2.4; stroke-dasharray: 30; stroke-dashoffset: 0; }
+/* ondas (usadas na notificacao e no clique) */
+.fmc-fab-onda { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; border: 2px solid #5fe0b0; opacity: 0; }
+.fmc-fab .fmc-badge { z-index: 2; }
+
+/* passar o mouse: sobe, inclina, o anel acelera e o pulso do icone "corre" */
+.fmc-fab:hover { transform: translateY(-3px) scale(1.07) rotate(-4deg) !important;
+  box-shadow: inset 0 -6px 12px rgba(0,0,0,.35), inset 0 4px 8px rgba(255,255,255,.4), 0 16px 34px color-mix(in srgb, #1f9a72 60%, transparent), 0 0 0 6px color-mix(in srgb, #5fe0b0 18%, transparent) !important; }
+.fmc-fab:hover .fmc-fab-anel { animation-duration: 1.6s; opacity: 1; }
+.fmc-fab:hover .fmc-icone-pulso { animation: fmc-pulso-corre 1s linear infinite; }
+@keyframes fmc-pulso-corre { from { stroke-dashoffset: 60; } to { stroke-dashoffset: 0; } }
+
+/* clicar: aperta e solta uma onda */
+.fmc-fab:active { transform: translateY(0) scale(.92) !important; }
+.fmc-fab.clicou .fmc-fab-onda { animation: fmc-onda .55s ease-out; }
+
+/* notificacao: pula, o icone balanca e saem duas ondas */
+.fmc-fab.chegou { animation: fmc-pula .9s cubic-bezier(.28, .84, .42, 1); }
+.fmc-fab.chegou .fmc-icone { animation: fmc-balanca .9s ease-in-out; }
+.fmc-fab.chegou .fmc-fab-onda { animation: fmc-onda 1.1s ease-out; }
+.fmc-fab.chegou .fmc-fab-onda.o2 { animation-delay: .25s; }
+.fmc-fab.chegou .fmc-badge { animation: fmc-badge-salta .6s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes fmc-pula { 0%, 100% { transform: translateY(0) scale(1); } 20% { transform: translateY(-9px) scale(1.06, .95); } 40% { transform: translateY(0) scale(.94, 1.06); } 60% { transform: translateY(-4px); } 80% { transform: translateY(0); } }
+@keyframes fmc-balanca { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 40% { transform: rotate(11deg); } 60% { transform: rotate(-7deg); } 80% { transform: rotate(4deg); } }
+@keyframes fmc-onda { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.9); } }
+@keyframes fmc-badge-salta { 0% { transform: scale(0); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
+/* o pulsar antigo (box-shadow) da lugar a um brilho suave quando ha nao lidas */
+.fmc-fab:has(.fmc-badge:not([hidden])) { animation: fmc-respira 2.8s ease-in-out infinite; }
+.fmc-fab.chegou:has(.fmc-badge:not([hidden])) { animation: fmc-pula .9s cubic-bezier(.28, .84, .42, 1); }
+@keyframes fmc-respira { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15) drop-shadow(0 0 10px rgba(95, 224, 176, .55)); } }
+.fmc-fab.arrastando .fmc-fab-anel { animation-duration: .9s; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .fmc-fab, .fmc-fab *, .fmc-fab-anel { animation: none !important; transition: none !important; } }
+.fmc-gaveta { bottom: var(--fmc-base, 16px); } .fmc-fab.arrastando ~ .fmc-gaveta, body:has(.fmc-fab.arrastando) :is(.fmc-gaveta, .fmc-trilho, .fmc-avisos) { transition: none !important; }
+
+/* reacoes nas mensagens do painel */
+.fmc-msg { position: relative; }
+.fmc-reagir { position: absolute; top: -10px; right: -8px; display: inline-flex; align-items: center; gap: 1px; height: 24px; padding: 0 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface) !important; color: var(--muted) !important; font-size: 13px; line-height: 1; cursor: pointer; opacity: 0; transform: scale(.85); transition: opacity .12s, transform .12s; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.fmc-reagir small { font-size: 10px; }
+.fmc-msg.minha .fmc-reagir { right: auto; left: -8px; }
+.fmc-msg:hover .fmc-reagir, .fmc-reagir:focus-visible { opacity: 1; transform: none; }
+.fmc-reagir:hover { color: var(--text) !important; border-color: var(--green); }
+.fmc-reacoes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.fmc-reacao { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface) !important; color: var(--text) !important; font-size: 12.5px; cursor: pointer; }
+.fmc-reacao b { font-size: 11px; font-weight: 700; color: var(--muted); }
+.fmc-reacao.minha { border-color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--surface)) !important; }
+.fmc-reacao.minha b { color: var(--green); }
+.fmc-reacao:hover { transform: translateY(-1px); }
+.fmc-seletor-reacao { position: absolute; z-index: 5; display: flex; gap: 2px; padding: 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); box-shadow: 0 10px 28px rgba(0,0,0,.22); animation: fmc-entra .15s ease both; }
+.fmc-seletor-reacao[hidden] { display: none; }
+.fmc-seletor-reacao button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: none !important; font-size: 18px; cursor: pointer; transition: transform .12s; }
+.fmc-seletor-reacao button:hover { transform: scale(1.3); background: color-mix(in srgb, var(--text) 7%, transparent) !important; }
+.fmc-msgs { padding-top: 18px; }
+
+/* silenciar: geral e por conversa (cabecalho do painel) */
+.fmc-mudo-geral, .fmc-mudo-conversa { flex: none; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) !important; color: var(--muted) !important; cursor: pointer; }
+.fmc-mudo-geral svg, .fmc-mudo-conversa svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fmc-mudo-geral:hover, .fmc-mudo-conversa:hover { color: var(--text) !important; border-color: var(--green); }
+.fmc-mudo-geral[aria-pressed="true"], .fmc-mudo-conversa[aria-pressed="true"] { color: var(--rose) !important; border-color: color-mix(in srgb, var(--rose) 50%, var(--line)); background: color-mix(in srgb, var(--rose) 10%, var(--surface)) !important; }
+.fmc-mudo-conversa[hidden] { display: none; }
+/* balao com tudo silenciado: sem respirar e com um sininho cortado */
+.fmc-fab.mudo { animation: none !important; filter: saturate(.7); }
+.fmc-fab.mudo::after { content: "🔕"; position: absolute; left: -4px; bottom: -4px; z-index: 3; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
+/* sininho em cada conversa da lista */
+.fmc-lista li { position: relative; }
+.fmc-lista li .fmc-item { padding-right: 40px; }
+.fmc-item-mudo { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: none !important; color: var(--muted) !important; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.fmc-item-mudo svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fmc-lista li:hover .fmc-item-mudo, .fmc-item-mudo:focus-visible, .fmc-item-mudo.ativo { opacity: 1; }
+.fmc-item-mudo.ativo { color: var(--rose) !important; }
+.fmc-item-mudo:hover { background: color-mix(in srgb, var(--text) 8%, transparent) !important; color: var(--text) !important; }
+.fmc-item-meta { margin-right: 4px; }
+.fmc-silenciada { position: absolute; left: -3px; bottom: -3px; z-index: 2; font-style: normal; font-size: 11px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
+.fmc-mudo-geral[hidden] { display: none; }
+/* "Abrir completo" vira so um icone de seta (mais espaco para o nome) */
+.fmc-cheio { flex: none; width: 30px; height: 30px; padding: 0 !important; display: grid; place-items: center; border-radius: 8px !important; }
+.fmc-cheio svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* acoes da mensagem: reagir e "mais" (criar chamado, copiar) */
+.fmc-msg-acoes { position: absolute; top: -10px; right: -8px; display: inline-flex; gap: 3px; opacity: 0; transform: scale(.85); transition: opacity .12s, transform .12s; z-index: 2; }
+.fmc-msg.minha .fmc-msg-acoes { right: auto; left: -8px; }
+.fmc-msg:hover .fmc-msg-acoes, .fmc-msg-acoes:focus-within { opacity: 1; transform: none; }
+.fmc-msg-acoes .fmc-reagir { position: static; opacity: 1; transform: none; }
+.fmc-mais { height: 24px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface) !important; color: var(--muted) !important; font-size: 14px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.fmc-mais:hover { color: var(--text) !important; border-color: var(--green); }
+.fmc-menu-acoes { position: absolute; z-index: 6; display: grid; min-width: 230px; padding: 5px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 14px 34px rgba(0,0,0,.24); animation: fmc-entra .15s ease both; }
+.fmc-menu-acoes[hidden] { display: none; }
+.fmc-menu-acoes button { padding: 8px 10px; border: 0; border-radius: 8px; background: none !important; color: var(--text) !important; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.fmc-menu-acoes button:hover { background: color-mix(in srgb, var(--green) 12%, transparent) !important; }
+.fmc-dialogo form { display: grid; gap: 12px; min-width: min(460px, 86vw); }
+.fmc-dialogo textarea { resize: vertical; }
+
+/* status de acompanhamento na mensagem e abas Conversas / Comigo */
+.fmc-status { --tom: var(--muted); justify-self: start; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--tom); background: color-mix(in srgb, var(--tom) 14%, transparent); }
+.fmc-status[data-cor="ambar"] { --tom: var(--amber); }
+.fmc-status[data-cor="azul"] { --tom: var(--blue); }
+.fmc-status[data-cor="verde"] { --tom: var(--green); }
+.fmc-menu-acoes hr { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--line); }
+.fmc-abas { display: flex; gap: 4px; margin: 10px 12px 0; padding: 3px; border-radius: 10px; background: color-mix(in srgb, var(--text) 6%, transparent); }
+.fmc-abas button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; border: 0; border-radius: 8px; background: none !important; color: var(--muted) !important; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.fmc-abas button.ativo { background: var(--surface) !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.fmc-abas b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--amber); color: #fff; font-size: 10.5px; line-height: 18px; }
+.fmc-abas b:empty { display: none; }
+.fmc-busca[hidden] { display: none; }
+.fmc-pendencia .fmc-item-corpo small + small { color: var(--text); font-weight: 600; }
+
+/* respostas rapidas e aba Salvas */
+.fmc-respostas .fmc-mencao { position: relative; padding-right: 30px; }
+.fmc-atalho { flex: none; padding: 2px 7px; border-radius: 6px; background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); font-weight: 700; font-size: 12px; }
+.fmc-resposta-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.fmc-resposta-apagar { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); opacity: 0; }
+.fmc-mencao:hover .fmc-resposta-apagar { opacity: 1; }
+.fmc-resposta-apagar:hover { background: var(--rose); color: #fff; }
+.fmc-resposta-nova { color: var(--green); font-weight: 600; }
+.fmc-abas button { font-size: 12px; }
+
+/* nao perturbe */
+.fmc-nao-perturbe { flex: none; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) !important; font-size: 14px; cursor: pointer; filter: grayscale(1); opacity: .7; }
+.fmc-nao-perturbe[aria-pressed="true"] { filter: none; opacity: 1; border-color: color-mix(in srgb, #7f77dd 50%, var(--line)); }
+.fmc-nao-perturbe.agora { background: color-mix(in srgb, #7f77dd 16%, var(--surface)) !important; }
+.fmc-nao-perturbe[hidden] { display: none; }
+.fmc-fab.nao-perturbe:not(.mudo)::after { content: "🌙"; position: absolute; left: -4px; bottom: -4px; z-index: 3; font-size: 13px; line-height: 1; }
+.fmc-fab.nao-perturbe { animation: none !important; }
+.fmc-dica { margin: 0; color: var(--muted); font-size: 13px; }
+.fmc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.fmc-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

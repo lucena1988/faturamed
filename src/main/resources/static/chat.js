@@ -161,7 +161,7 @@
       } else {
         if (m.resposta) li.append(blocoResposta(m.resposta));
         if (m.anexos?.length) li.append(desenharAnexos(m.anexos));
-        if (m.texto) { const p = el('p'); p.append(textoComLinks(m.texto)); li.append(p); }
+        if (m.texto) { const p = el('p'); p.append(textoComLinks(m.texto)); li.append(p); if (window.fmChatRefs?.extrair(m.texto).length) { const c = el('div'); li.append(c); window.fmChatRefs.cartoes(c, m.texto); } }
         if (!atual.sistema) li.append(acoesMensagem(m, minha));
       }
       if (m.reacoes?.length) li.append(desenharReacoes(m));
@@ -178,7 +178,7 @@
   }
 
   // ---- texto com links: "#lote 112", "#chamado 42", @menções e endereços web viram links seguros (sem innerHTML)
-  const PADRAO_LINKS = /(#lote\s?(\d{1,9}))|(#chamado\s?(\d{1,9}))|(https?:\/\/[^\s<>"']+)|(@[\p{L}][\p{L}.\-]{1,40})/giu;
+  const PADRAO_LINKS = /(#lote\s?(\d{1,9}))|(#chamado\s?(\d{1,9}))|(https?:\/\/[^\s<>"']+)|(@[\p{L}][\p{L}.\-]{1,40})|(#(relatorio|div)\s?(\d{1,12}(?:\/[0-9A-Za-z.\-]{1,40})?))/giu;
   function textoComLinks(texto) {
     const frag = document.createDocumentFragment();
     let ultimo = 0;
@@ -188,6 +188,11 @@
       if (m[1]) { no = el('a', 'chat-link-ref', `📦 Lote ${m[2]}`); no.href = `producao.html?folha=${m[2]}`; no.target = '_blank'; no.rel = 'noopener'; }
       else if (m[3]) { no = el('a', 'chat-link-ref', `🎫 Chamado ${m[4]}`); no.href = `chamados.html?chamado=${m[4]}`; no.target = '_blank'; no.rel = 'noopener'; }
       else if (m[5]) { no = el('a', 'chat-link', m[5]); no.href = m[5]; no.target = '_blank'; no.rel = 'noopener noreferrer'; }
+      else if (m[7]) {
+        const [rel, at] = m[9].split('/');
+        no = el('a', 'chat-link-ref', m[8].toLowerCase() === 'div' ? `⚠️ Atendimento ${at || rel}` : `📊 Conciliação ${rel}`);
+        no.href = `conciliacao.html?relatorio=${rel}${at ? '&atendimento=' + encodeURIComponent(at) : ''}`; no.target = '_blank'; no.rel = 'noopener';
+      }
       else {
         no = el('span', 'chat-mencao', m[6]);
         if (eu && souEu(m[6].slice(1))) no.classList.add('voce');
@@ -231,7 +236,7 @@
     const termo = normalizar(alvo.termo).replace(/\./g, ' ');
     const pessoas = await pessoasDaConversa();
     candidatosMencao = pessoas.filter(p => !termo || normalizar(p.nome).startsWith(termo) || normalizar(p.nome).split(' ').some(parte => parte.startsWith(termo))).slice(0, 8);
-    if (grupo(atual) && 'todos'.startsWith(termo)) candidatosMencao.push({id: 0, nome: 'todos', todos: true});
+    if (grupo(atual) && 'todos'.startsWith(termo)) candidatosMencao.push({id: 0, nome: 'todos', todos: true}); if (grupo(atual)) [['equipe', 'toda a equipe interna'], ['admin', 'administradores'], ['operador', 'operadores'], ['dev', 'desenvolvedores']].filter(([n]) => n.startsWith(termo)).forEach(([n, d]) => candidatosMencao.push({id: 0, nome: n, todos: true, rotulo: '@' + n + ' — ' + d}));
     caixa.replaceChildren();
     if (!candidatosMencao.length) { caixa.hidden = true; return; }
     mencaoAtiva = 0;
@@ -239,7 +244,7 @@
       const b = el('button', 'chat-mencao-opcao' + (i === 0 ? ' ativo' : '')); b.type = 'button';
       b.setAttribute('role', 'option');
       b.append(p.todos ? el('span', 'chat-avatar grupo', '@') : avatar(p.nome, false, false, p.foto, p.id),
-        el('span', null, p.todos ? '@todos — avisar todo o grupo' : p.nome));
+        el('span', null, p.todos ? (p.rotulo || '@todos — avisar todo o grupo') : p.nome));
       b.addEventListener('mousedown', e => { e.preventDefault(); escolherMencao(i); });
       caixa.append(b);
     });
@@ -249,7 +254,7 @@
     const p = candidatosMencao[i], alvo = termoMencao();
     if (!p || !alvo) return;
     const t = $('chat-texto');
-    const inserir = '@' + (p.todos ? 'todos' : nomeMencao(p.nome)) + ' ';
+    const inserir = '@' + (p.todos ? p.nome : nomeMencao(p.nome)) + ' ';
     t.value = t.value.slice(0, alvo.inicio) + inserir + t.value.slice(t.selectionStart);
     t.selectionStart = t.selectionEnd = alvo.inicio + inserir.length;
     $('chat-mencoes').hidden = true; ajustarAltura(); t.focus();
