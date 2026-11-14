@@ -1,4 +1,4 @@
-package br.com.faturamed.importacao;
+package br.com.faturamed.conferencia;
 
 import br.com.faturamed.domain.OrigemRegistro;
 import java.math.BigDecimal;

@@ -151,6 +151,45 @@
                 <directory>${java.io.tmpdir}/faturamed-build</directory>
             </build>
         </profile>
+        <!-- Com os testes de integracao (BASE_HOSPITALAR_TEST_DB=true) cada pacote precisa de pelo menos 80% das linhas cobertas. -->
+        <profile>
+            <id>cobertura-completa</id>
+            <activation>
+                <property>
+                    <name>env.BASE_HOSPITALAR_TEST_DB</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>cobertura-por-pacote</id>
+                                <phase>test</phase>
+                                <goals><goal>check</goal></goals>
+                                <configuration>
+                                    <rules>
+                                        <rule>
+                                            <element>PACKAGE</element>
+                                            <limits>
+                                                <limit>
+                                                    <counter>LINE</counter>
+                                                    <value>COVEREDRATIO</value>
+                                                    <minimum>0.80</minimum>
+                                                </limit>
+                                            </limits>
+                                        </rule>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <build>
@@ -158,6 +197,62 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Ao fim dos testes o processo de teste demorava a encerrar (agendamentos ainda ativos): encerra apos 10 s. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <forkedProcessExitTimeoutInSeconds>10</forkedProcessExitTimeoutInSeconds>
+                </configuration>
+            </plugin>
+            <!-- Cobertura de testes: o relatorio sai em target/site/jacoco (index.html, jacoco.csv, jacoco.xml) a cada "mvn test".
+                 Sem BASE_HOSPITALAR_TEST_DB mede so os testes unitarios; com a variavel inclui os de integracao. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>preparar-agente</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>relatorio</id>
+                        <phase>test</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                    <!-- trava de regressao: o build falha se a cobertura de linhas do projeto cair abaixo de 55% -->
+                    <execution>
+                        <id>cobertura-minima</id>
+                        <phase>test</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.55</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <!-- dados brutos na pasta temporaria: gravar na pasta do projeto montada no Docker (Windows) e lento
+                         e fazia o processo de teste estourar o tempo de encerramento, corrompendo o arquivo -->
+                    <destFile>${java.io.tmpdir}/faturamed-jacoco.exec</destFile>
+                    <dataFile>${java.io.tmpdir}/faturamed-jacoco.exec</dataFile>
+                    <excludes>
+                        <!-- ponto de entrada e classes geradas nao entram na conta -->
+                        <exclude>br/com/faturamed/FaturamedApplication.class</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
         </plugins>
     </build>

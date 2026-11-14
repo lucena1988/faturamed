@@ -17,6 +17,12 @@
 .fmc-av.mini { width: 24px; height: 24px; font-size: 10px; }
 .fmc-online { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px var(--surface); z-index: 1; }
 
+/* posicoes calculadas pelo chat-dock.js (style.setProperty / style="--i"); aqui so os valores padrao, o inline do JS prevalece */
+.fmc-gaveta { --fmc-topo: 16px; --fmc-dir: 16px; --fmc-esq: 16px; --fmc-base: 16px; }
+.fmc-trilho, .fmc-avisos { --fmc-ancora-topo: 88px; --fmc-ancora-dir: 96px; --fmc-ancora-centro: 51px; --fmc-ancora-base: 96px; --fmc-ancora-esq: 96px; }
+.fmc-avisos { --fmc-ancora-topo: 18px; }
+.fmc-trilho > * { --i: 0; }
+
 /* gaveta */
 .fmc-gaveta { position: fixed; top: var(--fmc-topo, 16px); right: var(--fmc-dir, 16px); bottom: 16px; z-index: 60; width: min(390px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.22), 0 4px 14px rgba(0,0,0,.08); opacity: 0; transform: translateY(8px) scale(.98); transform-origin: top right; transition: opacity .18s ease, transform .18s ease; }
 .fmc-gaveta.visivel { opacity: 1; transform: none; }
