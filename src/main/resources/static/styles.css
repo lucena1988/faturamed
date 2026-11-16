@@ -724,3 +724,6 @@ td {
     grid-template-columns: 1fr;
   }
 }
+.date-range-field[hidden] { display: none; }
+.date-range-field input { width: 150px; max-width: 100%; }
+.date-range-field input:invalid { border-color: var(--danger-line); }

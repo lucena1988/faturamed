@@ -3,7 +3,7 @@
   let tokenPromise;
   async function csrf() {
     tokenPromise ||= originalFetch('/api/auth/csrf', {cache: 'no-store'}).then(async response => {
-      if (!response.ok) throw new Error('Nao foi possivel validar a sessao. Atualize a pagina.');
+      if (!response.ok) throw new Error('Não foi possível validar a sessao. Atualize a página.');
       return response.json();
     }).catch(error => { tokenPromise = null; throw error; });
     return tokenPromise;
@@ -24,20 +24,19 @@
   async function request(url, init = {}) {
     const response = await fetch(url, init);
     const data = response.status === 204 ? null : await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.erro || 'Nao foi possivel concluir a operacao');
+    if (!response.ok) throw new Error(data?.erro || 'Não foi possível concluir a operação');
     return data;
   }
   window.FaturamedAuth = {request, resetCsrf: () => { tokenPromise = null; }};
   document.addEventListener('DOMContentLoaded', () => {
     if(location.pathname!=='/login.html'){
       request('/api/auth/me').then(user => {
-        if (user.perfil === 'MEDICO') {
+        const externo = ['MEDICO','EMPRESA','HOSPITAL'].includes(user.perfil);
+        if (externo) {
           document.querySelectorAll('a[href="usuarios.html"],a[href="/usuarios.html"]').forEach(link=>link.remove());
         }
-        if (user.perfil !== 'MEDICO') {
-          const hdCss=document.createElement('link');hdCss.rel='stylesheet';hdCss.href='/chamados-widget.css?v=20261027-avisos';document.head.append(hdCss);
-          const hdScript=document.createElement('script');hdScript.src='/chamados-widget.js?v=20261027-avisos';document.body.append(hdScript);
-        } else {
+        // botao flutuante do Service Desk desativado: a equipe usa o item Central de chamados do menu
+        if (externo) {
           document.querySelectorAll('a[href="chamados.html"],a[href="/chamados.html"]').forEach(link=>link.remove());
         }
       }).catch(()=>{});
@@ -46,8 +45,13 @@
     }
     document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
-      try { await request('/api/auth/logout', {method: 'POST'}); location.replace('/login.html'); }
-      catch(error) { button.disabled = false; alert(error.message); }
+      try {
+        await request('/api/auth/logout', {method: 'POST'});
+        // dados de pacientes em rascunho nao ficam no navegador depois de sair
+        try { for (const s of [sessionStorage, localStorage]) Object.keys(s).filter(k => k.startsWith('faturamed-rascunho-')).forEach(k => s.removeItem(k)); } catch (_) {}
+        location.replace('/login.html');
+      }
+      catch(error) { button.disabled = false; (window.fmAvisar || alert)(error.message); }
     }));
   });
 })();

@@ -54,3 +54,9 @@ td a, td button { margin: 4px; }
   font-weight: 700;
 }
 @media (max-width: 760px) { .base-steps { grid-template-columns: 1fr; } }
+.competencias { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.competencia-card { border: 1px solid var(--border, #d0d7de); border-radius: 8px; padding: 12px; }
+.competencia-card h3 { margin: 0 0 8px; font-size: 1rem; }
+.competencia-card ul { margin: 0; padding-left: 18px; }
+.competencia-card li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.competencia-card li a { margin-left: 4px; }

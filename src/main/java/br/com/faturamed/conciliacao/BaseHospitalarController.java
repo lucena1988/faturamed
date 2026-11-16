@@ -15,7 +15,7 @@ public class BaseHospitalarController {
     private final AcompanhamentoBaseHospitalarService acompanhamento;
     public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento) { this.service=service; this.acompanhamento=acompanhamento; }
     @GetMapping("/acompanhamento")
-    public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId) throws Exception { return acompanhamento.consultar(hospitalId); }
+    public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) throws Exception { return acompanhamento.consultar(hospitalId,competencia); }
 
     @PostMapping(value="/hospital",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado hospital(@RequestParam long hospitalId,@RequestParam String competencia,
@@ -24,9 +24,10 @@ public class BaseHospitalarController {
     }
     @PostMapping(value="/producao",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado producao(@RequestParam long hospitalId,@RequestParam(required=false) Long medicoId,
+            @RequestParam(required=false) Long empresaId,
             @RequestParam(defaultValue="UNICO") String modoProducao,@RequestParam String competencia,
             @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
-        return service.importarProducao(hospitalId,medicoId,modoProducao,competencia,arquivo,usuario);
+        return service.importarProducao(hospitalId,medicoId,empresaId,modoProducao,competencia,arquivo,usuario);
     }
     @GetMapping("/arquivos")
     public List<Map<String,Object>> arquivos(@RequestParam long hospitalId) { return service.arquivos(hospitalId); }

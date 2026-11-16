@@ -8,7 +8,7 @@
 /* Superficies e controles que ainda definem cor fixa nos CSS de modulo */
 :is(.panel,.conciliation-table,.access-page,.access-identity) { background: var(--surface); color: var(--text); border-color: var(--line); }
 :is(.icon-button,.field-tile) { background: var(--surface-soft); color: var(--text); border-color: var(--line); }
-.conciliation-workspace button:not(.theme-toggle):not(.history-open):not(.history-delete) { background: var(--primary-fill); color: var(--on-primary); }
+.conciliation-workspace button:not(.theme-toggle):not(.notification-toggle):not(.history-open):not(.history-delete) { background: var(--primary-fill); color: var(--on-primary); }
 .review-current { background: var(--surface-soft); color: var(--text); }
 #review-dialog { background: var(--surface); color: var(--text); }
 #review-close { background: var(--surface-soft); color: var(--text); }

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Recuperar senha | FaturaMed</title><link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="cadastro-medico.css?v=20261104-2"><script src="tema.js?v=20261009-1"></script></head>
+<body><main class="cadastro-medico recuperacao-senha">
+  <a class="company-name" href="login.html">FaturaMed</a>
+  <h1>Recuperar senha</h1>
+  <form id="pedido-form" novalidate>
+    <p class="intro">Informe o e-mail que você usa para entrar. Enviaremos um código de 6 dígitos, válido por 15 minutos.</p>
+    <fieldset>
+      <label class="largo">E-mail<input name="email" type="email" required maxlength="180" autocomplete="username" placeholder="nome@exemplo.com.br"></label>
+      <button class="primary-button" type="submit">Enviar código</button>
+    </fieldset>
+  </form>
+  <form id="redefinir-form" novalidate hidden>
+    <p class="intro" id="redefinir-intro"></p>
+    <fieldset>
+      <label>Código recebido<input name="codigo" required inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000"></label>
+      <span></span>
+      <label>Nova senha <small>(mínimo 12 caracteres)</small><input name="senha" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label>
+      <label>Confirme a nova senha<input name="confirmacao" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label>
+      <button class="primary-button" type="submit">Redefinir senha</button>
+    </fieldset>
+    <p><button class="text-button" type="button" id="reenviar">Não recebi: enviar outro código</button></p>
+  </form>
+  <p id="recuperacao-message" role="status" aria-live="polite"></p>
+  <p><a href="login.html">Voltar para o login</a></p>
+</main><script src="esqueci-senha.js?v=20261104-1"></script></body></html>

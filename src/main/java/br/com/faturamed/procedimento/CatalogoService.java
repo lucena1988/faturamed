@@ -2,9 +2,7 @@ package br.com.faturamed.procedimento;
 
 import br.com.faturamed.shared.RecursoNaoEncontradoException;
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +47,47 @@ public class CatalogoService {
         });
         return Map.of("id", id, "tabela", request.tabela(), "versao", request.versao().trim(),
                 "procedimentos", request.procedimentos().size());
+    }
+
+    /** Importa a tabela oficial (planilha ou CSV da ANS) como nova versao do catalogo. */
+    @Transactional
+    public Map<String, Object> importarPlanilha(CatalogoController.Tabela tabela, String versao, String fonte, String nome, byte[] conteudo) {
+        if (versao == null || versao.isBlank()) throw new IllegalArgumentException("Informe a versao da tabela");
+        var procedimentos = LeitorTabelaTuss.ler(nome, conteudo);
+        return importar(new CatalogoController.ImportarCatalogo(tabela, versao.trim(),
+                fonte == null || fonte.isBlank() ? "Arquivo " + nome : fonte.trim(), LocalDate.now(), procedimentos));
+    }
+
+    /**
+     * Busca na versao mais recente da tabela: por codigo (inicio) ou por palavras da descricao.
+     * Com "codigos", devolve exatamente esses codigos (para mostrar o nome de codigos ja cadastrados).
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> buscarTexto(CatalogoController.Tabela tabela, String texto, List<String> codigos) {
+        Long catalogo = jdbc.query("select id from catalogo_procedimento where tabela=? order by consultado_em desc, id desc limit 1",
+                rs -> rs.next() ? rs.getLong(1) : null, tabela.name());
+        if (catalogo == null) return List.of();
+        if (codigos != null && !codigos.isEmpty()) {
+            return jdbc.queryForList("select codigo, descricao from procedimento_referencia where catalogo_id=? and codigo = any(?)",
+                    catalogo, codigos.stream().map(c -> c.replaceAll("\\D", "")).toArray(String[]::new));
+        }
+        String q = texto == null ? "" : texto.trim();
+        if (q.length() < 2) return List.of();
+        String digitos = q.replaceAll("[.\\-\\s]", "");
+        if (digitos.matches("\\d+")) {
+            return jdbc.queryForList("""
+                    select codigo, descricao from procedimento_referencia where catalogo_id=? and codigo like ?
+                    order by (fim_vigencia is null) desc, codigo limit 30""", catalogo, digitos + "%");
+        }
+        var palavras = Arrays.stream(LeitorTabelaTuss.normalizar(q).split(" ")).filter(p -> !p.isBlank()).limit(6).toList();
+        var sql = new StringBuilder("select codigo, descricao from procedimento_referencia where catalogo_id=?");
+        List<Object> args = new ArrayList<>(List.of(catalogo));
+        for (String p : palavras) {
+            sql.append(" and translate(lower(descricao),'áàâãäéèêëíìîïóòôõöúùûüç','aaaaaeeeeiiiiooooouuuuc') like ?");
+            args.add("%" + p.replace("%", "").replace("_", "") + "%");
+        }
+        sql.append(" order by (fim_vigencia is null) desc, length(descricao), codigo limit 30");
+        return jdbc.queryForList(sql.toString(), args.toArray());
     }
 
     @Transactional(readOnly = true)

@@ -35,6 +35,17 @@ class PerfilIntegracaoTest {
   assertThrows(AccessDeniedException.class,()->chamados.detalhar(privado.id(),operador));
   assertFalse(chamados.listar(null,null,null,null,false,operador).chamados().stream().anyMatch(c->c.id()==privado.id()));
  }
+ @Test void empresaExigeVinculoEDesativarEmpresaBloqueiaOLogin() {
+  assertThrows(IllegalArgumentException.class,()->users.criar(new UsuarioService.Novo("semempresa@teste.local","Empresa","SenhaTesteSegura12","EMPRESA",null,null)));
+  long empresa=jdbc.queryForObject("insert into empresa_cliente(nome) values('Clinica teste') returning id",Long.class);
+  assertThrows(IllegalArgumentException.class,()->users.criar(new UsuarioService.Novo("operador-empresa@teste.local","Funcionario","SenhaTesteSegura12","OPERADOR",null,empresa)));
+  var conta=users.criar(new UsuarioService.Novo(UUID.randomUUID()+"@teste.local","Clinica","SenhaTesteSegura12","EMPRESA",null,empresa));
+  var login=users.loadUserByUsername(conta.email());
+  assertEquals(empresa,login.empresaId());
+  assertTrue(login.isEnabled());
+  jdbc.update("update empresa_cliente set ativo=false where id=?",empresa);
+  assertFalse(users.loadUserByUsername(conta.email()).isEnabled());
+ }
  @Test void medicoSemVinculoNaoPodeSerCriado() {
   assertThrows(IllegalArgumentException.class,()->users.criar(new UsuarioService.Novo("semvinculo@teste.local","Medico","SenhaTesteSegura12","MEDICO",null)));
  }

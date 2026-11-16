@@ -6,6 +6,7 @@ import br.com.faturamed.seguranca.LiberacaoRelatorioService;
 import br.com.faturamed.seguranca.PortalMedicoController;
 import br.com.faturamed.seguranca.ExtratoMedicoService;
 import br.com.faturamed.seguranca.ExportadorDemonstrativoPdf;
+import br.com.faturamed.seguranca.PainelEmpresaService;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,17 +33,22 @@ class BaseHospitalarIntegracaoTest {
     @Autowired PortalMedicoController portal;
     @Autowired ExtratoMedicoService extratos;
     @Autowired ExportadorDemonstrativoPdf pdf;
+    @Autowired EmpresaClienteService empresas;
+    @Autowired ExclusaoRelatorioService exclusoes;
+    @Autowired PainelEmpresaService painel;
+    @Autowired RepasseProcedimentoService repasses;
     long hospital, ana, bruno;
     UsuarioAutenticado usuario;
 
     @BeforeEach void preparar() {
         String sufixo=UUID.randomUUID().toString();
-        hospital=jdbc.queryForObject("insert into hospital_cadastro(nome,nome_normalizado) values(?,?) returning id",Long.class,"Hospital "+sufixo,sufixo);
-        ana=jdbc.queryForObject("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id",Long.class,"Ana "+sufixo,Long.toString(System.nanoTime()));
-        bruno=jdbc.queryForObject("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id",Long.class,"Bruno "+sufixo,Long.toString(System.nanoTime()));
-        long usuarioId=jdbc.queryForObject("select id from usuario_acesso where perfil='ADMIN' limit 1",Long.class);
+        hospital=idGerado("insert into hospital_cadastro(nome,nome_normalizado) values(?,?) returning id","Hospital "+sufixo,sufixo);
+        ana=idGerado("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id","Ana "+sufixo,Long.toString(System.nanoTime()));
+        bruno=idGerado("insert into medico_cadastro(nome,crm,uf) values(?,?,'SP') returning id","Bruno "+sufixo,Long.toString(System.nanoTime()));
+        long usuarioId=idGerado("select id from usuario_acesso where perfil='ADMIN' limit 1");
         usuario=new UsuarioAutenticado(usuarioId,"teste@local","Teste","","ADMIN",null,true,false,0);
     }
+    long idGerado(String sql,Object... argumentos) { return Objects.requireNonNull(jdbc.queryForObject(sql,Long.class,argumentos)); }
     String nome(long medico) { return jdbc.queryForObject("select nome from medico_cadastro where id=?",String.class,medico); }
     MockMultipartFile hospital(String... medicos) throws Exception {
         List<List<String>> linhas=new ArrayList<>();
@@ -67,6 +73,96 @@ class BaseHospitalarIntegracaoTest {
         }
     }
     int id(Map<String,Object> visita) { return ((Number)visita.get("id")).intValue(); }
+
+    @Test void producaoSemAtendimentoAguardaHospitalEConciliaPorDataEMedicoNaAtualizacao() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        service.importarHospital(hospital,"2026-08",planilha(List.of(cabecalho,List.of("500","2026-08-10",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
+        var producao=planilha(List.of(List.of("Atendimento","Dt."),List.of("","2026-09-15"),List.of("","2026-09-16")));
+        long relatorio=service.importarProducao(hospital,ana,"2026-09",producao,usuario).relatorioId();
+        assertThat(revisoes.carregar(relatorio).atual().visitas()).allSatisfy(v->{
+            assertThat(v.status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+            assertThat(v.atendimento()).isEmpty();
+            assertThat(v.motivo()).contains("sem numero de atendimento");
+        });
+        // Chega a planilha de setembro: uma visita da Ana em 15/09 e uma do Bruno em 16/09.
+        service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,
+                List.of("777","2026-09-15",nome(ana),"101","Visita","120","1","120","Faturado"),
+                List.of("778","2026-09-16",nome(bruno),"101","Visita","90","1","90","Faturado"))),usuario);
+        long nova=service.atualizar(relatorio,revisoes.carregar(relatorio).versao());
+        var visitas=revisoes.carregar(nova).atual().visitas();
+        assertThat(visitas.getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(visitas.getFirst().atendimento()).isEqualTo("777");
+        assertThat(visitas.getFirst().repasseEfetivo()).isEqualByComparingTo("120");
+        assertThat(visitas.get(1).status()).as("visita do outro medico na mesma data nao serve").isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThatThrownBy(()->service.importarProducao(hospital,null,"VARIOS","2026-09",
+                planilha(List.of(List.of("Atendimento","Dt.","Medico"),List.of("","2026-09-15",""))),usuario))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Informe Atendimento ou o Medico");
+    }
+
+    @Test void producaoPorEmpresaAlimentaSomenteODashboardDaEmpresaAtribuida() throws Exception {
+        long clinica=empresas.salvar(null,new EmpresaClienteService.Dados("Clinica "+UUID.randomUUID(),null,true,0L)).id();
+        long grupo=empresas.salvar(null,new EmpresaClienteService.Dados("Grupo "+UUID.randomUUID(),null,true,0L)).id();
+        jdbc.update("insert into medico_empresa(medico_id,empresa_id) values(?,?),(?,?),(?,?)",ana,clinica,ana,grupo,bruno,grupo);
+        service.importarHospital(hospital,"2026-09",hospital(nome(ana),nome(bruno)),usuario);
+        assertThatThrownBy(()->service.importarProducao(hospital,ana,null,"UNICO","2026-09",producao(),usuario))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("mais de uma empresa");
+        assertThatThrownBy(()->service.importarProducao(hospital,bruno,clinica,"UNICO","2026-09",producao(),usuario))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("nao pertence");
+        var daAna=service.importarProducao(hospital,ana,clinica,"UNICO","2026-09",producao(),usuario);
+        var doBruno=service.importarProducao(hospital,bruno,null,"UNICO","2026-09",producao(),usuario);
+        assertThat(jdbc.queryForObject("select empresa_id from conciliacao_visitas where id=?",Long.class,doBruno.relatorioId())).isEqualTo(grupo);
+        liberacoes.liberar(daAna.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        liberacoes.liberar(doBruno.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        recebimentos.registrar(daAna.relatorioId(),2,new RecebimentoService.Dados(new BigDecimal("40"),LocalDate.of(2026,9,2),"Parcial",0L),usuario);
+
+        var daClinica=painel.consultar(clinica,null,null,null,null);
+        assertThat(daClinica.visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(ana);
+        assertThat(daClinica.resumo().faturado()).isEqualByComparingTo("100");
+        assertThat(daClinica.resumo().recebido()).isEqualByComparingTo("40");
+        assertThat(daClinica.medicos()).extracting(PainelEmpresaService.MedicoResumo::id).containsExactly(ana);
+        var doGrupo=painel.consultar(grupo,null,null,null,null);
+        assertThat(doGrupo.visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(bruno);
+        assertThat(painel.consultar(grupo,ana,null,null,null).visitas()).isEmpty();
+        assertThat(painel.consultar(grupo,bruno,LocalDate.of(2026,10,1),null,null).visitas()).isEmpty();
+        assertThatThrownBy(()->painel.consultar(clinica,bruno,null,null,null)).isInstanceOf(IllegalArgumentException.class);
+
+        empresas.atribuir(daAna.relatorioId(),grupo);
+        assertThat(painel.consultar(clinica,null,null,null,null).visitas()).isEmpty();
+        assertThat(painel.consultar(grupo,null,null,null,null).visitas()).extracting(PainelEmpresaService.Visita::medicoId).containsOnly(ana,bruno);
+    }
+
+    @Test void exclusaoApagaCadeiaPublicacoesEFinanceiroMantendoVisitasDoHospital() throws Exception {
+        service.importarHospital(hospital,"2026-09",hospitalSituacao("Faturado","100","100"),usuario);
+        var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        long primeira=producao.relatorioId();
+        var publicada=liberacoes.liberar(primeira,new LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        jdbc.update("insert into ciencia_relatorio(liberacao_id,medico_id,usuario_id) values(?,?,?)",publicada.publicado().id(),ana,usuario.id());
+        recebimentos.registrar(primeira,2,new RecebimentoService.Dados(new BigDecimal("40"),LocalDate.of(2026,9,2),"Parcial",0L),usuario);
+        service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","150","150"),usuario);
+        long nova=service.atualizar(primeira,0);
+        long visitasHospital=jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospital);
+
+        var resultado=exclusoes.excluir(nova,usuario);
+
+        assertThat(resultado.relatorios()).containsExactly(primeira,nova);
+        assertThat(resultado.publicacoes()).isEqualTo(1);
+        assertThat(resultado.recebimentos()).isEqualTo(1);
+        String cadeia="{"+primeira+","+nova+"}";
+        for(String sql:List.of("select count(*) from conciliacao_visitas where id=any(?::bigint[])",
+                "select count(*) from liberacao_relatorio where relatorio_raiz_id=any(?::bigint[])",
+                "select count(*) from recebimento_visita where relatorio_raiz_id=any(?::bigint[])",
+                "select count(*) from vinculo_base_hospitalar where relatorio_id=any(?::bigint[])",
+                "select count(*) from reserva_base_hospitalar where relatorio_raiz_id=any(?::bigint[])",
+                "select count(*) from arquivo_base_hospitalar where relatorio_id=any(?::bigint[])"))
+            assertThat(jdbc.queryForObject(sql,Long.class,cadeia)).as(sql).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from visita_base_hospitalar where hospital_id=?",Long.class,hospital)).isEqualTo(visitasHospital);
+        assertThat(jdbc.queryForObject("select count(*) from relatorio_exclusao_auditoria where relatorio_raiz_id=? and publicacoes=1 and recebimentos=1",Long.class,primeira)).isEqualTo(1);
+        // A mesma planilha pode ser importada de novo e volta a conciliar as visitas liberadas.
+        var reimportada=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
+        assertThat(reimportada.repetido()).isFalse();
+        assertThat(revisoes.carregar(reimportada.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThatThrownBy(()->exclusoes.excluir(nova,usuario)).isInstanceOf(br.com.faturamed.shared.RecursoNaoEncontradoException.class);
+    }
 
     @Test void arredondaPorVisitaAntesDeSomarEReceberPreservandoArquivo() throws Exception {
         var arquivo=planilha(List.of(List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor"),
@@ -93,6 +189,26 @@ class BaseHospitalarIntegracaoTest {
         assertThat((byte[])service.arquivo(resultado.arquivoId()).get("conteudo")).isEqualTo(arquivo.getBytes());
         assertThat(service.importarHospital(hospital,"2026-09",arquivo,usuario).repetido()).isTrue();
         assertThat(service.visitas(hospital)).hasSize(1);
+    }
+
+    @Test void importacoesDeCompetenciasDiferentesGuardamArquivoEQuantidade() throws Exception {
+        var cab=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        var jan=service.importarHospital(hospital,"2026/01",planilha(List.of(cab,
+                List.of("701","2026-01-05",nome(ana),"101","Visita","100","1","100","Faturado"),
+                List.of("702","2026-01-06",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
+        var fev=service.importarHospital(hospital,"2026/02",planilha(List.of(cab,
+                List.of("801","2026-02-05",nome(ana),"101","Visita","100","1","100","Faturado"),
+                List.of("802","2026-02-06",nome(ana),"101","Visita","100","1","100","Faturado"),
+                List.of("803","2026-01-30",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
+        assertThat(jan.foraDaCompetencia()).isZero();
+        assertThat(fev.foraDaCompetencia()).isEqualTo(1);
+        var hospitalares=service.arquivos(hospital).stream().filter(a->"HOSPITAL".equals(a.get("tipo"))).toList();
+        assertThat(hospitalares).extracting(a->a.get("competencia")).containsExactly("2026-02","2026-01");
+        assertThat(hospitalares).extracting(a->((Number)a.get("quantidade_registros")).intValue()).containsExactly(3,2);
+        assertThat(hospitalares).allSatisfy(a->assertThat(a.get("nome")).isNotNull());
+        assertThat(acompanhamento.consultar(hospital).visitasDistintas()).isEqualTo(5);
+        assertThat(acompanhamento.consultar(hospital,"2026/01").visitasDistintas()).isEqualTo(2);
+        assertThat(acompanhamento.consultar(hospital,"2026-02").visitasDistintas()).isEqualTo(3);
     }
 
     @Test void mesmoAtendimentoDataComDoisMedicosGeraVinculosDiferentes() throws Exception {
@@ -483,5 +599,23 @@ class BaseHospitalarIntegracaoTest {
         recebimentos.estornar(nova,2,financeiro.historico().getFirst().id(),new RecebimentoService.Estorno("Estorno para conferir documentacao",financeiro.versao()),usuario);
         assertThat(extratos.buscar(nova,new ExtratoMedicoService.Filtros(null,null,null,null),medicoUser).resumo().recebidoAcumulado()).isEqualByComparingTo("0");
         assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO)).isEqualTo(1);
+    }
+
+    @Test void fechamentoFaturadoUsaRepasseCadastradoQuandoPlanilhaNaoTraz() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Setor");
+        service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,List.of("123","2026-09-01",nome(ana),"40101010","ECG convencional","200","Faturado"))),usuario);
+        assertThat(jdbc.queryForObject("select tipo_procedimento from visita_base_hospitalar where hospital_id=?",String.class,hospital)).isEqualTo("EXAME");
+        repasses.salvar(null,new RepasseProcedimentoService.Dados(hospital,null,"EXAME",new BigDecimal("60"),null,null,null,true,"teste"));
+        long relatorio=service.importarProducao(hospital,ana,"2026-09",producao(),usuario).relatorioId();
+        var json=jdbc.queryForObject("select relatorio::text from conciliacao_visitas where id=?",String.class,relatorio);
+        var visita=new com.fasterxml.jackson.databind.ObjectMapper().readTree(json).get("visitas").get(0);
+        assertThat(visita.get("status").asText()).isEqualTo("PAGA");
+        assertThat(new BigDecimal(visita.get("repasse").asText())).isEqualByComparingTo("120");
+        assertThat(visita.get("hospital").get("origemRepasse").asText()).isEqualTo("CADASTRO");
+        assertThat(visita.get("hospital").get("tipo").asText()).isEqualTo("EXAME");
+    }
+
+    @Test void visitasAntigasFicamComoTipoVisita() {
+        assertThat(jdbc.queryForObject("select count(*) from visita_base_hospitalar where tipo_procedimento is null",Long.class)).isZero();
     }
 }

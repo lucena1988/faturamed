@@ -1,0 +1,82 @@
+/* Temas extras de aparencia (escolhidos no menu do usuario): <html data-aparencia="aurora|papel|contraste">.
+   O tema "vidro" fica em vidro.css. Todos funcionam com o modo claro/escuro. */
+
+/* ======================= AURORA ======================= */
+:root[data-aparencia="aurora"] body {
+  background:
+    radial-gradient(1100px 520px at 0% -10%, color-mix(in srgb, var(--mod-cor, #24677d) 30%, transparent), transparent 65%),
+    radial-gradient(900px 600px at 110% 10%, rgba(140, 110, 220, .18), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--mod-cor, #24677d) 6%, var(--bg)), var(--bg) 420px);
+  background-attachment: fixed;
+}
+:root[data-aparencia="aurora"] .page-content h1 {
+  background: linear-gradient(90deg, var(--mod-forte, var(--primary-strong)), color-mix(in srgb, var(--mod-cor, var(--primary)) 70%, #8a6be0));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+:root[data-aparencia="aurora"] :is(.fm-card, .kpi-card) {
+  border-radius: 18px; border: 1px solid color-mix(in srgb, var(--mod-cor, var(--primary)) 25%, var(--line));
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--mod-cor, var(--primary)) 14%, transparent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--mod-cor, var(--primary)) 8%, var(--surface)), var(--surface) 60%);
+}
+:root[data-aparencia="aurora"] .fm-card:hover { box-shadow: 0 14px 38px color-mix(in srgb, var(--mod-cor, var(--primary)) 22%, transparent); }
+:root[data-aparencia="aurora"] .primary-button {
+  border: 0; border-radius: 12px;
+  background: linear-gradient(135deg, var(--mod-cor, var(--primary-fill)), color-mix(in srgb, var(--mod-cor, var(--primary-fill)) 55%, #7b5cd6));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--mod-cor, var(--primary)) 30%, transparent);
+}
+:root[data-aparencia="aurora"] :is(.secondary-button, .page-content .account-table, .fm-historico) { border-radius: 14px; }
+:root[data-aparencia="aurora"] .nav-group[data-modulo] .nav-item.active {
+  background: linear-gradient(90deg, var(--mod-suave), transparent); box-shadow: inset 3px 0 0 var(--mod-cor);
+}
+:root[data-aparencia="aurora"] .fp-aba.ativa { border-image: linear-gradient(90deg, var(--mod-cor, var(--primary)), #8a6be0) 1; }
+
+/* ======================= PAPEL ======================= */
+:root[data-aparencia="papel"] {
+  --bg: #f7f3ea; --surface: #fffdf8; --surface-soft: #f3eee2; --line: #e3dccb; --line-strong: #cfc5ae;
+  --text: #2b2a26; --muted: #6f6a5d; --shadow: none;
+}
+:root[data-aparencia="papel"][data-theme="dark"] {
+  --bg: #1d1b17; --surface: #25231e; --surface-soft: #2c2a24; --line: #3b382f; --line-strong: #4d493d; --text: #ece6d6; --muted: #b3ab97;
+}
+:root[data-aparencia="papel"] body { background: var(--bg); }
+:root[data-aparencia="papel"] :is(.page-content h1, .page-content h2, .fm-card strong, .kpi-card strong) {
+  font-family: Georgia, "Times New Roman", serif; letter-spacing: 0; font-weight: 700;
+}
+:root[data-aparencia="papel"] :is(.fm-card, .kpi-card, .page-content .account-table, .fm-historico, .fm-dialogo, .fm-busca, .fm-toast, .fm-usuario-menu, .fm-acoes-lista) {
+  box-shadow: none !important; border-radius: 6px; border: 1px solid var(--line);
+}
+:root[data-aparencia="papel"] :is(.fm-card, .kpi-card) { border-top: 2px solid var(--text); animation: none; }
+:root[data-aparencia="papel"] .page-content .account-table thead th { background: transparent; border-bottom: 2px solid var(--text); }
+:root[data-aparencia="papel"] .page-content .account-table tbody tr:hover { background: var(--surface-soft); }
+:root[data-aparencia="papel"] :is(.primary-button, .secondary-button, .text-button, .fm-usuario-botao, .fm-busca-botao) { border-radius: 6px; box-shadow: none; }
+:root[data-aparencia="papel"] .primary-button { background: var(--text); border-color: var(--text); color: var(--bg); }
+:root[data-aparencia="papel"] .sidebar { background: var(--surface-soft); }
+:root[data-aparencia="papel"] .fm-status { border-radius: 4px; }
+
+/* ======================= ALTO CONTRASTE ======================= */
+:root[data-aparencia="contraste"] {
+  --bg: #ffffff; --surface: #ffffff; --surface-soft: #f2f2f2; --line: #1a1a1a; --line-strong: #000;
+  --text: #000000; --muted: #222222; --primary: #003b8e; --primary-strong: #002a66; --primary-fill: #003b8e; --primary-fill-hover: #002a66;
+  --primary-soft: #e3ecff; --primary-soft-line: #003b8e; --focus: #ff9e00; --shadow: none;
+  --mod-cor: #000; --mod-forte: #000; --mod-suave: #ececec;
+}
+:root[data-aparencia="contraste"][data-theme="dark"] {
+  --bg: #000; --surface: #000; --surface-soft: #141414; --line: #f0f0f0; --line-strong: #fff;
+  --text: #fff; --muted: #e6e6e6; --primary: #9cc3ff; --primary-strong: #cfe0ff; --primary-fill: #9cc3ff; --primary-fill-hover: #cfe0ff;
+  --primary-soft: #10213d; --primary-soft-line: #9cc3ff; --on-primary: #000; --mod-cor: #fff; --mod-forte: #fff; --mod-suave: #1c1c1c;
+}
+:root[data-aparencia="contraste"] body { background: var(--bg); }
+:root[data-aparencia="contraste"] :is(.fm-card, .kpi-card, .page-content .account-table, .fm-historico, input, select, textarea, .secondary-button, .text-button) {
+  border: 2px solid var(--line) !important; box-shadow: none !important;
+}
+:root[data-aparencia="contraste"] .page-content .account-table thead th { background: var(--text); color: var(--bg); }
+:root[data-aparencia="contraste"] :is(a, .text-button) { text-decoration: underline; text-underline-offset: 3px; }
+:root[data-aparencia="contraste"] .nav-item.active { outline: 2px solid var(--text); }
+:root[data-aparencia="contraste"] :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline: 4px solid var(--focus) !important; outline-offset: 2px; }
+:root[data-aparencia="contraste"] * { animation: none !important; }
+:root[data-aparencia="contraste"] .fm-status { border: 1.5px solid currentColor; }
+
+/* Dashboard: paineis seguem os temas */
+:root[data-aparencia="aurora"] .page-content :is(.panel, .kpi-grid) { border-radius: 18px; border: 1px solid color-mix(in srgb, var(--mod-cor, var(--primary)) 22%, var(--line)); box-shadow: 0 10px 30px color-mix(in srgb, var(--mod-cor, var(--primary)) 12%, transparent); }
+:root[data-aparencia="papel"] .page-content :is(.panel, .kpi-grid) { box-shadow: none !important; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+:root[data-aparencia="contraste"] .page-content :is(.panel, .kpi-grid) { box-shadow: none !important; border: 2px solid var(--line) !important; }

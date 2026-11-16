@@ -17,9 +17,10 @@ class ConferenciaMedicoControllerTest {
     @Autowired MockMvc mvc;
     @MockitoBean ConferenciaMedicoService service;
     @MockitoBean UsuarioService users;
+    @MockitoBean br.com.faturamed.conciliacao.MedicoCadastroService medicos;
     private final UsuarioAutenticado medico=new UsuarioAutenticado(7,"medico@test.local","Ana","hash","MEDICO",10L,true,false,0);
     private final UsuarioAutenticado admin=new UsuarioAutenticado(8,"admin@test.local","Admin","hash","ADMIN",null,true,false,0);
-    @BeforeEach void configurar(){when(users.sessaoValida(any())).thenReturn(true);}
+    @BeforeEach void configurar(){when(users.sessaoValida(any())).thenReturn(true);when(medicos.cadastroCompleto(anyLong())).thenReturn(true);}
     @Test void pedidoUsaUsuarioAutenticadoENaoMedicoInformadoNoJson() throws Exception {
         mvc.perform(post("/api/medico/relatorios/1/solicitacoes").with(user(medico)).with(csrf()).contentType("application/json").content("{\"publicacao\":9,\"linha\":2,\"motivo\":\"Conferir visita\",\"medicoId\":99}")) .andExpect(status().isOk());
         verify(service).solicitar(1,new ConferenciaMedicoService.Pedido(9,2,"Conferir visita"),medico);

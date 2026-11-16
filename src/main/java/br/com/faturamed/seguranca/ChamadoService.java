@@ -44,18 +44,48 @@ public class ChamadoService {
     }
 
     private void avisar(ChamadoItem chamado, UsuarioAutenticado autor, String tipo, boolean suporte) {
-        jdbc.update("""
+        List<Long> destinatarios = jdbc.queryForList("""
             insert into chamado_aviso(chamado_id,usuario_id,tipo)
             select ?,u.id,? from usuario_acesso u where u.ativo=true and u.id<>?
             and ((?=false and u.id=? and u.perfil<>'MEDICO')
               or (?=true and u.perfil in ('ADMIN','DEV') and (?::bigint is null or u.id=?)))
-            """,chamado.id(),tipo,autor.id(),suporte,chamado.solicitanteId(),suporte,chamado.responsavelId(),chamado.responsavelId());
+            returning usuario_id
+            """,Long.class,chamado.id(),tipo,autor.id(),suporte,chamado.solicitanteId(),suporte,chamado.responsavelId(),chamado.responsavelId());
+        // o mesmo aviso chega no chat da equipe, pelo "Robo FaturaMed", com link para o chamado
+        if (chat != null) {
+            String texto = switch (tipo) {
+                case "RETORNO_SOLICITADO" -> "🔔 O suporte pediu seu retorno no chamado " + chamado.protocolo();
+                case "RESPOSTA_SOLICITANTE" -> "💬 " + autor.nome() + " respondeu o chamado " + chamado.protocolo();
+                case "MENSAGEM_SUPORTE" -> "💬 Nova mensagem do suporte no chamado " + chamado.protocolo();
+                case "CHAMADO_CANCELADO" -> "🚫 O chamado " + chamado.protocolo() + " foi cancelado";
+                default -> "🔔 Atualização no chamado " + chamado.protocolo();
+            } + ": " + chamado.titulo() + " #chamado " + chamado.id();
+            for (Long id : destinatarios) chat.avisarSistema(id, texto);
+        }
     }
+
+    private br.com.faturamed.chat.ChatService chat;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setChat(br.com.faturamed.chat.ChatService chat) { this.chat = chat; }
 
     static final int LIMITE_ARQUIVO = 5 * 1024 * 1024;
     private static final Set<String> FILAS = Set.of("DEV", "ADMIN");
     private static final Set<String> PRIORIDADES = Set.of("CRITICA", "ALTA", "MEDIA", "BAIXA");
-    private static final Set<String> STATUS_VALIDOS = Set.of("ABERTO", "EM_ATENDIMENTO", "AGUARDANDO_USUARIO", "RESOLVIDO", "FECHADO");
+    private static final Set<String> STATUS_VALIDOS = Set.of("ABERTO", "EM_ATENDIMENTO", "AGUARDANDO_USUARIO", "RESOLVIDO", "FECHADO", "CANCELADO");
+
+    public static final Set<String> MOTIVOS_CANCELAMENTO = Set.of(
+            "ABERTURA_INCORRETA",
+            "DUPLICADO",
+            "CANCELADO_SOLICITANTE",
+            "NAO_REPRODUZIVEL",
+            "OUTRO"
+    );
+
+    public record CancelarChamado(
+            @NotBlank String motivo,
+            @NotBlank @Size(max = 2000) String justificativa
+    ) {}
 
     public record TipoSla(String codigo, String nome, String descricao, String filaPadrao, String prioridadePadrao,
                           int slaHoras, boolean ativo, int ordem) {}
@@ -71,12 +101,15 @@ public class ChamadoService {
                               String filaDestino, String prioridade, String status, String titulo, String descricao,
                               String paginaOrigem, Long responsavelId, String responsavelNome, int slaHoras,
                               Instant prazoSlaEm, Instant primeiroAtendimentoEm, Instant resolvidoEm, Instant fechadoEm,
+                              Instant canceladoEm, String motivoCancelamento, String justificativaCancelamento,
                               Integer notaAvaliacao, String comentarioAvaliacao, Instant avaliadoEm,
                               Instant criadoEm, Instant atualizadoEm, long versao,
-                              String slaStatus, long minutosRestantes, long totalMensagens, long totalAnexos) {}
+                              String slaStatus, long minutosRestantes, long totalMensagens, long totalAnexos,
+                              boolean bloqueado) {}
 
-    public record ResumoKanban(long totalAbertos, long noPrazo, long emAlerta, long vencidos, long resolvidos,
-                               Double mediaAvaliacao, long totalAvaliacoes, long filaDevAbertos, long filaAdminAbertos) {}
+    public record ResumoKanban(long totalAbertos, long noPrazo, long emAlerta, long vencidos, long resolvidos, long cancelados,
+                               Double mediaAvaliacao, long totalAvaliacoes, long filaDevAbertos, long filaAdminAbertos,
+                               long emAtendimento, long aguardandoRetorno, long bloqueados) {}
 
     public record PainelChamados(ResumoKanban resumo, List<ChamadoItem> chamados) {}
 
@@ -89,7 +122,12 @@ public class ChamadoService {
     public record DetalheChamado(ChamadoItem chamado, List<MensagemItem> mensagens, List<AnexoItem> anexos) {}
 
     public record AlteracaoStatus(String status, String filaDestino, String prioridade, Long responsavelId,
-                                  Boolean assumir, @Size(max = 2000) String observacao) {}
+                                  Boolean assumir, @Size(max = 2000) String observacao, Boolean bloqueado) {
+        public AlteracaoStatus(String status, String filaDestino, String prioridade, Long responsavelId,
+                               Boolean assumir, String observacao) {
+            this(status, filaDestino, prioridade, responsavelId, assumir, observacao, null);
+        }
+    }
 
     public record Avaliacao(@NotNull @Min(1) @Max(5) Integer nota, @Size(max = 1500) String comentario) {}
 
@@ -230,8 +268,16 @@ public class ChamadoService {
             params.add(fila.trim().toUpperCase(Locale.ROOT));
         }
         if (status != null && !status.isBlank() && !"TODOS".equalsIgnoreCase(status)) {
-            sql.append(" and c.status = ? ");
-            params.add(status.trim().toUpperCase(Locale.ROOT));
+            if ("ATIVOS".equalsIgnoreCase(status)) {
+                sql.append(" and c.status not in ('CANCELADO', 'FECHADO') ");
+            } else if ("BLOQUEADOS".equalsIgnoreCase(status)) {
+                sql.append(" and c.bloqueado and c.status not in ('RESOLVIDO', 'FECHADO', 'CANCELADO') ");
+            } else if ("SLA_VENCIDO".equalsIgnoreCase(status)) {
+                sql.append(" and c.status not in ('RESOLVIDO', 'FECHADO', 'CANCELADO') and c.prazo_sla_em < now() ");
+            } else {
+                sql.append(" and c.status = ? ");
+                params.add(status.trim().toUpperCase(Locale.ROOT));
+            }
         }
         if (tipoCodigo != null && !tipoCodigo.isBlank() && !"TODOS".equalsIgnoreCase(tipoCodigo)) {
             sql.append(" and c.tipo_codigo = ? ");
@@ -248,7 +294,9 @@ public class ChamadoService {
 
         sql.append("""
                  order by
-                   case when c.status in ('ABERTO','EM_ATENDIMENTO','AGUARDANDO_USUARIO') then 0 else 1 end asc,
+                   case when c.status in ('ABERTO','EM_ATENDIMENTO','AGUARDANDO_USUARIO') then 0
+                        when c.status in ('RESOLVIDO','FECHADO') then 1
+                        else 2 end asc,
                    c.prazo_sla_em asc,
                    c.atualizado_em desc
                 """);
@@ -263,12 +311,19 @@ public class ChamadoService {
         if ("OPERADOR".equals(user.perfil())) filtroEscopo = " where (c.solicitante_perfil in ('OPERADOR','MEDICO') or c.solicitante_id = ?) ";
         Object[] args = isMedico || "OPERADOR".equals(user.perfil()) ? new Object[]{user.id()} : new Object[]{};
         List<ChamadoItem> todos = jdbc.query(SELECT_CHAMADO_BASE + filtroEscopo, this::mapearChamado, args);
-        long abertos = 0, noPrazo = 0, emAlerta = 0, vencidos = 0, resolvidos = 0, filaDev = 0, filaAdmin = 0;
+        long abertos = 0, noPrazo = 0, emAlerta = 0, vencidos = 0, resolvidos = 0, cancelados = 0, filaDev = 0, filaAdmin = 0;
+        long emAtendimento = 0, aguardandoRetorno = 0, bloqueados = 0;
         long somaNotas = 0, totalAvaliacoes = 0;
         for (ChamadoItem c : todos) {
-            boolean emAberto = !("RESOLVIDO".equals(c.status()) || "FECHADO".equals(c.status()));
-            if (emAberto) {
+            if ("CANCELADO".equals(c.status())) {
+                cancelados++;
+            } else if ("RESOLVIDO".equals(c.status()) || "FECHADO".equals(c.status())) {
+                resolvidos++;
+            } else {
                 abertos++;
+                if ("EM_ATENDIMENTO".equals(c.status())) emAtendimento++;
+                else if ("AGUARDANDO_USUARIO".equals(c.status())) aguardandoRetorno++;
+                if (c.bloqueado()) bloqueados++;
                 if ("DEV".equals(c.filaDestino())) filaDev++;
                 else if ("ADMIN".equals(c.filaDestino())) filaAdmin++;
                 switch (c.slaStatus()) {
@@ -276,8 +331,6 @@ public class ChamadoService {
                     case "EM_ALERTA" -> emAlerta++;
                     default -> noPrazo++;
                 }
-            } else {
-                resolvidos++;
             }
             if (c.notaAvaliacao() != null) {
                 somaNotas += c.notaAvaliacao();
@@ -285,7 +338,7 @@ public class ChamadoService {
             }
         }
         Double media = totalAvaliacoes > 0 ? Math.round((somaNotas * 10.0) / totalAvaliacoes) / 10.0 : null;
-        return new ResumoKanban(abertos, noPrazo, emAlerta, vencidos, resolvidos, media, totalAvaliacoes, filaDev, filaAdmin);
+        return new ResumoKanban(abertos, noPrazo, emAlerta, vencidos, resolvidos, cancelados, media, totalAvaliacoes, filaDev, filaAdmin, emAtendimento, aguardandoRetorno, bloqueados);
     }
 
     @Transactional(readOnly = true)
@@ -343,8 +396,8 @@ public class ChamadoService {
     public DetalheChamado adicionarMensagem(long id, String conteudo, List<MultipartFile> arquivos,
                                             UsuarioAutenticado user) throws Exception {
         ChamadoItem chamado = buscarChamado(id, user);
-        if ("FECHADO".equals(chamado.status())) {
-            throw new ConflitoRevisaoException("Este chamado ja foi encerrado. Reabra o chamado se precisar adicionar novas interacoes.");
+        if ("FECHADO".equals(chamado.status()) || "CANCELADO".equals(chamado.status())) {
+            throw new ConflitoRevisaoException("Este chamado ja foi encerrado ou cancelado.");
         }
         String texto = Objects.toString(conteudo, "").trim();
         var validados = validarArquivos(arquivos);
@@ -393,6 +446,9 @@ public class ChamadoService {
     @Transactional
     public DetalheChamado atualizarStatus(long id, AlteracaoStatus dados, UsuarioAutenticado user) {
         ChamadoItem atual = buscarChamado(id, user);
+        if ("CANCELADO".equals(atual.status())) {
+            throw new IllegalArgumentException("Chamados cancelados nao podem ter seu status alterado");
+        }
         boolean isAtendente = "ADMIN".equals(user.perfil()) || "DEV".equals(user.perfil());
         if (!isAtendente) {
             // O solicitante pode confirmar ou reabrir apenas o proprio chamado resolvido.
@@ -408,6 +464,9 @@ public class ChamadoService {
         String novoStatus = dados.status() == null || dados.status().isBlank()
                 ? atual.status() : dados.status().trim().toUpperCase(Locale.ROOT);
         if (!STATUS_VALIDOS.contains(novoStatus)) throw new IllegalArgumentException("Status invalido");
+        if ("CANCELADO".equals(novoStatus)) {
+            throw new IllegalArgumentException("Utilize o fluxo de cancelamento de chamado para informar o motivo e a justificativa");
+        }
 
         String novaFila = !isAtendente || dados.filaDestino() == null || dados.filaDestino().isBlank()
                 ? atual.filaDestino() : dados.filaDestino().trim().toUpperCase(Locale.ROOT);
@@ -440,6 +499,8 @@ public class ChamadoService {
             }
         }
 
+        boolean novoBloqueado = isAtendente && dados.bloqueado() != null ? dados.bloqueado() : atual.bloqueado();
+        if (Set.of("RESOLVIDO", "FECHADO").contains(novoStatus)) novoBloqueado = false;
         jdbc.update("""
                 update chamado_suporte
                 set status = ?,
@@ -458,12 +519,13 @@ public class ChamadoService {
                     fechado_em = case
                         when ? = 'FECHADO' then coalesce(fechado_em, now())
                         else null end,
+                    bloqueado = ?,
                     atualizado_em = now(),
                     versao = versao + 1
                 where id = ?
                 """,
                 novoStatus, novaFila, novaPrioridade, novoRespId, novoRespNome,
-                novoStatus, novoStatus, novoStatus, novoStatus, id);
+                novoStatus, novoStatus, novoStatus, novoStatus, novoBloqueado, id);
 
         if ("AGUARDANDO_USUARIO".equals(novoStatus) && !novoStatus.equals(atual.status()))
             avisar(atual,user,"RETORNO_SOLICITADO",false);
@@ -471,6 +533,9 @@ public class ChamadoService {
         List<String> mudancas = new ArrayList<>();
         if (!novoStatus.equals(atual.status())) {
             mudancas.add("Status alterado de " + rotuloStatus(atual.status()) + " para " + rotuloStatus(novoStatus));
+        }
+        if (novoBloqueado != atual.bloqueado()) {
+            mudancas.add(novoBloqueado ? "Chamado marcado como Bloqueado" : "Bloqueio do chamado removido");
         }
         if (!novaFila.equals(atual.filaDestino())) {
             mudancas.add("Redirecionado da fila " + atual.filaDestino() + " para a fila " + novaFila);
@@ -487,6 +552,60 @@ public class ChamadoService {
         }
         if (!mudancas.isEmpty()) {
             inserirMensagem(id, user, "EVENTO_SISTEMA", String.join(" | ", mudancas));
+        }
+
+        return detalhar(id, user);
+    }
+
+    @Transactional
+    public DetalheChamado cancelar(long id, CancelarChamado dados, UsuarioAutenticado user) {
+        ChamadoItem atual = buscarChamado(id, user);
+        if ("CANCELADO".equals(atual.status()) || "FECHADO".equals(atual.status())) {
+            throw new IllegalArgumentException("Chamado ja encerrado nao pode ser cancelado");
+        }
+
+        boolean isAtendente = "ADMIN".equals(user.perfil()) || "DEV".equals(user.perfil());
+        boolean isSolicitante = user.id() == atual.solicitanteId();
+
+        if (!isAtendente) {
+            if (!isSolicitante || !Set.of("ABERTO", "AGUARDANDO_USUARIO").contains(atual.status())) {
+                throw new AccessDeniedException("O solicitante so pode cancelar seu chamado enquanto ele estiver na triagem ou aguardando retorno");
+            }
+        }
+
+        String motivo = Objects.toString(dados.motivo(), "").trim().toUpperCase(Locale.ROOT);
+        if (!MOTIVOS_CANCELAMENTO.contains(motivo)) {
+            throw new IllegalArgumentException("Motivo de cancelamento invalido");
+        }
+
+        String justificativa = Objects.toString(dados.justificativa(), "").trim();
+        if (justificativa.isBlank()) {
+            throw new IllegalArgumentException("Informe a justificativa do cancelamento");
+        }
+        if (justificativa.length() > 2000) {
+            throw new IllegalArgumentException("A justificativa deve ter no maximo 2000 caracteres");
+        }
+
+        jdbc.update("""
+                update chamado_suporte
+                set status = 'CANCELADO',
+                    cancelado_em = now(),
+                    motivo_cancelamento = ?,
+                    justificativa_cancelamento = ?,
+                    atualizado_em = now(),
+                    versao = versao + 1
+                where id = ?
+                """, motivo, justificativa, id);
+
+        String rotuloMotivo = rotuloMotivoCancelamento(motivo);
+        String msg = String.format("Chamado cancelado por %s (%s). Motivo: %s. Justificativa: \"%s\"",
+                user.nome(), rotuloPerfil(user.perfil()), rotuloMotivo, justificativa);
+        inserirMensagem(id, user, "EVENTO_SISTEMA", msg);
+
+        if (isSolicitante) {
+            avisar(atual, user, "CHAMADO_CANCELADO", true);
+        } else {
+            avisar(atual, user, "CHAMADO_CANCELADO", false);
         }
 
         return detalhar(id, user);
@@ -634,7 +753,19 @@ public class ChamadoService {
             case "AGUARDANDO_USUARIO" -> "Aguardando Usuario";
             case "RESOLVIDO" -> "Resolvido";
             case "FECHADO" -> "Fechado";
+            case "CANCELADO" -> "Cancelado";
             default -> status;
+        };
+    }
+
+    public static String rotuloMotivoCancelamento(String motivo) {
+        return switch (Objects.toString(motivo, "")) {
+            case "ABERTURA_INCORRETA" -> "Abertura incorreta / Sem problema real";
+            case "DUPLICADO" -> "Chamado duplicado";
+            case "CANCELADO_SOLICITANTE" -> "Cancelado pelo solicitante";
+            case "NAO_REPRODUZIVEL" -> "Nao reproduzivel / Sem retorno";
+            case "OUTRO" -> "Outro motivo";
+            default -> motivo;
         };
     }
 
@@ -654,14 +785,19 @@ public class ChamadoService {
         Instant primeiroAtendimentoEm = r.getTimestamp("primeiro_atendimento_em") == null ? null : r.getTimestamp("primeiro_atendimento_em").toInstant();
         Instant resolvidoEm = r.getTimestamp("resolvido_em") == null ? null : r.getTimestamp("resolvido_em").toInstant();
         Instant fechadoEm = r.getTimestamp("fechado_em") == null ? null : r.getTimestamp("fechado_em").toInstant();
+        Instant canceladoEm = r.getTimestamp("cancelado_em") == null ? null : r.getTimestamp("cancelado_em").toInstant();
+        String motivoCancelamento = r.getString("motivo_cancelamento");
+        String justificativaCancelamento = r.getString("justificativa_cancelamento");
         Instant avaliadoEm = r.getTimestamp("avaliado_em") == null ? null : r.getTimestamp("avaliado_em").toInstant();
         Instant atualizadoEm = r.getTimestamp("atualizado_em").toInstant();
 
         Instant agora = Instant.now();
-        Instant fimRef = resolvidoEm != null ? resolvidoEm : (fechadoEm != null ? fechadoEm : agora);
+        Instant fimRef = canceladoEm != null ? canceladoEm : (resolvidoEm != null ? resolvidoEm : (fechadoEm != null ? fechadoEm : agora));
         long minutosRestantes = Duration.between(fimRef, prazoSlaEm).toMinutes();
         String slaStatus;
-        if ("RESOLVIDO".equals(status) || "FECHADO".equals(status)) {
+        if ("CANCELADO".equals(status)) {
+            slaStatus = "CANCELADO";
+        } else if ("RESOLVIDO".equals(status) || "FECHADO".equals(status)) {
             slaStatus = fimRef.isAfter(prazoSlaEm) ? "FORA_DO_PRAZO" : "CUMPRIDO";
         } else {
             long totalMinutos = Math.max(60L, slaHoras * 60L);
@@ -696,6 +832,9 @@ public class ChamadoService {
                 primeiroAtendimentoEm,
                 resolvidoEm,
                 fechadoEm,
+                canceladoEm,
+                motivoCancelamento,
+                justificativaCancelamento,
                 r.getObject("nota_avaliacao", Integer.class),
                 r.getString("comentario_avaliacao"),
                 avaliadoEm,
@@ -705,7 +844,8 @@ public class ChamadoService {
                 slaStatus,
                 minutosRestantes,
                 r.getLong("total_mensagens"),
-                r.getLong("total_anexos")
+                r.getLong("total_anexos"),
+                r.getBoolean("bloqueado")
         );
     }
 }

@@ -77,6 +77,17 @@ As linhas agrupam variações do mesmo fluxo. HTTP significa requisições reais
 | Permissões do funcionário, chamado técnico privado e CSRF | AUTO35; ChamadoPermissoesTest | API real; link de acompanhamento não concede ações técnicas |
 | Categoria, campos, mensagem e avaliação inválidos | AUTO36 | Verifica ausência de criação, nota de 1 a 5 e avaliação somente pelo solicitante |
 | Formulário simplificado, origem automática, anexos e erro de envio | JS servicedesk.test.cjs | Executa widget real em DOM simulado; layout e validação nativa do navegador continuam visuais |
+| Empresas: cadastro, CNPJ duplicado e edição concorrente | AUTO37 | CNPJ comparado sem máscara; versão obsoleta retorna 409 |
+| Vínculo médico com uma ou várias empresas | AUTO38; MedicoCadastroServiceTest | Cliente antigo sem o campo `empresas` preserva vínculos |
+| Empresa da produção na importação individual e coletiva | AUTO39; BaseHospitalarIntegracaoTest | Rejeições não criam relatório; empresa única é automática |
+| Publicação e nova versão herdam a empresa | AUTO40 | Publicação anterior da cadeia não duplica valores no painel |
+| Painel da empresa: totais, filtros por médico/período/hospital e recebimentos | AUTO41; BaseHospitalarIntegracaoTest | Mesmo médico em duas empresas fica isolado por empresa; não é captura visual |
+| Perfil Empresa: vínculo obrigatório, rotas negadas e revogação de sessão | AUTO42; PerfilIntegracaoTest | Inclui funcionário criando acesso de empresa e parâmetro `empresaId` ignorado |
+| Atribuição de empresa a conciliações antigas | AUTO43 | Move toda a cadeia de versões e publicações; remoção oculta dos painéis |
+| Desvínculo e revínculo de médico | AUTO44 | Histórico do médico desvinculado deixa de aparecer na empresa |
+| Exclusão de relatório com senha | AUTO45; BaseHospitalarIntegracaoTest | Senha errada, vazia, sem CSRF, médico e anônimo recusados sem apagar; cascata em publicações e financeiro; visitas do hospital preservadas; reimportação e bloqueio após 5 erros |
+| Cadastro médico em duas etapas (convite) | AUTO46; ConviteMedicoIntegracaoTest, ValidacaoCadastroMedicoTest, SegurancaTest | E-mail obrigatório e CRM opcional na FaturaMed; convite público, de uso único e com CSRF; nome completo, CPF, CNPJ e e-mails validados; médico antigo bloqueado até completar |
+| Recuperação de senha por código no e-mail | AUTO47; RecuperacaoSenhaIntegracaoTest, SegurancaTest | Resposta igual para e-mail inexistente; CSRF; código de 6 dígitos com hash, 15 minutos, uso único e 5 tentativas; 3 pedidos a cada 15 minutos; sessões antigas encerradas. No QA o código é lido do log (sem SMTP) |
 
 ## Pontos que continuam visuais ou fora desta regressão
 

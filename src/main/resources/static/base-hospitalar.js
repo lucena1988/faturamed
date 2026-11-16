@@ -1,8 +1,9 @@
+const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro' };
 (() => {
   const find = id => document.getElementById(id);
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
-  let visits = [], generation = 0, selectedVisit, busy = false, flow = null;
+  let visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
   const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',FATURADO_SEM_RECEBIMENTO:'Faturado sem recebimento',RECEBIDO_PARCIALMENTE:'Recebido parcialmente',SEM_SALDO:'Sem saldo a receber',EM_CONFERENCIA:'Em conferência'};
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
@@ -15,11 +16,12 @@
   }
   function button(text, action) { const item = element('button', text); item.type = 'button'; item.addEventListener('click', () => action().catch(error => showMessage('error', error.message))); return item; }
   function renderVisits() {
-    const filtered = visits.filter(visit => (!find('status').value || visit.situacao === find('status').value) && visit.atendimento.includes(find('search').value.trim()));
+    const comp = find('competencia-filter').value;
+    const filtered = visits.filter(visit => (!comp || visit.competencia === comp) && (!find('status').value || visit.situacao === find('status').value) && visit.atendimento.includes(find('search').value.trim()));
     find('visits').replaceChildren();
     for (const visit of filtered) {
       const row = element('tr');
-      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado', labels[visit.situacao], visit.anterior_id || '—']) row.append(element('td', value));
+      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, TIPOS_PROCEDIMENTO[visit.tipo_procedimento] || 'Visita', visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado', labels[visit.situacao], visit.anterior_id || '—']) row.append(element('td', value));
       const actions = element('td');
       if (visit.decisao === 'EM_ANALISE') actions.append(button('Analisar repetição', async () => openDecision(visit)));
       actions.append(button('Histórico', async () => {
@@ -33,14 +35,39 @@
       if (visit.arquivo_atual_id && visit.arquivo_atual_id !== visit.arquivo_id) actions.append(link('Última atualização', `/api/base-hospitalar/arquivos/${visit.arquivo_atual_id}/original`));
       row.append(actions); find('visits').append(row);
     }
-    find('count').textContent = `${filtered.length} ocorrências · IDs das visitas distintas são preservados`;
+    find('count').textContent = `${filtered.length} ocorrências · IDs dos procedimentos distintos são preservados`;
+  }
+  function renderCompetencias(files) {
+    const box = find('competencias'), groups = new Map();
+    for (const file of files.filter(f => f.tipo === 'HOSPITAL')) {
+      if (!groups.has(file.competencia)) groups.set(file.competencia, []);
+      groups.get(file.competencia).push(file);
+    }
+    if (!groups.size) { box.replaceChildren(element('p', 'Nenhuma importação do hospital.')); return; }
+    const cards = [...groups.keys()].sort().reverse().map(comp => {
+      const list = groups.get(comp), total = list.reduce((s, f) => s + (f.quantidade_registros || 0), 0);
+      const card = element('article'); card.className = 'competencia-card';
+      card.append(element('h3', `${comp.replace('-', '/')} · ${total} registros`));
+      const ul = element('ul');
+      for (const f of list) {
+        const li = element('li', `${f.nome} — ${f.quantidade_registros ?? '—'} registros · ${f.modo_hospital === 'ATUALIZAR' ? 'atualização' : 'novos registros'} · ${String(f.criado_em || '').slice(0, 10)} `);
+        li.append(link('Baixar original', `/api/base-hospitalar/arquivos/${f.id}/original`));
+        ul.append(li);
+      }
+      card.append(ul); return card;
+    });
+    box.replaceChildren(...cards);
   }
   async function load() {
     const token = ++generation, hospital = find('hospital').value;
-    if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); find('files').replaceChildren(); return; }
-    const [data, files, tracking] = await Promise.all([request(`/api/base-hospitalar/visitas?hospitalId=${hospital}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospital}`), request(`/api/base-hospitalar/acompanhamento?hospitalId=${hospital}`)]);
+    if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); renderCompetencias([]); find('files').replaceChildren(); return; }
+    let [data, files, tracking] = await Promise.all([request(`/api/base-hospitalar/visitas?hospitalId=${hospital}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospital}`), request(`/api/base-hospitalar/acompanhamento?hospitalId=${hospital}${find('competencia-filter').value ? `&competencia=${find('competencia-filter').value}` : ''}`)]);
     if (token !== generation) return;
-    visits = data; flow = tracking; renderFlow(); renderVisits(); find('files').replaceChildren();
+    const filter = find('competencia-filter'), atual = filter.value, comps = [...new Set(files.map(f => f.competencia))].sort().reverse();
+    filter.replaceChildren(new Option('Todas as competências', ''), ...comps.map(c => new Option(c.replace('-', '/'), c)));
+    filter.value = comps.includes(atual) ? atual : '';
+    files = files.filter(f => !filter.value || f.competencia === filter.value);
+    visits = data; flow = tracking; renderFlow(); renderVisits(); renderCompetencias(files); find('files').replaceChildren();
     for (const file of files) {
       const row = element('tr');
       for (const value of [file.nome, file.tipo, file.competencia, file.medico || (file.tipo === 'PRODUCAO' && file.modo_producao === 'VARIOS' ? 'Vários médicos' : '—')]) row.append(element('td', value));
@@ -48,7 +75,7 @@
       if (file.relatorio_id) {
         actions.append(link('Abrir conciliação', `/conciliacao.html?relatorio=${file.relatorio_id}`));
         actions.append(button('Atualizar conciliação', async () => {
-          if (busy || !confirm('Criar uma nova versão com as visitas hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
+          if (busy || !await fmConfirmar('Criar uma nova versão com os procedimentos hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
           await perform(async () => {
             const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
             const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});
@@ -126,11 +153,12 @@
     }
     data.set('competencia', compNormalizada);
     data.set('hospitalId', find('hospital').value);
+    if (!data.get('empresaId')) data.delete('empresaId');
     try {
       await perform(async () => {
         showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
         const result = await request(`/api/base-hospitalar/${endpoint}`, {method:'POST', body:data});
-        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} visitas atualizadas mantendo o ID; ${result.divergencias} divergências para análise.`;
+        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} procedimentos atualizadas mantendo o ID; ${result.divergencias} divergências para análise.` + (result.foraDaCompetencia > 0 ? ` Atenção: ${result.foraDaCompetencia} procedimentos têm data fora da competência informada.` : '');
         const nodes = [element('span', `${text} `)];
         if (result.relatorioId) nodes.push(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
         showMessage(result.repetido || result.divergencias > 0 ? 'warning' : 'success', ...nodes);
@@ -139,14 +167,30 @@
       });
     } catch (error) { showMessage('error', error.message); }
   });
+  // Producao individual: somente as empresas do medico (preenchida quando ha uma so).
+  // Producao coletiva: qualquer empresa ativa, ou nenhuma.
+  function updateCompany() {
+    const select = find('empresa'), previous = select.value;
+    const individual = find('production-mode').value === 'UNICO';
+    const doctor = doctors.find(item => String(item.id) === find('medico').value);
+    const options = individual ? companies.filter(item => item.ativo && (doctor?.empresas || []).includes(item.id)) : companies.filter(item => item.ativo);
+    const first = individual && options.length > 1 ? new Option('Selecione a empresa', '') : new Option('Sem empresa', '');
+    select.replaceChildren(...(individual && options.length === 1 ? [] : [first]), ...options.map(item => new Option(item.nome, item.id)));
+    if ([...select.options].some(option => option.value === previous)) select.value = previous;
+    select.required = individual && options.length > 1;
+    select.disabled = individual && options.length <= 1;
+    // Desabilitado nao vai no FormData; a API resolve a empresa unica do medico.
+    find('production-company-label').hidden = !companies.some(item => item.ativo);
+  }
   function updateProduction() {
     const individual = find('production-mode').value === 'UNICO';
     find('production-doctor-label').hidden = !individual;
     find('medico').required = individual;
     find('medico').disabled = !individual;
+    updateCompany();
     find('production-help').textContent = individual
       ? 'Na produção individual, selecione o médico e envie Atendimento e Dt.'
-      : 'Na produção coletiva, envie Atendimento e Dt. Medico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
+      : 'Na produção coletiva, envie Atendimento e Dt. Médico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
   }
   function renderFlow() {
     find('flow-stats').replaceChildren(); find('flow-rows').replaceChildren(); find('flow-money').textContent = '';
@@ -192,17 +236,20 @@
   });
   find('decision-action').addEventListener('change', updateDecision);
   find('production-mode').addEventListener('change', updateProduction);
+  find('medico').addEventListener('change', updateCompany);
   find('flow-filter').replaceChildren(new Option('Todas as etapas',''),...Object.entries(stages).map(([value,label]) => new Option(label,value)));
   find('flow-filter').addEventListener('change', renderFlow);
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
   find('history-close').addEventListener('click', () => find('history-dialog').close());
   for (const id of ['status','search']) find(id).addEventListener('input', renderVisits);
-  find('hospital').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
+  find('competencia-filter').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
+  find('hospital').addEventListener('change', () => { find('competencia-filter').value = ''; load().catch(error => showMessage('error', error.message)); });
   find('reload').addEventListener('click', () => load().catch(error => showMessage('error', error.message)));
   async function initialize() {
-    const [hospitals, doctors] = await Promise.all([request('/api/hospitais'), request('/api/medicos')]);
+    let hospitals;
+    [hospitals, doctors, companies] = await Promise.all([request('/api/hospitais'), request('/api/medicos'), request('/api/empresas-clientes')]);
     find('hospital').replaceChildren(new Option('Selecione um hospital', ''), ...hospitals.filter(item => item.ativo).map(item => new Option(item.nome, item.id)));
-    find('medico').replaceChildren(new Option('Selecione o médico', ''), ...doctors.filter(item => item.ativo).map(item => new Option(`${item.nome} · CRM ${item.crm}/${item.uf}`, item.id)));
+    find('medico').replaceChildren(new Option('Selecione o médico', ''), ...doctors.filter(item => item.ativo).map(item => new Option(`${item.nome} · CRM ${item.crm||"a preencher"}/${item.uf||"--"}`, item.id)));
     const params = new URLSearchParams(location.search);
     if (hospitals.some(item => item.ativo && String(item.id) === params.get('hospitalId'))) find('hospital').value = params.get('hospitalId');
     await load(); updateDecision(); updateProduction();

@@ -24,9 +24,11 @@ public class LiberacaoRelatorioService {
         select id from cadeia where anterior_id is null
         """,Long.class,id);}
     private boolean historico(long id){return !jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",id).isEmpty();}
+    /** Linhas excluidas por duplicidade ficam so no historico da conciliacao: nao vao para o medico nem entram nas contagens. */
+    private static List<ConciliadorVisitas.Visita> ativas(ConciliadorVisitas.Relatorio relatorio){return relatorio.visitas().stream().filter(v->v.status()!=ConciliadorVisitas.Status.EXCLUIDA).toList();}
     private Map<Long,List<PortalMedicoController.Visita>> preparar(ConciliadorVisitas.Relatorio relatorio){
         var cadastros=medicos.listar();Map<Long,MedicoCadastroService.Medico> porId=new HashMap<>();cadastros.forEach(m->porId.put(m.id(),m));Map<Long,List<PortalMedicoController.Visita>> dados=new LinkedHashMap<>();
-        for(var v:relatorio.visitas()){Long id=medicos.identificar(v,cadastros);var medico=porId.get(id);if(medico!=null)dados.computeIfAbsent(id,k->new ArrayList<>()).add(PortalMedicoController.sanitizar(v,medico));}
+        for(var v:ativas(relatorio)){Long id=medicos.identificar(v,cadastros);var medico=porId.get(id);if(medico!=null)dados.computeIfAbsent(id,k->new ArrayList<>()).add(PortalMedicoController.sanitizar(v,medico));}
         return dados;
     }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
@@ -34,7 +36,7 @@ public class LiberacaoRelatorioService {
         var estado=revisoes.carregar(id);var relatorio=estado.atual();var dados=preparar(relatorio);
         var registros=jdbc.queryForList("select id,relatorio_id,versao_revisao,responsavel,observacao,criado_em from liberacao_relatorio where relatorio_raiz_id=? order by id desc",raiz(id)).stream().map(this::registro).toList();
         Registro publicado=registros.isEmpty()?null:registros.getFirst();boolean liberado=publicado!=null&&publicado.relatorio()==id&&publicado.versao()==estado.versao();
-        return new Estado(liberado?"LIBERADO":"EM_REVISAO",estado.versao(),!historico(id)&&!liberado,relatorio.visitas().size(),relatorio.visitas().stream().filter(v->v.status()==ConciliadorVisitas.Status.PENDENTE).count(),relatorio.visitas().stream().filter(v->v.status()==ConciliadorVisitas.Status.DIVERGENTE).count(),relatorio.visitas().size()-dados.values().stream().mapToInt(List::size).sum(),publicado,registros);
+        return new Estado(liberado?"LIBERADO":"EM_REVISAO",estado.versao(),!historico(id)&&!liberado,ativas(relatorio).size(),ativas(relatorio).stream().filter(v->v.status()==ConciliadorVisitas.Status.PENDENTE).count(),ativas(relatorio).stream().filter(v->v.status()==ConciliadorVisitas.Status.DIVERGENTE).count(),ativas(relatorio).size()-dados.values().stream().mapToInt(List::size).sum(),publicado,registros);
     }
     @Transactional(rollbackFor=Exception.class)
     public Estado liberar(long id,Dados request,UsuarioAutenticado user) throws Exception {
@@ -45,9 +47,11 @@ public class LiberacaoRelatorioService {
         var estado=revisoes.carregar(id);if(estado.versao()!=request.versao())throw new ConflitoRevisaoException("O relatorio recebeu revisoes. Atualize antes de liberar");
         if(!jdbc.queryForList("select id from liberacao_relatorio where relatorio_id=? and versao_revisao=?",id,request.versao()).isEmpty())throw new ConflitoRevisaoException("Esta revisao ja foi liberada");
         var relatorio=estado.atual();var dados=preparar(relatorio);if(dados.isEmpty())throw new IllegalArgumentException("Vincule ao menos uma visita a um medico cadastrado antes de liberar");
-        boolean alerta=relatorio.visitas().stream().anyMatch(v->v.status()!=ConciliadorVisitas.Status.PAGA)||dados.values().stream().mapToInt(List::size).sum()!=relatorio.visitas().size();
+        boolean alerta=ativas(relatorio).stream().anyMatch(v->v.status()!=ConciliadorVisitas.Status.PAGA)||dados.values().stream().mapToInt(List::size).sum()!=ativas(relatorio).size();
         if(alerta&&!request.confirmaPendencias())throw new IllegalArgumentException("Confirme a conferencia das pendencias, divergencias e visitas sem medico");
         jdbc.update("insert into liberacao_relatorio(relatorio_id,relatorio_raiz_id,versao_revisao,hospital,dados,observacao,usuario_id,responsavel) values(?,?,?,?,?::jsonb,?,?,?)",id,raiz(id),estado.versao(),relatorio.hospital(),json.writeValueAsString(dados),request.observacao().trim(),user.id(),user.nome()+" ("+user.email()+")");
+        // A publicacao herda a empresa da producao para alimentar o dashboard da empresa.
+        jdbc.update("update liberacao_relatorio set empresa_id=(select empresa_id from conciliacao_visitas where id=?) where relatorio_id=? and versao_revisao=?",id,id,estado.versao());
         return consultar(id);
     }
     @Transactional(readOnly=true)

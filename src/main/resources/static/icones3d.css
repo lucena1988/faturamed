@@ -1,0 +1,63 @@
+/* Icones em "3D" (estilo clay): pastilha em relevo com degrade na cor do modulo, brilho no topo,
+   sombra embaixo e leve inclinacao ao passar o mouse. So CSS, sem imagens. */
+
+/* cor de cada grupo do menu para os icones */
+.nav-group[data-modulo] { --ico-cor: var(--mod-cor); }
+
+/* ---------- pastilha base ---------- */
+.fm-card-icone,
+.nav-item .nav-icon {
+  --ico-base: var(--ico-cor, var(--mod-cor, var(--primary)));
+  position: relative;
+  display: inline-grid; place-items: center;
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,.55), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--ico-base) 70%, white), var(--ico-base) 55%, color-mix(in srgb, var(--ico-base) 75%, black));
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.55),          /* brilho da borda de cima */
+    inset 0 -2px 3px color-mix(in srgb, var(--ico-base) 60%, black), /* volume embaixo */
+    0 4px 8px -2px color-mix(in srgb, var(--ico-base) 55%, transparent), /* sombra colorida */
+    0 1px 2px rgba(0,0,0,.18);
+  transform: perspective(240px) rotateX(0) rotateY(0);
+  transition: transform .25s cubic-bezier(.2,.9,.3,1.3), box-shadow .25s;
+}
+
+/* ---------- cards ---------- */
+.fm-card-icone {
+  width: 38px !important; height: 38px !important; flex-basis: 38px !important; padding: 9px !important;
+  stroke: #fff !important; stroke-width: 2.1 !important;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.08));
+}
+.fm-card:hover .fm-card-icone {
+  transform: perspective(240px) rotateX(14deg) rotateY(-14deg) translateY(-2px) scale(1.06);
+  box-shadow: inset 0 1.5px 0 rgba(255,255,255,.6), inset 0 -2px 3px color-mix(in srgb, var(--ico-base) 60%, black),
+    6px 10px 16px -6px color-mix(in srgb, var(--ico-base) 65%, transparent), 0 1px 2px rgba(0,0,0,.18);
+}
+.fm-card.zerado .fm-card-icone { filter: grayscale(.65); opacity: .7; }
+
+/* ---------- menu lateral ---------- */
+.nav-item .nav-icon { width: 28px; height: 28px; flex: 0 0 28px; color: #fff !important; }
+.nav-item .nav-icon svg { width: 16px !important; height: 16px !important; stroke: #fff; filter: drop-shadow(0 1px 0 rgba(0,0,0,.18)); }
+.nav-item:hover .nav-icon { transform: perspective(200px) rotateX(12deg) rotateY(-12deg) scale(1.08); }
+.nav-item.active .nav-icon { box-shadow: inset 0 1.5px 0 rgba(255,255,255,.6), inset 0 -2px 3px color-mix(in srgb, var(--ico-base) 60%, black),
+  0 0 0 3px color-mix(in srgb, var(--ico-base) 22%, transparent), 0 4px 10px -2px color-mix(in srgb, var(--ico-base) 60%, transparent); }
+
+/* tema escuro: brilho mais contido */
+:root[data-theme="dark"] :is(.fm-card-icone, .nav-item .nav-icon) {
+  background:
+    radial-gradient(120% 90% at 30% 15%, rgba(255,255,255,.35), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--ico-base) 85%, white), color-mix(in srgb, var(--ico-base) 70%, black));
+}
+
+/* alto contraste e papel: icones planos (legibilidade/estilo) */
+:root:is([data-aparencia="contraste"], [data-aparencia="papel"]) :is(.fm-card-icone, .nav-item .nav-icon) {
+  background: none !important; box-shadow: none !important; transform: none !important; filter: none !important;
+  stroke: currentColor !important; color: inherit !important;
+}
+:root:is([data-aparencia="contraste"], [data-aparencia="papel"]) .nav-item .nav-icon svg { stroke: currentColor; filter: none; }
+
+/* menu recolhido: pastilha um pouco maior */
+.sidebar-recolhida .nav-item .nav-icon { width: 32px; height: 32px; flex-basis: 32px; }
+
+@media (prefers-reduced-motion: reduce) { :is(.fm-card-icone, .nav-item .nav-icon) { transition: none; } }

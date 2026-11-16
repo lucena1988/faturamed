@@ -29,15 +29,18 @@ public class LeitorPlanilhaVisitas {
         }
         try (InputStream input = arquivo.getInputStream()) {
             List<Aba> abas = nome.endsWith(".xlsb") ? lerBinario(input) : lerXlsx(input);
-            // O modelo do hospital repete o detalhe na aba de apresentacao.
+            // O modelo do hospital repete o detalhe na aba de apresentacao. O repasse (Vl. a Repassar ou Regra)
+            // e opcional: sem ele, vale o repasse cadastrado para o procedimento.
             if (hospital) abas.sort(Comparator.comparing(a -> !a.nome().equalsIgnoreCase("Planilha2")));
             for (Aba aba : abas) {
                 for (int i = 0; i < Math.min(50, aba.linhas().size()); i++) {
                     Map<Integer, String> cabecalho = aba.linhas().get(i);
                     Set<String> campos = new HashSet<>();
                     cabecalho.values().forEach(v -> campos.add(normalizar(v)));
-                    if (!campos.contains("atendimento") || (hospital && !campos.contains("data consumo"))) continue;
-                    if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "vl. a repassar", "setor"))) {
+                    // A producao pode vir sem a coluna Atendimento; a data (Dt.) passa a identificar a visita.
+                    boolean cabecalhoProducao = !hospital && (campos.contains("atendimento") || campos.contains("dt."));
+                    if (!cabecalhoProducao && (!campos.contains("atendimento") || !hospital || !campos.contains("data consumo"))) continue;
+                    if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "setor"))) {
                         throw new IllegalArgumentException("Cabecalho do hospital incompleto");
                     }
                     List<Linha> resultado = new ArrayList<>();
@@ -48,9 +51,11 @@ public class LeitorPlanilhaVisitas {
                         cabecalho.forEach((col, label) -> {
                             if (!label.isBlank()) linha.put(normalizar(label), valores.getOrDefault(col, ""));
                         });
-                        if (linha.getOrDefault("atendimento", "").isBlank()) {
+                        // Visita da producao sem atendimento aguarda o hospital e concilia por data e medico.
+                        if (hospital && linha.getOrDefault("atendimento", "").isBlank()) {
                             throw new IllegalArgumentException("Atendimento ausente na linha " + (j + 1));
                         }
+                        linha.putIfAbsent("atendimento", "");
                         resultado.add(new Linha(j + 1, linha));
                     }
                     if (resultado.isEmpty()) throw new IllegalArgumentException("Planilha sem registros");
@@ -139,12 +144,66 @@ public class LeitorPlanilhaVisitas {
     }
 
     static LocalDate data(String valor, int linha) {
-        for (String formato : List.of("uuuu-MM-dd", "dd/MM/uuuu", "d/M/uuuu")) {
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalArgumentException("Data invalida na linha " + linha);
+        }
+        String texto = valor.replace('\u00a0', ' ').trim();
+
+        // 1. Numero serial de data do Excel (ex.: 46024 ou 46024.5)
+        if (texto.matches("^[0-9]+(?:\\.[0-9]+)?$")) {
             try {
-                return LocalDate.parse(valor, java.time.format.DateTimeFormatter.ofPattern(formato)
+                double num = Double.parseDouble(texto);
+                if (num >= 1.0 && num <= 100000.0 && DateUtil.isValidExcelDate(num)) {
+                    return DateUtil.getLocalDateTime(num).toLocalDate();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Separacao de horario quando presente (ex.: 30/10/2026 00:00:00 ou 2026-10-30T14:30:00)
+        String parteData = texto;
+        if (texto.contains(" ")) {
+            int sep = texto.indexOf(' ');
+            String rem = texto.substring(sep + 1).trim();
+            if (rem.matches("^[0-9]{1,2}:[0-9]{2}(?::[0-9]{2}(?:\\.[0-9]+)?)?(?:\\s*(?:AM|PM|am|pm))?$")) {
+                parteData = texto.substring(0, sep).trim();
+            }
+        } else if (texto.contains("T") || texto.contains("t")) {
+            int sep = texto.indexOf('T') != -1 ? texto.indexOf('T') : texto.indexOf('t');
+            String rem = texto.substring(sep + 1).trim();
+            if (rem.matches("^[0-9]{1,2}:[0-9]{2}(?::[0-9]{2}(?:\\.[0-9]+)?)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?$")) {
+                parteData = texto.substring(0, sep).trim();
+            }
+        }
+
+        // 3. Formatos com ano de 4 digitos (estritos)
+        for (String formato : List.of(
+                "uuuu-MM-dd",
+                "dd/MM/uuuu",
+                "d/M/uuuu",
+                "dd-MM-uuuu",
+                "d-M-uuuu",
+                "dd.MM.uuuu",
+                "d.M.uuuu",
+                "uuuu/MM/dd",
+                "uuuu.MM.dd")) {
+            try {
+                return LocalDate.parse(parteData, java.time.format.DateTimeFormatter.ofPattern(formato)
                         .withResolverStyle(java.time.format.ResolverStyle.STRICT));
             } catch (java.time.format.DateTimeParseException ignored) {}
         }
+
+        // 4. Formatos com ano de 2 digitos (seculo 21: 2000-2099)
+        for (String prefixo : List.of("dd/MM/", "d/M/", "dd-MM-", "d-M-", "dd.MM.", "d.M.")) {
+            try {
+                var formatter = new java.time.format.DateTimeFormatterBuilder()
+                        .appendPattern(prefixo)
+                        .appendValueReduced(java.time.temporal.ChronoField.YEAR, 2, 2, 2000)
+                        .toFormatter()
+                        .withResolverStyle(java.time.format.ResolverStyle.STRICT);
+                return LocalDate.parse(parteData, formatter);
+            } catch (java.time.format.DateTimeParseException ignored) {}
+        }
+
         throw new IllegalArgumentException("Data invalida na linha " + linha);
     }
 

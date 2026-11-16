@@ -5,7 +5,7 @@
   const form=document.querySelector('#account-password');
   form.addEventListener('submit',async event=>{
     event.preventDefault();
-    if(form.novaSenha.value!==form.confirmacao.value){message.textContent='As senhas nao conferem.';return;}
+    if(form.novaSenha.value!==form.confirmacao.value){message.textContent='As senhas não conferem.';return;}
     const button=form.querySelector('button');button.disabled=true;
     try {await FaturamedAuth.request('/api/auth/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senhaAtual:form.senhaAtual.value,novaSenha:form.novaSenha.value})});form.reset();location.replace('/login.html');}
     catch(error){message.textContent=error.message;button.disabled=false;}

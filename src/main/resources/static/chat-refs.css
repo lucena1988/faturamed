@@ -1,0 +1,16 @@
+/* Cartoes de referencia no chat (#lote, #chamado, #relatorio, #div) */
+.fm-ref-link { color: var(--green); font-weight: 700; text-decoration: none; }
+.fm-ref-link:hover { text-decoration: underline; }
+.fm-ref-lista { display: grid; gap: 6px; margin-top: 6px; }
+.fm-ref-cartao { --tom: var(--blue); display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 340px; padding: 8px 10px; border: 1px solid var(--line); border-left: 4px solid var(--tom); border-radius: 10px; background: var(--surface); color: var(--text) !important; text-decoration: none !important; transition: transform .12s, box-shadow .12s; }
+.fm-ref-cartao:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.fm-ref-cartao[data-cor="verde"] { --tom: var(--green); }
+.fm-ref-cartao[data-cor="ambar"] { --tom: var(--amber); }
+.fm-ref-cartao[data-cor="rosa"] { --tom: var(--rose); }
+.fm-ref-cartao[data-cor="cinza"] { --tom: var(--muted); }
+.fm-ref-icone { flex: none; font-size: 18px; }
+.fm-ref-corpo { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.fm-ref-corpo small { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.fm-ref-corpo strong { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-ref-corpo em { font-style: normal; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-ref-status { flex: none; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--tom); background: color-mix(in srgb, var(--tom) 14%, transparent); }

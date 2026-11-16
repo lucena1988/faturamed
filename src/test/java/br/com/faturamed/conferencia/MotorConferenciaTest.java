@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.faturamed.domain.OrigemRegistro;
 import br.com.faturamed.domain.TipoDivergencia;
-import br.com.faturamed.importacao.RegistroConferencia;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;

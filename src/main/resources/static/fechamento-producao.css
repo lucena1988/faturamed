@@ -1,0 +1,24 @@
+.fp-abas { display: flex; gap: 4px; border-bottom: 1px solid var(--line, #ccd); margin-bottom: 16px; }
+.fp-aba { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 16px; cursor: pointer; font: inherit; color: inherit; }
+.fp-aba.ativa { border-bottom-color: currentColor; font-weight: 700; }
+.fp-total { font-size: 1.1rem; margin-left: 12px; }
+.fp-detalhe { margin: 12px 0; }
+.fp-detalhe summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.fp-status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+.fp-status.AGUARDANDO { background: #fff3cd; color: #664d03; }
+.fp-status.APROVADO { background: #cfe2ff; color: #052c65; }
+.fp-status.NF_EMITIDA { background: #d1e7dd; color: #0a3622; }
+.fp-dialogo { width: min(900px, 96vw); max-height: 92vh; border: 0; border-radius: 12px; padding: 20px; }
+.fp-dialogo::backdrop { background: rgba(0,0,0,.45); }
+.fp-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.fp-check { flex-direction: row !important; align-items: center; gap: 8px; }
+.fp-exames { border: 1px solid var(--line, #ccd); border-radius: 8px; padding: 8px 12px; margin: 12px 0; }
+#regra-exames { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; max-height: 260px; overflow: auto; }
+#regra-exames label { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+#regra-exames input[type=number] { width: 56px; margin-left: auto; }
+.fp-dialogo textarea { width: 100%; font-family: monospace; }
+#fechamentos td:last-child, #regras td:last-child { white-space: nowrap; }
+.fp-valor { text-align: right; white-space: nowrap; }
+
+.fp-contestacoes { margin: 8px 0 18px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #e0a24b 45%, var(--line)); background: color-mix(in srgb, #e0a24b 7%, var(--surface)); }
+.fp-contestacoes h2 { margin-top: 0; }

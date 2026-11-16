@@ -20,9 +20,10 @@ class DemonstrativoMedicoControllerTest {
     @MockitoBean ExtratoMedicoService portal;
     @MockitoBean ExportadorDemonstrativoPdf pdf;
     @MockitoBean UsuarioService users;
+    @MockitoBean br.com.faturamed.conciliacao.MedicoCadastroService medicos;
     private final UsuarioAutenticado medico=new UsuarioAutenticado(7,"m@test.local","Ana","hash","MEDICO",10L,true,false,0);
     private final UsuarioAutenticado admin=new UsuarioAutenticado(8,"a@test.local","Admin","hash","ADMIN",null,true,false,0);
-    @BeforeEach void configurar(){when(users.sessaoValida(any())).thenReturn(true);}
+    @BeforeEach void configurar(){when(users.sessaoValida(any())).thenReturn(true);when(medicos.cadastroCompleto(anyLong())).thenReturn(true);}
     @Test void exigeSessaoESeparaPapeis() throws Exception {
         mvc.perform(get("/api/medico/relatorios/1/demonstrativo.pdf")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/conciliacoes/visitas/1/demonstrativo.pdf?medicoId=10").with(user(medico))).andExpect(status().isForbidden());

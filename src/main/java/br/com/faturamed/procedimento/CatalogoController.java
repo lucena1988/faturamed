@@ -27,6 +27,23 @@ public class CatalogoController {
         return service.importar(request);
     }
 
+    @PostMapping(value = "/planilha", consumes = "multipart/form-data")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> importarPlanilha(@RequestParam(defaultValue = "TUSS") Tabela tabela, @RequestParam String versao,
+            @RequestParam(required = false) String fonte, @RequestParam org.springframework.web.multipart.MultipartFile arquivo,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal br.com.faturamed.seguranca.UsuarioAutenticado usuario) throws java.io.IOException {
+        if (usuario == null || !List.of("ADMIN", "DEV").contains(usuario.perfil()))
+            throw new org.springframework.security.access.AccessDeniedException("Somente ADMIN ou DEV importa a tabela de procedimentos");
+        if (arquivo.isEmpty()) throw new IllegalArgumentException("Arquivo vazio");
+        return service.importarPlanilha(tabela, versao, fonte, arquivo.getOriginalFilename(), arquivo.getBytes());
+    }
+
+    @GetMapping("/busca")
+    public List<Map<String, Object>> buscarTexto(@RequestParam(defaultValue = "TUSS") Tabela tabela,
+            @RequestParam(required = false) String q, @RequestParam(required = false) List<String> codigos) {
+        return service.buscarTexto(tabela, q, codigos);
+    }
+
     @GetMapping
     public List<Map<String, Object>> listar() {
         return service.listar();

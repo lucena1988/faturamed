@@ -35,21 +35,6 @@ public class RevisaoVisitasService {
     @Transactional(readOnly = true)
     public Estado carregar(Long id) throws Exception { return ler(id, false); }
 
-    @Transactional
-    public void excluir(Long id) {
-        var ids = jdbc.queryForList("select id from conciliacao_visitas where id = ? for update", Long.class, id);
-        if (ids.isEmpty()) throw new RecursoNaoEncontradoException("Relatorio nao encontrado");
-        if(!jdbc.queryForList("select id from conciliacao_visitas where id=? and base_hospitalar=true",id).isEmpty())
-            throw new ConflitoRevisaoException("Producao vinculada a base hospitalar possui arquivo e rastreabilidade permanentes e nao pode ser excluida");
-        if(!jdbc.queryForList("select id from conciliacao_visitas where anterior_id=?",id).isEmpty()) throw new ConflitoRevisaoException("Exclua primeiro a versao mais recente deste relatorio");
-        if(!jdbc.queryForList("select id from liberacao_relatorio where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty())throw new ConflitoRevisaoException("Relatorio possui historico de liberacao e nao pode ser excluido");
-        if(!jdbc.queryForList("select id from recebimento_visita where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty()
-                ||!jdbc.queryForList("select id from pagamento_visitas where relatorio_id=? or relatorio_raiz_id=? limit 1",id,id).isEmpty())
-            throw new ConflitoRevisaoException("Relatorio possui historico financeiro e nao pode ser excluido, mesmo apos estorno");
-        jdbc.update("delete from revisao_visita where conciliacao_id = ?", id);
-        jdbc.update("delete from conciliacao_visitas where id = ?", id);
-    }
-
     @Transactional(readOnly = true)
     public Detalhe detalhar(Long id, int linha) throws Exception {
         return detalhar(id, linha, null, null);

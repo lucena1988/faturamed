@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conciliação de visitas | Faturamed</title>
+  <title>Conciliação | Fechamento Faturado | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
-  <link rel="stylesheet" href="conciliacao.css?v=20261029-ui">
-  <link rel="stylesheet" href="identidade.css?v=20261029-barra">
+  <link rel="stylesheet" href="conciliacao.css?v=20261116-duplicidade">
+  <link rel="stylesheet" href="identidade.css?v=20261103-tema">
   <link rel="stylesheet" href="login.css?v=20261029-ui">
-<link rel="stylesheet" href="tema.css?v=20261029-ui"><script src="tema.js?v=20261009-1"></script></head>
+<link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
-    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação de visitas</h1></div>
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação · Fechamento Faturado</h1></div>
       <a href="/#medicos">Cadastro de médicos</a><a href="solicitacoes-medicos.html">Solicitações dos médicos</a><a id="download" hidden>Baixar relatório geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
     <p><a href="base-hospitalar.html">Importar hospital e produção médica</a> · Importe primeiro a base hospitalar e depois a produção individual ou coletiva. Os relatórios e históricos continuam disponíveis abaixo.</p>
     <p id="message" role="status" aria-live="polite"></p>
@@ -23,7 +23,7 @@
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
-      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e visitas sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e procedimentos sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
@@ -31,16 +31,17 @@
       </section>
       <div class="conciliation-filters">
         <label>Médico<select id="doctor-filter"><option value="">Todos os médicos</option></select></label>
-        <label>Status<select id="status"><option value="">Todos</option><option>PAGA</option><option>PENDENTE</option><option>DIVERGENTE</option></select></label>
+        <label>Status<select id="status"><option value="">Todos</option><option>PAGA</option><option>PENDENTE</option><option>DIVERGENTE</option><option value="EXCLUIDA">EXCLUIDA (duplicidade)</option></select></label>
         <label>Origem<select id="origin-filter" disabled><option value="">Todas</option><option value="NAO_REVISADA">Nao revisadas</option><option value="MANUAL">Revisadas manualmente</option><option value="AUTOMATICA">Resolvidas automaticamente</option></select></label>
         <label>Categoria<select id="category-filter" disabled><option value="">Todas</option><option value="DUPLICIDADE">Possível duplicidade</option><option value="AMBIGUIDADE">Ambiguidade</option><option value="DADOS_FALTANTES">Dados faltantes</option><option value="VALOR_DIVERGENTE">Valor divergente</option><option value="SEM_CORRESPONDENCIA">Sem correspondência</option><option value="AGUARDANDO_FATURAMENTO">Aguardando faturamento</option><option value="DADOS_DIVERGENTES">Dados divergentes</option><option value="CONFERENCIA_MANUAL">Conferência manual</option><option value="SEM_PENDENCIA">Sem pendência</option></select></label>
         <label>Atendimento<input id="search" type="search"></label>
         <span id="count"></span>
         <a id="download-doctor" hidden>Baixar relatório do médico XLSX</a>
       </div>
-      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="conciliation-table"><table><thead><tr><th>Linha</th><th>Data</th><th>Atendimento</th><th>Médico</th><th>Procedimento</th><th>Tipo</th><th>Código do procedimento</th><th>Valor hospital</th><th>Repasse</th><th>Status</th><th>Motivo</th><th>Categoria</th><th>Origem</th><th>Revisão</th></tr></thead><tbody id="rows"></tbody></table></div>
     </section>
     <section class="conciliation-history"><h2>Relatórios anteriores</h2><ul id="history"></ul></section>
+    <dialog id="delete-dialog" aria-labelledby="delete-title"><form method="dialog" class="delete-form"><h2 id="delete-title">Excluir relatório definitivamente</h2><p id="delete-summary"></p><p class="delete-warning">Serão apagados também as publicações para o médico e a empresa, ciências, pedidos de revisão, recebimentos, pagamentos, comprovantes e contatos de cobrança deste relatório. Os procedimentos do hospital continuam guardados. Esta ação não pode ser desfeita e fica registrada em auditoria.</p><p id="delete-versions"></p><label>Confirme com a sua senha<input id="delete-password" type="password" required autocomplete="current-password" maxlength="72"></label><div class="delete-actions"><button type="button" id="delete-cancel" class="history-open">Cancelar</button><button type="submit" class="delete-confirm history-delete">Excluir definitivamente</button></div></form></dialog>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">
     <form id="review-form">
@@ -61,12 +62,14 @@
       <div class="conciliation-table review-candidates"><table><thead><tr><th>Selecionar</th><th>Linha</th><th>Data</th><th>Médico</th><th>Paciente</th><th>Procedimento</th><th>Conta</th><th>Valor total</th><th>Repasse</th><th>Setor</th><th>Vinculo</th></tr></thead><tbody id="review-candidates"></tbody></table></div>
       <div class="review-fields">
         <label>Decisao<select id="review-action" required>
-          <option value="AJUSTAR_DADOS">Ajustar dados da visita</option>
+          <option value="AJUSTAR_DADOS">Ajustar dados do procedimento</option>
           <option value="CONFIRMAR_CORRESPONDENCIA">Confirmar correspondência</option>
           <option value="MANTER_PENDENTE">Manter pendente</option>
           <option value="MANTER_DIVERGENTE">Manter divergente</option>
+          <option value="EXCLUIR_DUPLICIDADE">Excluir por duplicidade</option>
           <option value="RESTAURAR_AUTOMATICO">Restaurar resultado automatico</option>
         </select></label>
+        <p id="review-action-hint" class="review-action-hint" hidden>A linha continua no histórico, sai dos totais e não é enviada ao médico. Só é aceita quando há outra linha ativa com o mesmo atendimento e data. Para desfazer, use "Restaurar resultado automatico".</p>
         <label>Responsavel<input id="review-owner" required maxlength="180" autocomplete="name"></label>
         <label class="review-justification">Justificativa<textarea id="review-justification" required minlength="5" maxlength="2000" rows="3"></textarea></label>
       </div>
@@ -92,8 +95,8 @@
       <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="sidebar.js?v=20261029-1"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261027-avisos"></script>
-  <script src="liberacao.js?v=20261015-1"></script>
-  <script src="conciliacao.js?v=20261026-duplicidade"></script>
+  <script src="sidebar.js?v=20261116-previa"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
+  <script src="liberacao.js?v=20261103-empresas"></script>
+  <script src="conciliacao.js?v=20261116-duplicidade"></script>
 </body>
 </html>
