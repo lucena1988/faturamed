@@ -529,7 +529,7 @@ public class ChatService {
         });
         var m = MENCAO.matcher(texto);
         while (m.find()) {
-            String token = normalizar(m.group(1)).replaceAll("[.\\-]+$", "");
+            String token = semPontuacaoFinal(normalizar(m.group(1)));
             if (token.equals("todos") || token.equals("all")) { achados.addAll(participantes.keySet()); continue; }
             Long completo = porNomeCompleto.get(token.replace('-', '.'));
             if (completo != null) { achados.add(completo); continue; }
@@ -538,6 +538,13 @@ public class ChatService {
         }
         achados.remove(autorId);
         return achados;
+    }
+
+    /** Tira pontos e hifens do fim da mencao ("@ana." -> "ana") em tempo linear, sem regex sobre o texto digitado. */
+    static String semPontuacaoFinal(String s) {
+        int fim = s.length();
+        while (fim > 0 && (s.charAt(fim - 1) == '.' || s.charAt(fim - 1) == '-')) fim--;
+        return s.substring(0, fim);
     }
 
     private static String normalizar(String s) {
@@ -557,7 +564,7 @@ public class ChatService {
         if (texto == null || texto.indexOf('@') < 0) return achados;
         var m = MENCAO.matcher(texto);
         while (m.find()) {
-            Set<String> alvo = PAPEIS.get(normalizar(m.group(1)).replaceAll("[.\\-]+$", ""));
+            Set<String> alvo = PAPEIS.get(semPontuacaoFinal(normalizar(m.group(1))));
             if (alvo != null) perfis.forEach((id, perfil) -> { if (alvo.contains(perfil)) achados.add(id); });
         }
         achados.remove(autorId);

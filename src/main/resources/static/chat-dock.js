@@ -713,20 +713,29 @@
     }
     renderPendentes();
   }
+  // Previa da imagem desenhada num canvas: o arquivo escolhido nao vira URL em atributo do DOM (alerta do CodeQL).
+  function miniatura(arquivo, largura, altura) {
+    const canvas = document.createElement('canvas');
+    const escala = window.devicePixelRatio || 1;
+    canvas.width = Math.round(largura * escala); canvas.height = Math.round(altura * escala);
+    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Prévia da imagem');
+    if (window.createImageBitmap) createImageBitmap(arquivo).then(bmp => {
+      const r = Math.max(canvas.width / bmp.width, canvas.height / bmp.height), w = bmp.width * r, h = bmp.height * r;
+      canvas.getContext('2d').drawImage(bmp, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      bmp.close();
+    }).catch(() => {});
+    return canvas;
+  }
   function renderPendentes() {
     const caixa = $('.fmc-anexos');
     caixa.hidden = !pendentes.length;
-    caixa.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
     caixa.replaceChildren();
     pendentes.forEach((f, i) => {
       const item = document.createElement('span');
       item.className = 'fmc-anexo';
 
       if (f.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        img.alt = '';
-        img.src = URL.createObjectURL(f);
-        item.appendChild(img);
+        item.appendChild(miniatura(f, 74, 58));
       } else {
         const icon = document.createElement('i');
         icon.textContent = '📄';
