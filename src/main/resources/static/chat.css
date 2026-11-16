@@ -217,7 +217,7 @@ html.chat-avulso .chat-painel { height: 100vh; min-height: 0; border: 0; border-
 .chat-anexos-previa { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 16px 0; border-top: 1px solid var(--line); background: var(--surface); }
 .chat-anexos-previa[hidden] { display: none; }
 .chat-previa-item { display: flex; align-items: center; gap: 8px; max-width: 240px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-soft); }
-.chat-previa-item img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex: none; }
+.chat-previa-item img, .chat-previa-item canvas { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex: none; }
 .chat-previa-info { display: grid; min-width: 0; }
 .chat-previa-info strong { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .chat-previa-info small { font-size: 11px; color: var(--muted); }

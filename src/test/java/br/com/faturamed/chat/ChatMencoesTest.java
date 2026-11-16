@@ -36,4 +36,12 @@ class ChatMencoesTest {
         assertEquals(Set.of(2L, 3L, 4L), ChatService.detectarPapeis("@equipe reunião", perfis, 1L));
         assertTrue(ChatService.detectarPapeis("@financeiro e @Ana", perfis, 1L).isEmpty());
     }
+
+    @Test
+    void pontuacaoNoFimDaMencaoSaiSemRegex() {
+        assertEquals("ana", ChatService.semPontuacaoFinal("ana.-."));
+        assertEquals("bruno.lima", ChatService.semPontuacaoFinal("bruno.lima"));
+        assertEquals("", ChatService.semPontuacaoFinal("..."));
+        assertEquals(Set.of(1L), ChatService.detectarMencoes("Falou com @Ana.? " + ".".repeat(50_000) + "x", PARTICIPANTES, 2L));
+    }
 }

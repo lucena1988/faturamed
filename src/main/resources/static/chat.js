@@ -502,17 +502,29 @@
     $('chat-texto').focus();
   }
 
+  // Previa da imagem desenhada num canvas: o arquivo escolhido nao vira URL em atributo do DOM (alerta do CodeQL).
+  function miniatura(arquivo, largura, altura) {
+    const canvas = document.createElement('canvas');
+    const escala = window.devicePixelRatio || 1;
+    canvas.width = Math.round(largura * escala); canvas.height = Math.round(altura * escala);
+    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Prévia da imagem');
+    if (window.createImageBitmap) createImageBitmap(arquivo).then(bmp => {
+      const r = Math.max(canvas.width / bmp.width, canvas.height / bmp.height), w = bmp.width * r, h = bmp.height * r;
+      canvas.getContext('2d').drawImage(bmp, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      bmp.close();
+    }).catch(() => {});
+    return canvas;
+  }
+
   function desenharPrevia() {
     const ul = $('chat-anexos-previa');
-    ul.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
     ul.replaceChildren();
     ul.hidden = pendentes.length === 0;
     atualizarBotaoEnvio();
     pendentes.forEach((a, i) => {
       const li = el('li', 'chat-previa-item');
       if (ehImagem(a.name)) {
-        const img = document.createElement('img'); img.src = URL.createObjectURL(a); img.alt = '';
-        li.append(img);
+        li.append(miniatura(a, 44, 44));
       } else {
         const [rotulo, cor] = ICONE_ARQUIVO[extensao(a.name)] || ['ARQ', 'txt'];
         li.append(el('span', `chat-arquivo-icone ${cor}`, rotulo));
