@@ -38,7 +38,7 @@ public class AcompanhamentoRevisao {
     }
 
     private Categoria categoria(ConciliadorVisitas.Visita v, Set<Integer> ocupados, Map<Integer, Integer> disputas) {
-        if (v.status() == ConciliadorVisitas.Status.PAGA) return Categoria.SEM_PENDENCIA;
+        if (v.status() == ConciliadorVisitas.Status.PAGA || v.status() == ConciliadorVisitas.Status.EXCLUIDA) return Categoria.SEM_PENDENCIA;
         if (v.status() == ConciliadorVisitas.Status.DIVERGENTE && v.motivo()!=null
                 && v.motivo().startsWith("Possivel duplicidade:")) return Categoria.DUPLICIDADE;
         if (v.medicoProducao()!=null && v.medicoProducao().conflito()) return Categoria.DADOS_DIVERGENTES;

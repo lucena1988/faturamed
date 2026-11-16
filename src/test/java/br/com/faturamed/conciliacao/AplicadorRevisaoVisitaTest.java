@@ -151,6 +151,29 @@ class AplicadorRevisaoVisitaTest {
         return new ConciliadorVisitas.RegistroHospital(linha, "123", LocalDate.of(2026, 1, 1), "Paciente teste", "Convenio teste",
                 medico, "10102019", "Visita", "C1", setor, new BigDecimal("100.10"), new BigDecimal("0.85"), new BigDecimal("85.085"));
     }
+    @Test
+    void excluiPorDuplicidadeQuandoHaOutraLinhaAtivaDoMesmoAtendimento() {
+        var sozinha = relatorio(List.of(visita(2)));
+        assertThatThrownBy(() -> aplicador.aplicar(visita(2), sozinha, request(RevisaoVisitaRequest.Acao.EXCLUIR_DUPLICIDADE, null)))
+                .hasMessageContaining("duplicidade nao se aplica");
+        var atual = relatorio(List.of(visita(2), visita(3)));
+        assertThatThrownBy(() -> aplicador.aplicar(visita(3), atual, request(RevisaoVisitaRequest.Acao.EXCLUIR_DUPLICIDADE, 10)))
+                .hasMessageContaining("nao recebe um registro hospitalar");
+        var excluida = aplicador.aplicar(visita(3), atual, request(RevisaoVisitaRequest.Acao.EXCLUIR_DUPLICIDADE, null));
+        assertThat(excluida.status()).isEqualTo(ConciliadorVisitas.Status.EXCLUIDA);
+        assertThat(excluida.motivo()).startsWith("Excluida por duplicidade da linha 2:");
+        assertThat(excluida.hospital()).isNull();
+        // a linha que ficou valendo nao pode ser excluida tambem: a outra ja esta excluida
+        var depois = relatorio(List.of(visita(2), excluida));
+        assertThatThrownBy(() -> aplicador.aplicar(visita(2), depois, request(RevisaoVisitaRequest.Acao.EXCLUIR_DUPLICIDADE, null)))
+                .isInstanceOf(IllegalArgumentException.class);
+        var recalculado = aplicador.recalcular(depois, List.of(visita(2), excluida));
+        assertThat(recalculado.resumo().get(ConciliadorVisitas.Status.EXCLUIDA)).isEqualTo(1);
+        // restaurar desfaz a exclusao
+        var restaurada = aplicador.aplicar(visita(3), depois, request(RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO, null));
+        assertThat(restaurada.status()).isEqualTo(ConciliadorVisitas.Status.DIVERGENTE);
+    }
+
     private ConciliadorVisitas.Relatorio relatorio(List<ConciliadorVisitas.Visita> visitas) {
         return new ConciliadorVisitas.Relatorio("Hospital teste", "producao.xlsx", "hospital.xlsb", "Faturado", visitas,
                 List.of(), Map.of(), BigDecimal.ZERO);

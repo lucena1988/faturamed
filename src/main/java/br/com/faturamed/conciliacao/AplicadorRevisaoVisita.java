@@ -48,6 +48,16 @@ public class AplicadorRevisaoVisita {
                 status = original.status(); hospital = original.hospital(); motivo = original.motivo();
                 campos = null; atendimento = original.atendimento(); data = original.data(); candidatos = original.candidatos();
             }
+            case EXCLUIR_DUPLICIDADE -> {
+                // so exclui quando ha outra linha ativa do mesmo atendimento e data, que fica valendo no lugar desta
+                var dataAtual = data; var atendimentoAtual = atendimento;
+                var mantida = atual.visitas().stream().filter(v -> v.linhaMedico() != original.linhaMedico()
+                        && v.status() != ConciliadorVisitas.Status.EXCLUIDA && v.atendimento().equals(atendimentoAtual)
+                        && java.util.Objects.equals(v.data(), dataAtual)).findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Nao ha outra linha ativa com o mesmo atendimento e data; a exclusao por duplicidade nao se aplica"));
+                status = ConciliadorVisitas.Status.EXCLUIDA;
+                motivo = "Excluida por duplicidade da linha " + mantida.linhaMedico() + ": " + request.justificativa().trim();
+            }
             case AJUSTAR_DADOS -> {
                 var ajuste = request.ajuste();
                 if (ajuste == null) throw new IllegalArgumentException("Informe os dados ajustados");

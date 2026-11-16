@@ -41,25 +41,28 @@
 #results > .conciliation-table { overflow: visible; }
 #results > .conciliation-table table { table-layout: fixed; font-size: 12px; min-width: 0; width: 100%; }
 #results > .conciliation-table th, #results > .conciliation-table td { min-width: 0; padding: 8px 6px; font-size: 12px; overflow-wrap: anywhere; white-space: normal; }
+/* 14 colunas (linha, data, atendimento, medico, procedimento, tipo, codigo, valor, repasse, status, motivo, categoria, origem, revisao): soma 100% */
 #results > .conciliation-table th:nth-child(1) { width: 4%; }
-#results > .conciliation-table th:nth-child(2) { width: 8%; }
+#results > .conciliation-table th:nth-child(2) { width: 7%; }
 #results > .conciliation-table th:nth-child(3) { width: 8%; }
-#results > .conciliation-table th:nth-child(4) { width: 10%; }
-#results > .conciliation-table th:nth-child(5) { width: 12%; }
-#results > .conciliation-table th:nth-child(6), #results > .conciliation-table th:nth-child(7),
-#results > .conciliation-table th:nth-child(8), #results > .conciliation-table th:nth-child(11),
+#results > .conciliation-table th:nth-child(4) { width: 9%; }
+#results > .conciliation-table th:nth-child(5) { width: 10%; }
+#results > .conciliation-table th:nth-child(6) { width: 4%; }
+#results > .conciliation-table th:nth-child(7) { width: 8%; }
+#results > .conciliation-table th:nth-child(8), #results > .conciliation-table th:nth-child(9) { width: 6%; }
+#results > .conciliation-table th:nth-child(10) { width: 8%; }
+#results > .conciliation-table th:nth-child(11) { width: 11%; }
 #results > .conciliation-table th:nth-child(12) { width: 7%; }
-#results > .conciliation-table th:nth-child(9) { width: 6%; }
-#results > .conciliation-table th:nth-child(10) { width: 10%; }
-#results > .conciliation-table th:nth-child(13) { width: 7%; }
-#results > .conciliation-table .review-row { padding: 8px; max-width: 100%; font-size: 12px; }
+#results > .conciliation-table th:nth-child(13), #results > .conciliation-table th:nth-child(14) { width: 6%; }
+#results > .conciliation-table th { font-size: 10.5px; letter-spacing: .02em; overflow-wrap: normal; word-break: normal; hyphens: auto; }
+#results > .conciliation-table .review-row { padding: 6px 8px; max-width: 100%; font-size: 12px; white-space: nowrap; overflow-wrap: normal; }
 @media (max-width: 1000px) {
   #results > .conciliation-table table, #results > .conciliation-table tbody { display: block; }
   #results > .conciliation-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   #results > .conciliation-table tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 2px solid var(--line); padding: 10px 0; }
   #results > .conciliation-table td { display: block; border: 0; font-size: 13px; }
   #results > .conciliation-table td::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
-  #results > .conciliation-table td:nth-child(10) { grid-column: 1 / -1; }
+  #results > .conciliation-table td:nth-child(11) { grid-column: 1 / -1; }
 }
 @media (max-width: 550px) { #results > .conciliation-table tr { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .conciliation-workspace .review-row { padding: 8px 12px; }
@@ -136,3 +139,4 @@
 .delete-actions button { padding: 10px 16px; border-radius: var(--radius-sm); cursor: pointer; }
 #delete-cancel { border: 1px solid var(--line); background: var(--surface-soft); color: var(--text); }
 .delete-confirm { border: 1px solid var(--danger-line); background: var(--danger-fg); color: var(--surface); font-weight: 700; }
+.review-action-hint { grid-column: 1 / -1; margin: 0; padding: 8px 12px; border-left: 3px solid var(--amber, #d97706); background: var(--surface-soft); color: var(--muted); font-size: 13px; }

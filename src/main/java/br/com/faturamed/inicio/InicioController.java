@@ -52,6 +52,7 @@ public class InicioController {
             var relatorio = revisoes.carregar(ultimo.get(0)).atual();
             hospital = relatorio.hospital();
             for (var v : relatorio.visitas()) {
+                if (v.status() == ConciliadorVisitas.Status.EXCLUIDA) continue;
                 if (v.status() != ConciliadorVisitas.Status.PAGA) atencao++; else pagas++;
                 if (v.status() == ConciliadorVisitas.Status.DIVERGENTE) divergentes++;
             }

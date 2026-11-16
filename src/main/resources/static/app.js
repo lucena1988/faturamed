@@ -1,5 +1,5 @@
 const $ = selector => document.querySelector(selector);
-const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente' };
+const labels = { PAGA: 'Paga', PENDENTE: 'Pendente', DIVERGENTE: 'Divergente', EXCLUIDA: 'Excluída (duplicidade)' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const round2 = v => v == null ? null : Math.round((Number(v) + Number.EPSILON) * 100) / 100;
 const integer = new Intl.NumberFormat('pt-BR');

@@ -35,7 +35,7 @@ const queuePriority = ['DUPLICIDADE', 'AMBIGUIDADE', 'DADOS_DIVERGENTES', 'VALOR
 const reviewDialog = document.querySelector('#review-dialog');
 const actionLabels = { CONFIRMAR_CORRESPONDENCIA: 'Correspondência confirmada', MANTER_PENDENTE: 'Mantida pendente',
   MANTER_DIVERGENTE: 'Mantida divergente', RESTAURAR_AUTOMATICO: 'Resultado automatico restaurado', AJUSTAR_DADOS: 'Dados do procedimento ajustados',
-  CORRESPONDENCIA_AUTOMATICA: 'Correspondência automatica após revisão' };
+  CORRESPONDENCIA_AUTOMATICA: 'Correspondência automatica após revisão', EXCLUIR_DUPLICIDADE: 'Excluída por duplicidade' };
 async function request(url, options) {
   const response = await fetch(url, options);
   if (!response.ok) {
@@ -137,7 +137,7 @@ function renderRows() {
     ? report.repasseCorrespondente
     : selectedDoctor.filter(v => v.status === 'PAGA')
         .reduce((sum, v) => sum + (round2(v.repasse ?? v.hospital?.repasse) || 0), 0);
-  for (const [label, value] of ['PAGA', 'PENDENTE', 'DIVERGENTE'].map(status => [status, selectedDoctor.filter(v => v.status === status).length])
+  for (const [label, value] of ['PAGA', 'PENDENTE', 'DIVERGENTE', 'EXCLUIDA'].map(status => [status, selectedDoctor.filter(v => v.status === status).length])
     .concat([['Repasse correspondente', money.format(repasseTotal)]])) {
     const item = node('div', label); item.append(node('strong', value)); stats.append(item);
   }
@@ -278,7 +278,7 @@ async function initialize() {
   if (id && /^[0-9]+$/.test(id)) {
     document.querySelector('#search').value = params.get('atendimento') || '';
     const status = params.get('status');
-    if (['PAGA', 'PENDENTE', 'DIVERGENTE'].includes(status)) document.querySelector('#status').value = status;
+    if (['PAGA', 'PENDENTE', 'DIVERGENTE', 'EXCLUIDA'].includes(status)) document.querySelector('#status').value = status;
     showReport(id, await request(`/api/conciliacoes/visitas/${id}`));
       const line=Number(params.get('linha'));
       if(Number.isInteger(line)&&report.visitas.some(v=>v.linhaMedico===line)
@@ -396,6 +396,7 @@ function updateReviewAction() {
   const confirm = action === 'CONFIRMAR_CORRESPONDENCIA' || editing;
   document.querySelector('#review-edit-fields').hidden = !editing;
   document.querySelector('#review-edit-fields').disabled = !editing;
+  document.querySelector('#review-action-hint').hidden = action !== 'EXCLUIR_DUPLICIDADE';
   document.querySelectorAll('[name=linhaHospital]').forEach(radio => {
     radio.disabled = !confirm || radio.dataset.reserved === 'true';
   });
