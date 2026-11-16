@@ -31,7 +31,7 @@ public class ChatService {
     private static final String PERFIS_INTERNOS = "('ADMIN','DEV','OPERADOR')";
     private static final java.security.SecureRandom SORTEIO = new java.security.SecureRandom();
     private static final String FOTO = "(select extract(epoch from f.atualizado_em)::bigint from usuario_foto f where f.usuario_id=%s)";
-    private static final String STATUS_SQL = "(select s.status from chat_status s where s.usuario_id=%1$s) status, (select s.recado from chat_status s where s.usuario_id=%1$s) recado";
+    private static final String STATUS_SQL = "(select s.status from chat_status s where s.usuario_id=%1$s) status, (select s.recado from chat_status s where s.usuario_id=%1$s) recado, (select p.visto_em from chat_presenca p where p.usuario_id=%1$s) visto_em";
     private static final String SELECT_MENSAGEM = """
         select m.*, u.nome, u.email, %s foto,
                r.autor_id resp_autor, ru.nome resp_nome, r.texto resp_texto, r.apagada_em resp_apagada,
@@ -42,7 +42,7 @@ public class ChatService {
         """.formatted(FOTO.formatted("m.autor_id"));
 
     /** foto: versao da foto (null sem foto), imagem em /api/usuarios/{id}/foto?v={foto}; status/recado escolhidos pela pessoa. */
-    public record Contato(long id, String nome, String perfil, boolean online, Long foto, String status, String recado) {}
+    public record Contato(long id, String nome, String perfil, boolean online, Long foto, String status, String recado, Instant vistoEm) {}
     public record Fixada(long id, String autorNome, String texto) {}
     /** Em conversa DIRETA, contato e a outra pessoa; em GRUPO, contato e null e nome traz o nome do grupo. sistema: conversa com o Robo. */
     public record Conversa(long id, String tipo, String nome, Contato contato, int participantes, boolean souCriador,
@@ -687,7 +687,8 @@ public class ChatService {
     private Contato contato(ResultSet r, String coluna) throws SQLException {
         long id = r.getLong(coluna);
         return new Contato(id, r.getString("nome"), r.getString("perfil"), eventos.online(id), (Long) r.getObject("foto"),
-                Optional.ofNullable(r.getString("status")).orElse("DISPONIVEL"), r.getString("recado"));
+                Optional.ofNullable(r.getString("status")).orElse("DISPONIVEL"), r.getString("recado"),
+                Optional.ofNullable(r.getTimestamp("visto_em")).map(java.sql.Timestamp::toInstant).orElse(null));
     }
 
     private static Mensagem mensagem(ResultSet r) throws SQLException {
