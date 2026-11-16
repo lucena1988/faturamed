@@ -95,8 +95,8 @@ public class ChatReferencias {
         String status = String.valueOf(r.get("status"));
         return new Referencia("div:" + valor, "Atendimento", "Atendimento " + p[1] + " · " + r.get("hospital"),
                 Objects.toString(r.get("motivo"), ""),
-                switch (status) { case "PAGA" -> "Pago"; case "PENDENTE" -> "Pendente"; default -> "Divergente"; },
-                switch (status) { case "PAGA" -> "verde"; case "PENDENTE" -> "ambar"; default -> "rosa"; },
+                switch (status) { case "PAGA" -> "Pago"; case "PENDENTE" -> "Pendente"; case "EXCLUIDA" -> "Excluido (duplicidade)"; default -> "Divergente"; },
+                switch (status) { case "PAGA" -> "verde"; case "PENDENTE" -> "ambar"; case "EXCLUIDA" -> "cinza"; default -> "rosa"; },
                 "conciliacao.html?relatorio=" + id + "&atendimento=" + p[1]);
     }
 

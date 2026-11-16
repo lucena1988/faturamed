@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ConciliadorVisitas {
-    public enum Status { PAGA, PENDENTE, DIVERGENTE }
+    public enum Status { PAGA, PENDENTE, DIVERGENTE, EXCLUIDA }
     public record Chave(String atendimento, LocalDate data) {}
     public record RegistroHospital(int linha, String atendimento, LocalDate data, String paciente,
             String convenio, String medico, String codigo, String procedimento, String conta,
