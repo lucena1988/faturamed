@@ -88,6 +88,17 @@
     document.title = (total ? `(${total}) ` : '') + 'FaturaChat | FaturaMed';
   }
 
+  // "visto por ultimo" no estilo do WhatsApp: hoje/ontem as HH:MM, dia da semana na ultima semana, senao a data
+  function vistoPorUltimo(iso) {
+    if (!iso) return 'offline';
+    const d = new Date(iso), agora = new Date(), hora = d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+    const dia = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dias = Math.round((dia(agora) - dia(d)) / 86400000);
+    if (dias <= 0) return `visto por último hoje às ${hora}`;
+    if (dias === 1) return `visto por último ontem às ${hora}`;
+    if (dias < 7) return `visto por último ${d.toLocaleDateString('pt-BR', {weekday: 'long'})} às ${hora}`;
+    return `visto por último em ${d.toLocaleDateString('pt-BR')} às ${hora}`;
+  }
   function desenharCabecalho() {
     $('chat-nome').textContent = atual.nome;
     const status = $('chat-status');
@@ -99,7 +110,7 @@
       status.classList.remove('online');
     } else {
       const c = atual.contato;
-      const rotulo = c?.online ? (STATUS_ROTULO[c.status] || '● online') : 'offline';
+      const rotulo = c?.online ? (STATUS_ROTULO[c.status] || '● online') : vistoPorUltimo(c?.vistoEm);
       status.textContent = rotulo + (c?.recado ? ` — ${c.recado}` : '');
       status.classList.toggle('online', !!c?.online);
     }
@@ -884,8 +895,8 @@
       desenharLista();
     });
     fonte.addEventListener('presenca', e => {
-      const {usuarioId, online} = JSON.parse(e.data);
-      conversas.forEach(c => { if (c.contato?.id === usuarioId) c.contato.online = online; });
+      const {usuarioId, online, vistoEm} = JSON.parse(e.data);
+      conversas.forEach(c => { if (c.contato?.id === usuarioId) Object.assign(c.contato, {online}, vistoEm ? {vistoEm} : {}); });
       if (atual?.contato?.id === usuarioId) desenharCabecalho();
       desenharLista();
     });

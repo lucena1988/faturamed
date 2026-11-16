@@ -171,6 +171,7 @@
       avisarNovas(novas);
       conversas = novas;
       renderTrilho(); if (!gaveta.hidden && !aberta) renderLista();
+      if (aberta) { const c = conversas.find(x => x.id === aberta); if (c) desenharTitulo(c); }
     } catch (_) {}
   }
 
@@ -403,12 +404,28 @@
     campo.style.height = 'auto'; if (campo.value) campo.style.height = Math.min(120, campo.scrollHeight) + 'px';
     renderPendentes(); painelEmoji.hidden = true;
   }
+  // cabecalho da conversa: nome e, na conversa direta, "online" ou "visto por ultimo" (estilo WhatsApp)
+  function vistoPorUltimo(iso) {
+    if (!iso) return 'offline';
+    const d = new Date(iso), agora = new Date(), h = d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+    const dia = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dias = Math.round((dia(agora) - dia(d)) / 86400000);
+    if (dias <= 0) return `visto por último hoje às ${h}`;
+    if (dias === 1) return `visto por último ontem às ${h}`;
+    if (dias < 7) return `visto por último ${d.toLocaleDateString('pt-BR', {weekday: 'long'})} às ${h}`;
+    return `visto por último em ${d.toLocaleDateString('pt-BR')} às ${h}`;
+  }
+  function desenharTitulo(c) {
+    const direta = c.tipo !== 'GRUPO' && c.contato;
+    const presenca = direta ? `<small class="fmc-presenca${c.contato.online ? ' online' : ''}">${c.contato.online ? 'online' : esc(vistoPorUltimo(c.contato.vistoEm))}</small>` : '';
+    $('.fmc-titulo').innerHTML = `${avatar(c, 'mini')}<span class="fmc-titulo-txt"><span>${esc(c.nome)}</span>${presenca}</span>`;
+  }
   async function abrirConversa(id) {
     const c = conversas.find(x => x.id === id) || {id, nome: 'Conversa'};
     if (aberta !== id) { guardarRascunho(); restaurarRascunho(id); }
     aberta = id;
     $('.fmc-lista-vista').hidden = true; $('.fmc-conversa-vista').hidden = false; $('.fmc-voltar').hidden = false;
-    $('.fmc-titulo').innerHTML = `${avatar(c, 'mini')}<span>${esc(c.nome)}</span>`;
+    desenharTitulo(c);
     atualizarMudoConversa(); $('.fmc-mudo-geral').hidden = true; $('.fmc-nao-perturbe').hidden = true; // dentro da conversa, so o sininho dela
     $('.fmc-cheio').href = `chat.html#c${id}`;
     $('.fmc-msgs').innerHTML = '<li class="fmc-vazio">Carregando…</li>';
