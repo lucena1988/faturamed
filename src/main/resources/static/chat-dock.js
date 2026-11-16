@@ -20,7 +20,7 @@
       <button type="button" class="fmc-mudo-geral" aria-pressed="false"></button>
       <a class="fmc-cheio" href="chat.html" title="Abrir o FaturaChat completo" aria-label="Abrir o FaturaChat completo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></a>
       <button type="button" class="fmc-fechar" aria-label="Fechar (Esc)">×</button></header>
-    <div class="fmc-lista-vista"><div class="fmc-abas" role="tablist"><button type="button" role="tab" class="fmc-aba-conversas ativo" aria-selected="true">Conversas</button><button type="button" role="tab" class="fmc-aba-comigo" aria-selected="false" title="Pendências abertas com você">Comigo <b></b></button><button type="button" role="tab" class="fmc-aba-salvas" aria-selected="false" title="Mensagens salvas">⭐ Salvas</button></div><input type="search" class="fmc-busca" placeholder="Buscar conversa" aria-label="Buscar conversa"><ul class="fmc-lista"></ul></div>
+    <div class="fmc-lista-vista"><div class="fmc-abas" role="tablist"><button type="button" role="tab" class="fmc-aba-conversas ativo" aria-selected="true">Conversas</button><button type="button" role="tab" class="fmc-aba-comigo" aria-selected="false" title="Pendências abertas com você">Comigo <b></b></button><button type="button" role="tab" class="fmc-aba-salvas" aria-selected="false" title="Mensagens salvas">⭐ Salvas</button></div><input type="search" class="fmc-busca" placeholder="Buscar conversa ou pessoa" aria-label="Buscar conversa ou pessoa"><ul class="fmc-lista"></ul></div>
     <div class="fmc-conversa-vista" hidden><ol class="fmc-msgs" aria-live="polite"></ol>
       <div class="fmc-anexos" hidden></div>
       <div class="fmc-emojis" hidden role="dialog" aria-label="Emojis"></div>
@@ -289,6 +289,7 @@
   function abrir(id) {
     posicionar(); gaveta.hidden = false; document.body.classList.add('fmc-aberta');
     requestAnimationFrame(() => gaveta.classList.add('visivel'));
+    carregarContatos();
     if (id) abrirConversa(id); else { voltar(); $('.fmc-busca').focus(); }
   }
   function fechar() {
@@ -302,17 +303,41 @@
     $('.fmc-titulo').textContent = 'FaturaChat'; $('.fmc-cheio').href = 'chat.html'; $('.fmc-mudo-conversa').hidden = true; $('.fmc-mudo-geral').hidden = false; $('.fmc-nao-perturbe').hidden = false;
     renderLista();
   }
+  const PERFIS = {ADMIN: 'Administrador', DEV: 'Desenvolvedor', OPERADOR: 'Operador', MEDICO: 'Médico', HOSPITAL: 'Hospital'};
+  let contatos = null; // pessoas cadastradas (/api/chat/contatos), carregadas ao abrir a gaveta
   function renderLista() {
     if (vendoPendencias) { renderPendencias(); return; }
     if (vendoSalvas) { renderSalvas(); return; }
     const termo = $('.fmc-busca').value.trim().toLowerCase();
     const lista = conversas.filter(c => !termo || String(c.nome).toLowerCase().includes(termo));
-    $('.fmc-lista').innerHTML = lista.length ? lista.map(c => `<li><button type="button" class="fmc-item${c.naoLidas ? ' nao-lida' : ''}" data-id="${c.id}">
+    // pessoas cadastradas que ainda nao tem conversa direta com o usuario: clicar abre a conversa
+    const comConversa = new Set(conversas.filter(c => c.tipo !== 'GRUPO' && c.contato).map(c => c.contato.id));
+    const pessoas = (contatos || []).filter(p => !comConversa.has(p.id) && (!termo || String(p.nome).toLowerCase().includes(termo)));
+    const secaoPessoas = pessoas.length ? `<li class="fmc-secao">Iniciar conversa</li>` + pessoas.map(p => `<li><button type="button" class="fmc-item fmc-contato" data-usuario="${p.id}">
+        ${avatar({nome: p.nome, contato: p})}<span class="fmc-item-corpo"><strong>${esc(p.nome)}</strong><small>${esc(p.recado || PERFIS[p.perfil] || p.perfil || '')}</small></span>
+        <span class="fmc-item-meta"><em>Nova</em></span></button></li>`).join('') : '';
+    if (!lista.length && !pessoas.length) {
+      $('.fmc-lista').innerHTML = `<li class="fmc-vazio">${termo ? 'Ninguém encontrado com esse nome.' : contatos ? 'Nenhuma pessoa disponível para conversar.' : 'Carregando…'}</li>`;
+      return;
+    }
+    $('.fmc-lista').innerHTML = lista.map(c => `<li><button type="button" class="fmc-item${c.naoLidas ? ' nao-lida' : ''}" data-id="${c.id}">
         ${avatar(c)}<span class="fmc-item-corpo"><strong>${esc(c.nome)}</strong><small>${esc(c.ultimaMensagem || 'Sem mensagens ainda')}</small></span>
-        <span class="fmc-item-meta">${c.ultimaMensagemEm ? `<em>${hora(c.ultimaMensagemEm)}</em>` : ''}${c.naoLidas ? `<b>${c.naoLidas > 99 ? '99+' : c.naoLidas}</b>` : ''}</span></button><button type="button" class="fmc-item-mudo${c.silenciado ? ' ativo' : ''}" data-id="${c.id}" aria-pressed="${!!c.silenciado}" title="${c.silenciado ? 'Conversa silenciada: clique para reativar' : 'Silenciar esta conversa'}" aria-label="${c.silenciado ? 'Reativar' : 'Silenciar'} ${esc(c.nome)}">${c.silenciado ? SINO_CORTADO : SINO}</button></li>`).join('')
-      : `<li class="fmc-vazio">${termo ? 'Nenhuma conversa com esse nome.' : 'Você ainda não tem conversas. Abra o FaturaChat completo para começar uma.'}</li>`;
+        <span class="fmc-item-meta">${c.ultimaMensagemEm ? `<em>${hora(c.ultimaMensagemEm)}</em>` : ''}${c.naoLidas ? `<b>${c.naoLidas > 99 ? '99+' : c.naoLidas}</b>` : ''}</span></button><button type="button" class="fmc-item-mudo${c.silenciado ? ' ativo' : ''}" data-id="${c.id}" aria-pressed="${!!c.silenciado}" title="${c.silenciado ? 'Conversa silenciada: clique para reativar' : 'Silenciar esta conversa'}" aria-label="${c.silenciado ? 'Reativar' : 'Silenciar'} ${esc(c.nome)}">${c.silenciado ? SINO_CORTADO : SINO}</button></li>`)
+      .join('') + secaoPessoas;
   }
   $('.fmc-busca').addEventListener('input', renderLista);
+  async function carregarContatos() {
+    const r = await fetch('/api/chat/contatos', {headers: {Accept: 'application/json'}}).catch(() => null);
+    contatos = r && r.ok ? await r.json() : (contatos || []);
+    if (!gaveta.hidden && !aberta) renderLista();
+  }
+  async function iniciarConversa(usuarioId) {
+    const r = await fetch('/api/chat/conversas', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({usuarioId})}).catch(() => null);
+    if (!r || !r.ok) { window.fmToast?.('Não foi possível iniciar a conversa', 'erro'); return; }
+    const conversa = await r.json();
+    await carregarConversas();
+    abrirConversa(conversa.id);
+  }
   function renderPendencias() {
     $('.fmc-lista').innerHTML = pendencias.length ? pendencias.map(p => {
       const [ic, nome] = ROTULO_STATUS[p.status] || ['', p.status];
@@ -351,6 +376,7 @@
   setTimeout(() => { contarPendencias(); setInterval(contarPendencias, 60000); }, 0);
   $('.fmc-lista').addEventListener('click', e => {
     const m = e.target.closest('.fmc-item-mudo'); if (m) { e.stopPropagation(); alternarSilencio(Number(m.dataset.id)); return; }
+    const p = e.target.closest('.fmc-contato'); if (p) { p.disabled = true; iniciarConversa(Number(p.dataset.usuario)); return; }
     const b = e.target.closest('.fmc-item'); if (b) abrirConversa(Number(b.dataset.id));
   });
   $('.fmc-voltar').addEventListener('click', voltar);
