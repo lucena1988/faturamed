@@ -223,7 +223,8 @@
   }
   function avatar(c, classe = '') {
     const grupo = c.tipo === 'GRUPO';
-    const foto = !grupo && c.contato?.foto ? `<img alt="" loading="lazy" src="/api/usuarios/${c.contato.id}/foto?v=${c.contato.foto}" onerror="this.remove()">` : '';
+    const foto = grupo ? (c.fotoGrupo ? `<img alt="" loading="lazy" src="/api/chat/conversas/${Number(c.id)}/foto?v=${Number(c.fotoGrupo)}" onerror="this.remove()">` : '')
+      : c.contato?.foto ? `<img alt="" loading="lazy" src="/api/usuarios/${c.contato.id}/foto?v=${c.contato.foto}" onerror="this.remove()">` : '';
     const online = !grupo && c.contato?.online ? '<i class="fmc-online"></i>' : '';
     return `<span class="fmc-av ${grupo ? 'grupo' : ''} ${classe}">${grupo ? '#' : esc(iniciais(c.nome))}${foto}${online}</span>`;
   }
