@@ -161,6 +161,25 @@ class ChatIntegracaoTest {
         assertEquals(3, chat.participantesDoGrupo(g.id(), bruno).size());
     }
 
+    @Test void fotoDoGrupoComumEOficial() {
+        var comum = chat.criarGrupo(new ChatService.NovoGrupo("Faturamento", List.of(bruno.id()), false), ana);
+        assertNull(comum.fotoGrupo());
+        Long versao = chat.trocarFotoGrupo(comum.id(), "logo.png", ChatAnexosTest.PNG, bruno); // qualquer participante troca
+        assertNotNull(versao);
+        assertEquals(versao, chat.conversas(ana).stream().filter(c -> c.id() == comum.id()).findFirst().orElseThrow().fotoGrupo());
+        assertEquals("image/png", chat.fotoGrupo(comum.id(), ana).getKey());
+        assertThrows(br.com.faturamed.shared.RecursoNaoEncontradoException.class, () -> chat.fotoGrupo(comum.id(), carla)); // quem nao participa
+        assertThrows(IllegalArgumentException.class, () -> chat.trocarFotoGrupo(comum.id(), "x.pdf", "%PDF-1.4".getBytes(), ana));
+        chat.removerFotoGrupo(comum.id(), ana);
+        assertNull(chat.conversas(ana).stream().filter(c -> c.id() == comum.id()).findFirst().orElseThrow().fotoGrupo());
+        var oficial = chat.criarGrupo(new ChatService.NovoGrupo("Diretoria foto", List.of(ana.id()), true), bruno);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> chat.trocarFotoGrupo(oficial.id(), "logo.png", ChatAnexosTest.PNG, ana));
+        assertNotNull(chat.trocarFotoGrupo(oficial.id(), "logo.png", ChatAnexosTest.PNG, bruno));
+        var direta = chat.abrirDireta(carla.id(), ana);
+        assertThrows(IllegalArgumentException.class, () -> chat.trocarFotoGrupo(direta.id(), "logo.png", ChatAnexosTest.PNG, ana));
+    }
+
     @Test void statusERetencao() {
         assertEquals("OCUPADO", chat.definirStatus(new ChatService.MeuStatus("OCUPADO", "Fechando lotes"), ana).status());
         assertEquals("Fechando lotes", chat.meuStatus(ana).recado());

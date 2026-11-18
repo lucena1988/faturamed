@@ -319,3 +319,9 @@ html.chat-avulso .chat-painel, html.chat-janela .chat-painel { flex: 1; height: 
 .chat-msg-avatar { position: absolute; left: -40px; top: 0; width: 32px; height: 32px; font-size: 11px; }
 .chat-msg-avatar::after { display: none; }
 .chat-msg.com-avatar { margin-top: 6px; }
+/* foto do grupo (dialogo Participantes) */
+.chat-grupo-foto { display: flex; align-items: center; gap: 14px; padding: 4px 0 14px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.chat-grupo-foto #chat-grupo-foto-previa .chat-avatar { width: 64px; height: 64px; font-size: 22px; }
+.chat-grupo-foto-acoes { display: grid; gap: 4px; }
+.chat-grupo-foto-acoes small { color: var(--muted); }
+.chat-avatar.grupo img { border-radius: 12px; }
