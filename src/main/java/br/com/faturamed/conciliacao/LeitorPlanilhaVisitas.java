@@ -142,16 +142,17 @@ public class LeitorPlanilhaVisitas {
     }
 
     // Layout de exportacao alternativo do hospital: cada coluna equivale a uma do modelo padrao.
-    private static final Map<String, String> APELIDOS_HOSPITAL = Map.of(
-            "nr atendimento", "atendimento",
-            "dt procedimento", "data consumo",
-            "nm medico laudo", "medico",
-            "cd procedimento", "cod produto",
-            "ds procedimento", "produto",
-            "vl procedimento", "valor tot",
-            "repasse", "vl. a repassar",
-            "convenio", "operadora",
-            "nm paciente", "paciente");
+    private static final Map<String, String> APELIDOS_HOSPITAL = Map.ofEntries(
+            Map.entry("nr atendimento", "atendimento"),
+            Map.entry("dt procedimento", "data consumo"),
+            Map.entry("nm medico laudo", "medico"),
+            Map.entry("cd procedimento", "cod produto"),
+            Map.entry("ds procedimento", "produto"),
+            Map.entry("vl procedimento", "valor tot"),
+            Map.entry("valor", "valor tot"),
+            Map.entry("repasse", "vl. a repassar"),
+            Map.entry("convenio", "operadora"),
+            Map.entry("nm paciente", "paciente"));
 
     private static String rotulo(String valor) {
         // Exportacoes com BOM UTF-16 lido como texto deixam "þÿ" no inicio da primeira coluna

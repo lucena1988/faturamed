@@ -218,4 +218,39 @@ class LeitorPlanilhaVisitasTest {
             assertThat(registros).hasSize(1);
         }
     }
+
+    @Test
+    @DisplayName("Layout alternativo com coluna Valor no lugar de Vl procedimento e linha de total acima do cabecalho")
+    void importaPlanilhaHospitalNoLayoutAlternativoComColunaValor() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Planilha1");
+            var total = sheet.createRow(0);
+            total.createCell(0).setCellValue("Repasse");
+            total.createCell(1).setCellValue(14402.05);
+            String[] rotulos = {"Ds setor atendimento", "Nm medico laudo", "Convênio", "Nr atendimento",
+                    "Cd procedimento", "Ds procedimento", "Dt procedimento", "Nm paciente", "Valor", "Regra", "Repasse"};
+            var header = sheet.createRow(1);
+            for (int i = 0; i < rotulos.length; i++) header.createCell(i).setCellValue(rotulos[i]);
+            var row = sheet.createRow(2);
+            row.createCell(0).setCellValue("SADT");
+            row.createCell(1).setCellValue("Dr. Teste");
+            row.createCell(2).setCellValue("Plano");
+            row.createCell(3).setCellValue(55729388);
+            row.createCell(4).setCellValue(40901360);
+            row.createCell(5).setCellValue("Doppler");
+            row.createCell(6).setCellValue(46207);
+            row.createCell(7).setCellValue("Paciente Teste");
+            row.createCell(8).setCellValue(273.95);
+            row.createCell(9).setCellValue(0.5);
+            row.createCell(10).setCellValue(136.97499999999999);
+            workbook.write(output);
+            var linhas = new LeitorPlanilhaVisitas().ler(new MockMultipartFile("hospital", "AF JULHO.xlsx",
+                    "application/octet-stream", output.toByteArray()), true);
+            assertThat(linhas).hasSize(1);
+            assertThat(linhas.getFirst().campo("Valor Tot")).isEqualTo("273.95");
+            var registros = new ConciliadorVisitas().conciliar("H", "", "base", java.util.List.of(), linhas).hospitalSemProducao();
+            assertThat(registros).hasSize(1);
+            assertThat(registros.getFirst().valorTotal()).isEqualByComparingTo("273.95");
+        }
+    }
 }
