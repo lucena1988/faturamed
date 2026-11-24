@@ -153,4 +153,41 @@ class LeitorPlanilhaVisitasTest {
             assertThat(data).isEqualTo(LocalDate.of(2026, 10, 30));
         }
     }
+
+    @Test
+    @DisplayName("Planilha hospitalar no layout alternativo (Nr atendimento, Dt procedimento, BOM no primeiro rotulo)")
+    void importaPlanilhaHospitalNoLayoutAlternativo() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Planilha1");
+            String[] rotulos = {"þÿDs setor atendimento", "Nm medico laudo", "Convênio", "Nr atendimento",
+                    "Cd procedimento", "Ds procedimento", "Dt procedimento", "Nm paciente", "Vl procedimento", "Regra", "Repasse"};
+            var header = sheet.createRow(0);
+            for (int i = 0; i < rotulos.length; i++) header.createCell(i).setCellValue(rotulos[i]);
+            var row = sheet.createRow(1);
+            row.createCell(0).setCellValue("SADT");
+            row.createCell(1).setCellValue("Dr. Teste");
+            row.createCell(2).setCellValue("Plano");
+            row.createCell(3).setCellValue(55001);
+            row.createCell(4).setCellValue(40901106);
+            row.createCell(5).setCellValue("Exame");
+            row.createCell(6).setCellValue(46207);
+            row.createCell(7).setCellValue("Paciente Teste");
+            row.createCell(8).setCellValue(200.0);
+            row.createCell(9).setCellValue(0.5);
+            row.createCell(10).setCellValue(100.0);
+            workbook.write(output);
+            var linhas = new LeitorPlanilhaVisitas().ler(new MockMultipartFile("hospital", "hospital.xlsx",
+                    "application/octet-stream", output.toByteArray()), true);
+            assertThat(linhas).hasSize(1);
+            var linha = linhas.getFirst();
+            assertThat(linha.campo("Atendimento")).isEqualTo("55001");
+            assertThat(linha.campo("Medico")).isEqualTo("Dr. Teste");
+            assertThat(linha.campo("Cod Produto")).isEqualTo("40901106");
+            assertThat(linha.campo("Valor Tot")).isEqualTo("200");
+            assertThat(linha.campo("Vl. A Repassar")).isEqualTo("100");
+            assertThat(LeitorPlanilhaVisitas.data(linha.campo("Data Consumo"), linha.numero())).isEqualTo(LocalDate.of(2026, 7, 4));
+            var registros = new ConciliadorVisitas().conciliar("H", "", "base", java.util.List.of(), linhas).hospitalSemProducao();
+            assertThat(registros).hasSize(1);
+        }
+    }
 }
