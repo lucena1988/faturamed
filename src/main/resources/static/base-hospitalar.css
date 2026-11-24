@@ -88,4 +88,14 @@ td a, td button { margin: 4px; }
 .flow-filters { align-items: end; margin-bottom: 4px; }
 .flow-filters select { min-width: 200px; }
 .button-link { display: inline-block; padding: 10px 16px; border-radius: var(--radius); background: var(--primary); color: #fff !important; font-weight: 700; text-decoration: none; }
-.proc-cell { min-width: 200px; } .proc-cell .muted { font-size: .78rem; }
+/* Acompanhamento: largura propria, sem os minimos genericos das tabelas */
+.flow-table { max-width: 100%; overflow-x: auto; }
+.flow-table table { table-layout: auto; width: 100%; }
+.flow-table th, .flow-table td, .flow-table td:last-child, .flow-table td:nth-child(10) { min-width: 0; padding: 10px 8px; }
+.flow-table .sub { color: var(--muted); font-size: .78rem; }
+.flow-table .col-paciente, .flow-table .col-medico { min-width: 130px; }
+.flow-table .col-proc { min-width: 180px; }
+.flow-table .col-comp, .flow-table .col-valores, .flow-table .col-etapa { white-space: nowrap; }
+.flow-table .col-comp .comp-outra { padding: 0 4px; border-radius: 4px; }
+.flow-table .col-valores .sub { display: inline-block; min-width: 62px; }
+.flow-table .col-acoes a { display: block; margin: 0 0 4px; }
