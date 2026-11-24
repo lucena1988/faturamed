@@ -34,7 +34,7 @@ public class LeitorPlanilhaVisitas {
             if (hospital) abas.sort(Comparator.comparing(a -> !a.nome().equalsIgnoreCase("Planilha2")));
             for (Aba aba : abas) {
                 for (int i = 0; i < Math.min(50, aba.linhas().size()); i++) {
-                    Map<Integer, String> cabecalho = hospital ? apelidar(aba.linhas().get(i)) : aba.linhas().get(i);
+                    Map<Integer, String> cabecalho = hospital ? apelidar(aba.linhas().get(i)) : apelidarProducao(aba.linhas().get(i));
                     Set<String> campos = new HashSet<>();
                     cabecalho.values().forEach(v -> campos.add(normalizar(v)));
                     // A producao pode vir sem a coluna Atendimento; a data (Dt.) passa a identificar a visita.
@@ -172,6 +172,22 @@ public class LeitorPlanilhaVisitas {
         return resultado;
     }
 
+
+    // Exportacao de exames do sistema do hospital (Laudado por, Data execucao...) usada como producao:
+    // sem a coluna Dt., a data de execucao identifica a visita e o medico que laudou, o profissional.
+    private static Map<Integer, String> apelidarProducao(Map<Integer, String> cabecalho) {
+        Set<String> rotulos = new HashSet<>();
+        cabecalho.values().forEach(v -> rotulos.add(rotulo(v)));
+        if (rotulos.contains("dt.") || !rotulos.contains("data execucao")) return cabecalho;
+        boolean semMedico = !rotulos.contains("medico");
+        String colunaMedico = rotulos.contains("laudado por") ? "laudado por" : "executado por";
+        Map<Integer, String> resultado = new LinkedHashMap<>();
+        cabecalho.forEach((col, label) -> {
+            String r = rotulo(label);
+            resultado.put(col, r.equals("data execucao") ? "Dt." : semMedico && r.equals(colunaMedico) ? "Medico" : label);
+        });
+        return resultado;
+    }
     static String normalizar(String valor) {
         return Normalizer.normalize(Objects.toString(valor, ""), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "").replace('\u00a0', ' ').trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);

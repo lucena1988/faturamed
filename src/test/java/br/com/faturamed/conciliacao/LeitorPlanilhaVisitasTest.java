@@ -32,6 +32,34 @@ class LeitorPlanilhaVisitasTest {
     }
 
     @Test
+    @DisplayName("Producao no layout de exportacao de exames usa Data execucao como Dt. e Laudado por como Medico")
+    void importaProducaoNoLayoutDeExames() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet();
+            var cab = sheet.createRow(0);
+            String[] rotulos = {"Status", "Atendimento", "Paciente", "Procedimento", "Data prescrição", "Laudado por", "Executado por", "Data execução"};
+            for (int i = 0; i < rotulos.length; i++) cab.createCell(i).setCellValue(rotulos[i]);
+            var linha = sheet.createRow(1);
+            linha.createCell(0).setCellValue("Laudo liberado");
+            linha.createCell(1).setCellValue(55729388);
+            linha.createCell(2).setCellValue("Paciente Teste");
+            linha.createCell(3).setCellValue("Doppler Colorido Arterias Cervicais Bilateral");
+            linha.createCell(4).setCellValue(46205.5);
+            linha.createCell(5).setCellValue("Medico Laudo");
+            linha.createCell(6).setCellValue("Medico Executor");
+            linha.createCell(7).setCellValue(46207.326840277776);
+            workbook.write(output);
+            var linhas = new LeitorPlanilhaVisitas().ler(new MockMultipartFile("producao", "Exames.xlsx",
+                    "application/octet-stream", output.toByteArray()), false);
+            assertThat(linhas).hasSize(1);
+            var l = linhas.getFirst();
+            assertThat(LeitorPlanilhaVisitas.identificador(l.campo("Atendimento"))).isEqualTo("55729388");
+            assertThat(LeitorPlanilhaVisitas.data(l.campo("Dt."), l.numero())).isEqualTo(LocalDate.of(2026, 7, 4));
+            assertThat(l.campo("Medico")).isEqualTo("Medico Laudo");
+        }
+    }
+
+    @Test
     void producaoAceitaAtendimentoVazioOuColunaAusenteMasHospitalNao() throws Exception {
         assertThat(ler(false, new String[][] {{"Dt.", "Medico"}, {"2026-01-05", "Medico A"}}).getFirst().campo("Atendimento")).isEmpty();
         var vazio = ler(false, new String[][] {{"Atendimento", "Dt."}, {"", "2026-01-05"}, {"00123", "2026-01-06"}});
