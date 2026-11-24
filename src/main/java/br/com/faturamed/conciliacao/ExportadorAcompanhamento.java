@@ -59,16 +59,16 @@ public class ExportadorAcompanhamento {
             resumo.setColumnWidth(0,30*256); resumo.setColumnWidth(1,50*256);
 
             Sheet sheet=wb.createSheet("Acompanhamento");
-            String[] cab={"ID fixo","Atendimento","Data","Medico","Empresa","Comp. producao","Comp. faturada (hospital)","Status","Etapa","Faturado (R$)","Recebido (R$)","Saldo (R$)"};
+            String[] cab={"Hospital","ID fixo","Atendimento","Data","Paciente","Convenio","Cod. procedimento","Procedimento","Medico","Empresa","Comp. producao","Comp. faturada (hospital)","Status","Etapa","Faturado (R$)","Recebido (R$)","Saldo (R$)"};
             Row h=sheet.createRow(0);
             for(int i=0;i<cab.length;i++){ Cell c=h.createCell(i); c.setCellValue(cab[i]); c.setCellStyle(titulo); }
             for(var i:itens) {
                 String status=PAGAS.contains(i.etapa())?"PAGO "+mesAno(i.competencia()):ETAPAS.get(i.etapa());
-                preencher(sheet.createRow(sheet.getLastRowNum()+1),new Object[]{i.visitaId(),i.atendimento(),i.data(),i.medico(),
+                preencher(sheet.createRow(sheet.getLastRowNum()+1),new Object[]{hospital,i.visitaId(),i.atendimento(),i.data(),texto(i.paciente()),texto(i.convenio()),texto(i.codigoProcedimento()),texto(i.procedimento()),i.medico(),
                         Objects.toString(i.empresa(),"—"),mesAno(i.competenciaProducao()),mesAno(i.competencia()),status,ETAPAS.get(i.etapa()),
                         valor(i.faturado()),valor(i.recebido()),valor(i.saldo())},moeda,data);
             }
-            int[] larguras={10,14,12,32,30,14,18,22,24,14,14,14};
+            int[] larguras={30,10,14,12,32,22,14,40,32,30,14,18,22,24,14,14,14};
             for(int i=0;i<larguras.length;i++) sheet.setColumnWidth(i,larguras[i]*256);
             sheet.createFreezePane(0,1); sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0,Math.max(0,sheet.getLastRowNum()),0,cab.length-1));
             wb.write(out); return out.toByteArray();
@@ -79,6 +79,7 @@ public class ExportadorAcompanhamento {
     private static BigDecimal soma(List<AcompanhamentoBaseHospitalarService.Item> itens,java.util.function.Function<AcompanhamentoBaseHospitalarService.Item,BigDecimal> campo) {
         return itens.stream().map(campo).filter(Objects::nonNull).reduce(BigDecimal.ZERO,BigDecimal::add);
     }
+    private static String texto(String s) { return vazio(s)?"—":s; }
     private static boolean vazio(String s) { return s==null||s.isBlank(); }
     private static String mesAno(String comp) { return vazio(comp)?"—":comp.length()==7?comp.substring(5)+"/"+comp.substring(0,4):comp; }
     private static void preencher(Row row,Object[] valores,CellStyle moeda,CellStyle data) {

@@ -88,3 +88,4 @@ td a, td button { margin: 4px; }
 .flow-filters { align-items: end; margin-bottom: 4px; }
 .flow-filters select { min-width: 200px; }
 .button-link { display: inline-block; padding: 10px 16px; border-radius: var(--radius); background: var(--primary); color: #fff !important; font-weight: 700; text-decoration: none; }
+.proc-cell { min-width: 200px; } .proc-cell .muted { font-size: .78rem; }

@@ -276,7 +276,11 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     find('flow-export').href = `/api/base-hospitalar/acompanhamento/exportar?${params}`;
     for (const visit of filtradas) {
       const row = element('tr');
-      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.medico || 'Não identificado',visit.empresa || '—',mesAno(visit.competenciaProducao)]) row.append(element('td',value));
+      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.paciente || '—',visit.convenio || '—']) row.append(element('td',value));
+      const proc = element('td'); proc.className = 'proc-cell';
+      if (visit.codigoProcedimento) { const cod = element('div', visit.codigoProcedimento); cod.className = 'muted'; proc.append(cod); }
+      proc.append(element('div', visit.procedimento || 'Não informado')); row.append(proc);
+      for (const value of [visit.medico || 'Não identificado',visit.empresa || '—',mesAno(visit.competenciaProducao)]) row.append(element('td',value));
       const fat = element('td', mesAno(visit.competencia));
       if (visit.competenciaProducao && visit.competencia !== visit.competenciaProducao) { fat.className = 'comp-outra'; fat.title = 'Faturado pelo hospital em competência diferente da produção'; }
       row.append(fat);
