@@ -150,4 +150,40 @@ class UsuarioServiceTest {
         doReturn(new UsuarioAutenticado(1, "a@x", "A", "h", "ADMIN", null, true, false, 3)).when(service).loadUserByUsername("a@x");
         assertThat(service.sessaoValida(sessao)).isTrue();
     }
+
+    private UsuarioService.Edicao edicao(String email, String perfil, Long medico, boolean ativo) {
+        return new UsuarioService.Edicao(email, " Novo Nome ", perfil, medico, null, null, ativo, 3L);
+    }
+
+    @Test
+    void edicaoProtegeOProprioAdministradorEOUltimoAdmin() {
+        usuario(1, "ADMIN", null, null);
+        assertThatThrownBy(() -> service.editar(1, edicao("u1@x", "ADMIN", null, false), 1)).hasMessageContaining("proprio acesso");
+        assertThatThrownBy(() -> service.editar(1, edicao("u1@x", "OPERADOR", null, true), 1)).hasMessageContaining("proprio perfil de administrador");
+        when(jdbc.queryForObject(contains("perfil='ADMIN' and ativo"), eq(Long.class))).thenReturn(1L);
+        assertThatThrownBy(() -> service.editar(1, edicao("u1@x", "OPERADOR", null, true), 2)).hasMessageContaining("pelo menos um administrador");
+    }
+
+    @Test
+    void edicaoValidaVinculoEEmailDuplicado() {
+        usuario(7, "OPERADOR", null, null);
+        assertThatThrownBy(() -> service.editar(7, edicao("u7@x", "MEDICO", null, true), 1)).hasMessageContaining("medico ativo");
+        assertThatThrownBy(() -> service.editar(7, edicao("u7@x", "OPERADOR", 5L, true), 1)).hasMessageContaining("Somente o perfil Medico");
+        medicoAtivo(5, true);
+        when(jdbc.queryForObject(contains("where email=? and id<>?"), eq(Long.class), eq("outro@x"), eq(7L))).thenReturn(1L);
+        assertThatThrownBy(() -> service.editar(7, edicao(" Outro@X ", "MEDICO", 5L, true), 1)).isInstanceOf(ConflitoRevisaoException.class).hasMessageContaining("Email");
+    }
+
+    @Test
+    void edicaoAtualizaComVersaoEAuditoria() {
+        usuario(7, "OPERADOR", null, null);
+        medicoAtivo(5, true);
+        when(jdbc.queryForObject(contains("where email=? and id<>?"), eq(Long.class), any(Object[].class))).thenReturn(0L);
+        when(jdbc.update(contains("set email=?"), any(Object[].class))).thenReturn(0);
+        assertThatThrownBy(() -> service.editar(7, edicao("u7@x", "MEDICO", 5L, true), 1)).isInstanceOf(ConflitoRevisaoException.class);
+        when(jdbc.update(contains("set email=?"), any(Object[].class))).thenReturn(1);
+        service.editar(7, edicao(" Ana@X ", "MEDICO", 5L, true), 1);
+        verify(jdbc, atLeastOnce()).update(contains("set email=?"), eq("ana@x"), eq("Novo Nome"), eq("MEDICO"), eq(5L), isNull(), isNull(), eq(true), eq(7L), eq(3L));
+        verify(jdbc).update("insert into usuario_acesso_auditoria(usuario_id,operador_id,acao) values(?,?,?)", 7L, 1L, "EDICAO");
+    }
 }
