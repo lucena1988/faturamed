@@ -13,7 +13,26 @@ import org.springframework.web.multipart.MultipartFile;
 public class BaseHospitalarController {
     private final BaseHospitalarService service;
     private final AcompanhamentoBaseHospitalarService acompanhamento;
-    public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento) { this.service=service; this.acompanhamento=acompanhamento; }
+    private final ExclusaoArquivoHospitalService exclusoes;
+    private final br.com.faturamed.seguranca.UsuarioService usuarios;
+    private final org.springframework.security.crypto.password.PasswordEncoder encoder;
+    public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento,ExclusaoArquivoHospitalService exclusoes,
+            br.com.faturamed.seguranca.UsuarioService usuarios,org.springframework.security.crypto.password.PasswordEncoder encoder) {
+        this.service=service; this.acompanhamento=acompanhamento; this.exclusoes=exclusoes; this.usuarios=usuarios; this.encoder=encoder;
+    }
+    public record ConfirmacaoExclusao(String senha) {}
+    // Exclusao definitiva so com a senha de quem esta logado; erro conta como tentativa de login.
+    @PostMapping("/arquivos/{id}/exclusao")
+    public ExclusaoArquivoHospitalService.Resultado excluirArquivo(@PathVariable long id,@RequestBody ConfirmacaoExclusao dados,@AuthenticationPrincipal UsuarioAutenticado usuario) {
+        var conta=usuarios.loadUserByUsername(usuario.email());
+        if(!conta.isAccountNonLocked()) throw new org.springframework.security.access.AccessDeniedException("Acesso bloqueado temporariamente apos tentativas invalidas. Aguarde 15 minutos");
+        if(dados==null||dados.senha()==null||dados.senha().isBlank()||!encoder.matches(dados.senha(),conta.getPassword())) {
+            usuarios.falha(usuario.email());
+            throw new IllegalArgumentException("Senha incorreta. O arquivo nao foi excluido");
+        }
+        usuarios.sucesso(usuario.id());
+        return exclusoes.excluir(id,usuario);
+    }
     @GetMapping("/acompanhamento")
     public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) throws Exception { return acompanhamento.consultar(hospitalId,competencia); }
 

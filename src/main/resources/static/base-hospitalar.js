@@ -58,7 +58,26 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     for (const value of [origem, tipo, medico, file.quantidade_registros ?? '—', String(file.criado_em || '').slice(0, 10).split('-').reverse().join('/')]) row.append(element('td', value));
     const actions = element('td'); actions.append(link('Baixar', `/api/base-hospitalar/arquivos/${file.id}/original`));
     if (file.relatorio_id) { actions.append(link('Abrir conciliação', `/conciliacao.html?relatorio=${file.relatorio_id}`)); actions.append(atualizarConciliacao(file)); }
+    if (file.tipo === 'HOSPITAL' || file.relatorio_id) actions.append(excluirArquivo(file));
     row.append(actions); return row;
+  }
+  function excluirArquivo(file) {
+    const item = button('Excluir', async () => {
+      if (busy) return;
+      const hospital = file.tipo === 'HOSPITAL';
+      const texto = hospital
+        ? `A planilha "${file.nome}" (${file.competencia.split('-').reverse().join('/')}) e os ${file.quantidade_registros ?? ''} procedimentos que ela criou serão excluídos definitivamente. Só é permitido se nenhum procedimento já estiver conciliado com produção. Depois você pode importá-la de novo na competência certa.`
+        : `A produção "${file.nome}" e o relatório de conciliação dela (com todas as versões, revisões, publicações e recebimentos) serão excluídos definitivamente. Os procedimentos do hospital voltam a aguardar produção.`;
+      const resposta = await window.fmUi.perguntar({titulo: 'Excluir arquivo importado', texto, campos: [{nome: 'senha', rotulo: 'Confirme com sua senha', tipo: 'password', obrigatorio: true}], confirmar: 'Excluir definitivamente', perigo: true});
+      if (!resposta?.senha) return;
+      await perform(async () => {
+        const url = hospital ? `/api/base-hospitalar/arquivos/${file.id}/exclusao` : `/api/conciliacoes/visitas/${file.relatorio_id}/exclusao`;
+        await request(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({senha: resposta.senha})});
+        showMessage('success', hospital ? `Planilha excluída. Importe-a novamente na competência correta.` : 'Produção e relatório de conciliação excluídos.');
+        await load();
+      });
+    });
+    item.className = 'danger-link'; return item;
   }
   function renderCompetencias(files) {
     const box = find('competencias'), groups = new Map();
