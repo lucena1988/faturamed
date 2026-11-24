@@ -60,12 +60,12 @@ class AplicadorRevisaoVisitaTest {
     }
 
     @Test
-    void confirmacaoNaoMarcaPagaForaDoSetorFaturado() {
+    void confirmacaoMarcaPagaParaQualquerSetorDaPlanilhaDoHospital() {
         var h = hospital(10, "Em analise", "Medico A");
         var original = new ConciliadorVisitas.Visita(2, "123", LocalDate.of(2026, 1, 1), ConciliadorVisitas.Status.DIVERGENTE,
                 "Conferir", Map.of(), null, List.of(h));
         var revista = aplicador.aplicar(original, relatorio(List.of(original)), request(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA, 10));
-        assertThat(revista.status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(revista.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
         assertThat(revista.hospital()).isEqualTo(h);
     }
 

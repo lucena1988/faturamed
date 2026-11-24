@@ -31,7 +31,7 @@ public class AplicadorRevisaoVisita {
                 if (hospital.medico().isBlank() || hospital.codigo().isBlank() || hospital.valorTotal() == null || hospital.repasse() == null) {
                     throw new IllegalArgumentException("Registro hospitalar incompleto; mantenha a visita pendente ou divergente");
                 }
-                status = LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
+                status = ConciliadorVisitas.faturado(hospital)
                         ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE;
                 motivo = "Correspondencia confirmada na revisao: " + request.justificativa().trim();
                 data = hospital.data();
@@ -86,7 +86,7 @@ public class AplicadorRevisaoVisita {
                 status, motivo, original.original(), hospital, candidatos, campos,
                 request.acao()==RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA?null:original.medicoProducao());
         if (status == ConciliadorVisitas.Status.PAGA && (hospital == null
-                || !LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
+                || !ConciliadorVisitas.faturado(hospital)
                 || revisada.medicoEfetivo().isBlank() || revisada.procedimentoEfetivo().isBlank()
                 || revisada.valorEfetivo() == null || revisada.repasseEfetivo() == null)) {
             throw new IllegalArgumentException("PAGA exige registro Faturado associado, medico, procedimento, valor e repasse preenchidos");

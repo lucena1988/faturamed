@@ -17,8 +17,8 @@ class ResumoAtualizacaoTest {
     }
     @Test void contaApenasNovasPagasEDistingueValorAusente() {
         var motor=new ConciliadorVisitas();var producao=List.of(p(2,"A"),p(3,"B"),p(4,"C"));
-        var antes=motor.conciliar("H","p","h",producao,List.of(h(2,"A","Faturado"),h(3,"B","Em analise")));
-        var depois=motor.conciliar("H","p","h",producao,List.of(h(2,"A","Faturado"),h(3,"B","Faturado")));
+        var antes=motor.conciliar("H","p","h",producao,List.of(h(2,"A","Faturado")));
+        var depois=motor.conciliar("H","p","h",producao,List.of(h(2,"A","Faturado"),h(3,"B","Em analise")));
         var s=ResumoAtualizacao.comparar(antes,depois);
         assertThat(s.novasPagas()).isEqualTo(1);assertThat(s.valorNovasPagas()).isEqualByComparingTo("85");
         assertThat(s.pendentes()).isEqualTo(1);assertThat(s.pendentesSemValor()).isEqualTo(1);

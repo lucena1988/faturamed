@@ -289,7 +289,7 @@ public class BaseHospitalarService {
                 || ultima.acao()==RevisaoVisitaRequest.Acao.CORRESPONDENCIA_AUTOMATICA) {
             if(!hospital.medico().isBlank() && !hospital.codigo().isBlank()
                     && hospital.valorTotal()!=null && hospital.repasse()!=null) {
-                status=LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
+                status=ConciliadorVisitas.faturado(hospital)
                         ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE;
             }
         }
