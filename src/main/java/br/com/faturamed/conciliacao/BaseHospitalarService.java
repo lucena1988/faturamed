@@ -337,7 +337,7 @@ public class BaseHospitalarService {
     public List<Map<String,Object>> visitas(long hospitalId) {
         return jdbc.queryForList("""
                 select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,v.arquivo_atual_id,v.linha_atual,
-                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.tipo_procedimento,
+                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento,v.campos->>'paciente' as paciente,v.campos->>'operadora' as convenio,v.tipo_procedimento,
                 case when v.decisao='EM_ANALISE' then 'DIVERGENTE'
                      when v.decisao in ('DUPLICADO_PAGO_OUTRO_MES','DUPLICADO_MESMA_COMPETENCIA') then v.decisao
                      when b.visita_id is not null and coalesce(
