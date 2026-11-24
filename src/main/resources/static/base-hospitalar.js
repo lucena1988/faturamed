@@ -17,7 +17,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   function button(text, action) { const item = element('button', text); item.type = 'button'; item.addEventListener('click', () => action().catch(error => showMessage('error', error.message))); return item; }
   function renderVisits() {
     const comp = find('competencia-filter').value;
-    const filtered = visits.filter(visit => (!comp || visit.competencia === comp) && (!find('status').value || visit.situacao === find('status').value) && visit.atendimento.includes(find('search').value.trim()));
+    const filtered = visits.filter(visit => (!comp || visit.competencia === comp) && (!find('status').value || visit.situacao === find('status').value) && (!find('tipo-filter').value || (visit.tipo_procedimento || 'VISITA') === find('tipo-filter').value) && visit.atendimento.includes(find('search').value.trim()));
     find('visits').replaceChildren();
     for (const visit of filtered) {
       const row = element('tr');
@@ -37,55 +37,61 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     }
     find('count').textContent = `${filtered.length} ocorrências · IDs dos procedimentos distintos são preservados`;
   }
+  function atualizarConciliacao(file) {
+    return button('Atualizar conciliação', async () => {
+      if (busy || !await fmConfirmar('Criar uma nova versão com os procedimentos hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
+      await perform(async () => {
+        const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
+        const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});
+        showMessage('success', 'Nova versão criada. Confira e libere novamente para o médico. ', link('Abrir relatório', `/conciliacao.html?relatorio=${result.id}`));
+        await load();
+      });
+    });
+  }
+  function fileRow(file) {
+    const row = element('tr');
+    const origem = file.tipo === 'HOSPITAL' ? (file.modo_hospital === 'ATUALIZAR' ? 'Hospital · atualização' : 'Hospital') : 'Produção';
+    const tipo = TIPOS_PROCEDIMENTO[file.tipo_procedimento] || (file.tipo === 'HOSPITAL' ? 'Automático' : '—');
+    const medico = file.tipo === 'PRODUCAO' ? (file.medico || (file.modo_producao === 'VARIOS' ? 'Vários médicos' : '—')) : '—';
+    const nome = element('td', file.nome); nome.className = 'file-name';
+    row.append(nome);
+    for (const value of [origem, tipo, medico, file.quantidade_registros ?? '—', String(file.criado_em || '').slice(0, 10).split('-').reverse().join('/')]) row.append(element('td', value));
+    const actions = element('td'); actions.append(link('Baixar', `/api/base-hospitalar/arquivos/${file.id}/original`));
+    if (file.relatorio_id) { actions.append(link('Abrir conciliação', `/conciliacao.html?relatorio=${file.relatorio_id}`)); actions.append(atualizarConciliacao(file)); }
+    row.append(actions); return row;
+  }
   function renderCompetencias(files) {
     const box = find('competencias'), groups = new Map();
-    for (const file of files.filter(f => f.tipo === 'HOSPITAL')) {
-      if (!groups.has(file.competencia)) groups.set(file.competencia, []);
-      groups.get(file.competencia).push(file);
-    }
-    if (!groups.size) { box.replaceChildren(element('p', 'Nenhuma importação do hospital.')); return; }
-    const cards = [...groups.keys()].sort().reverse().map(comp => {
-      const list = groups.get(comp), total = list.reduce((s, f) => s + (f.quantidade_registros || 0), 0);
-      const card = element('article'); card.className = 'competencia-card';
-      card.append(element('h3', `${comp.replace('-', '/')} · ${total} registros`));
-      const ul = element('ul');
-      for (const f of list) {
-        const li = element('li', `${f.nome} — ${f.quantidade_registros ?? '—'} registros · ${f.modo_hospital === 'ATUALIZAR' ? 'atualização' : 'novos registros'} · ${String(f.criado_em || '').slice(0, 10)} `);
-        li.append(link('Baixar original', `/api/base-hospitalar/arquivos/${f.id}/original`));
-        ul.append(li);
-      }
-      card.append(ul); return card;
-    });
-    box.replaceChildren(...cards);
+    for (const file of files) { if (!groups.has(file.competencia)) groups.set(file.competencia, []); groups.get(file.competencia).push(file); }
+    if (!groups.size) { box.replaceChildren(element('p', 'Nenhuma importação.')); return; }
+    const abertas = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.comp));
+    const keys = [...groups.keys()].sort().reverse();
+    box.replaceChildren(...keys.map((comp, index) => {
+      const list = groups.get(comp), hosp = list.filter(f => f.tipo === 'HOSPITAL'), prod = list.filter(f => f.tipo === 'PRODUCAO');
+      const total = hosp.reduce((s, f) => s + (f.quantidade_registros || 0), 0);
+      const det = element('details'); det.className = 'competencia-card'; det.dataset.comp = comp;
+      det.open = abertas.size ? abertas.has(comp) : (index === 0 || keys.length === 1 || find('competencia-filter').value === comp);
+      const sum = element('summary'); sum.append(element('strong', comp.split('-').reverse().join('/')));
+      for (const txt of [`${hosp.length} arquivo(s) do hospital · ${total} registros`, `${prod.length} produção(ões)`]) { const chip = element('span', txt); chip.className = 'chip'; sum.append(chip); }
+      det.append(sum);
+      const wrap = element('div'); wrap.className = 'conciliation-table';
+      const table = element('table'), head = element('tr');
+      for (const h of ['Arquivo', 'Origem', 'Tipo', 'Médico', 'Registros', 'Importado em', 'Ações']) head.append(element('th', h));
+      const thead = element('thead'); thead.append(head);
+      const tbody = element('tbody'); [...hosp, ...prod].forEach(f => tbody.append(fileRow(f)));
+      table.append(thead, tbody); wrap.append(table); det.append(wrap); return det;
+    }));
   }
   async function load() {
     const token = ++generation, hospital = find('hospital').value;
-    if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); renderCompetencias([]); find('files').replaceChildren(); return; }
+    if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); renderCompetencias([]); return; }
     let [data, files, tracking] = await Promise.all([request(`/api/base-hospitalar/visitas?hospitalId=${hospital}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospital}`), request(`/api/base-hospitalar/acompanhamento?hospitalId=${hospital}${find('competencia-filter').value ? `&competencia=${find('competencia-filter').value}` : ''}`)]);
     if (token !== generation) return;
     const filter = find('competencia-filter'), atual = filter.value, comps = [...new Set(files.map(f => f.competencia))].sort().reverse();
     filter.replaceChildren(new Option('Todas as competências', ''), ...comps.map(c => new Option(c.replace('-', '/'), c)));
     filter.value = comps.includes(atual) ? atual : '';
     files = files.filter(f => !filter.value || f.competencia === filter.value);
-    visits = data; flow = tracking; renderFlow(); renderVisits(); renderCompetencias(files); find('files').replaceChildren();
-    for (const file of files) {
-      const row = element('tr');
-      for (const value of [file.nome, file.tipo, file.competencia, file.medico || (file.tipo === 'PRODUCAO' && file.modo_producao === 'VARIOS' ? 'Vários médicos' : '—')]) row.append(element('td', value));
-      const actions = element('td'); actions.append(link('Baixar original', `/api/base-hospitalar/arquivos/${file.id}/original`));
-      if (file.relatorio_id) {
-        actions.append(link('Abrir conciliação', `/conciliacao.html?relatorio=${file.relatorio_id}`));
-        actions.append(button('Atualizar conciliação', async () => {
-          if (busy || !await fmConfirmar('Criar uma nova versão com os procedimentos hospitalares disponíveis? Revisões e recebimentos serão preservados.')) return;
-          await perform(async () => {
-            const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
-            const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});
-            showMessage('success', 'Nova versão criada. Confira e libere novamente para o médico. ', link('Abrir relatório', `/conciliacao.html?relatorio=${result.id}`));
-            await load();
-          });
-        }));
-      }
-      row.append(actions); find('files').append(row);
-    }
+    visits = data; flow = tracking; renderFlow(); renderVisits(); renderCompetencias(files);
   }
   async function perform(action) {
     if (busy) return;
@@ -237,11 +243,14 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   find('decision-action').addEventListener('change', updateDecision);
   find('production-mode').addEventListener('change', updateProduction);
   find('medico').addEventListener('change', updateCompany);
+  document.querySelectorAll('.base-tabs [data-tab]').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.base-tabs [data-tab]').forEach(item => { item.setAttribute('aria-selected', String(item === tab)); find(item.dataset.tab).hidden = item !== tab; });
+  }));
   find('flow-filter').replaceChildren(new Option('Todas as etapas',''),...Object.entries(stages).map(([value,label]) => new Option(label,value)));
   find('flow-filter').addEventListener('change', renderFlow);
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
   find('history-close').addEventListener('click', () => find('history-dialog').close());
-  for (const id of ['status','search']) find(id).addEventListener('input', renderVisits);
+  for (const id of ['status','tipo-filter','search']) find(id).addEventListener('input', renderVisits);
   find('competencia-filter').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
   find('hospital').addEventListener('change', () => { find('competencia-filter').value = ''; load().catch(error => showMessage('error', error.message)); });
   find('reload').addEventListener('click', () => load().catch(error => showMessage('error', error.message)));

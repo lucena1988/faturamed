@@ -19,15 +19,23 @@ public class BaseHospitalarController {
 
     @PostMapping(value="/hospital",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado hospital(@RequestParam long hospitalId,@RequestParam String competencia,
-            @RequestParam(defaultValue="NOVO") String modoHospital,@RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
-        return service.importarHospital(hospitalId,competencia,modoHospital,arquivo,usuario);
+            @RequestParam(defaultValue="NOVO") String modoHospital,@RequestParam(required=false) String tipoProcedimento,
+            @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
+        TipoProcedimento.de(tipoProcedimento);
+        var resultado=service.importarHospital(hospitalId,competencia,modoHospital,arquivo,usuario);
+        if(!resultado.repetido()) service.definirTipoArquivo(resultado.arquivoId(),tipoProcedimento);
+        return resultado;
     }
     @PostMapping(value="/producao",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado producao(@RequestParam long hospitalId,@RequestParam(required=false) Long medicoId,
             @RequestParam(required=false) Long empresaId,
             @RequestParam(defaultValue="UNICO") String modoProducao,@RequestParam String competencia,
+            @RequestParam(required=false) String tipoProcedimento,
             @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
-        return service.importarProducao(hospitalId,medicoId,empresaId,modoProducao,competencia,arquivo,usuario);
+        TipoProcedimento.de(tipoProcedimento);
+        var resultado=service.importarProducao(hospitalId,medicoId,empresaId,modoProducao,competencia,arquivo,usuario);
+        if(!resultado.repetido()) service.definirTipoArquivo(resultado.arquivoId(),tipoProcedimento);
+        return resultado;
     }
     @GetMapping("/arquivos")
     public List<Map<String,Object>> arquivos(@RequestParam long hospitalId) { return service.arquivos(hospitalId); }
