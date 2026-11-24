@@ -484,12 +484,12 @@ class BaseHospitalarIntegracaoTest {
         assertThat(visita.original().getOrDefault("medico","")).isEmpty();
     }
 
-    @Test void atualizacaoHospitalarMantemIdETransformaPendenteEmFaturada() throws Exception {
+    @Test void atualizacaoHospitalarMantemIdEPermaneceFaturada() throws Exception {
         var original=hospitalSituacao("Em analise","100","100");
         var arquivoOriginal=service.importarHospital(hospital,"2026-09",original,usuario);
         var producao=service.importarProducao(hospital,null,"VARIOS","2026-09",producao(),usuario);
         var primeira=revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst();
-        assertThat(primeira.status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(primeira.status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
         var resultado=service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
         assertThat(resultado.atualizadas()).isEqualTo(1);
         assertThat(resultado.divergencias()).isZero();
@@ -531,12 +531,12 @@ class BaseHospitalarIntegracaoTest {
         assertThat(revisoes.carregar(nova).historico()).hasSize(1);
     }
 
-    @Test void atualizacaoTransformaCorrespondenciaConfirmadaPendenteEmPagaQuandoHospitalFatura() throws Exception {
+    @Test void atualizacaoMantemPagaCorrespondenciaConfirmadaComQualquerSetor() throws Exception {
         service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
         var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
         int visitaHospitalId=revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().hospital().linha();
         var decisao=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA,visitaHospitalId,"Teste","Correspondencia confirmada aguardando faturamento",0L,null));
-        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
         service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
         long nova=service.atualizar(producao.relatorioId(),decisao.versao());
         var visitaAtualizada=revisoes.carregar(nova).atual().visitas().getFirst();
@@ -545,12 +545,12 @@ class BaseHospitalarIntegracaoTest {
         assertThat(revisoes.carregar(nova).historico()).hasSize(1);
     }
 
-    @Test void atualizacaoTransformaRestaurarAutomaticoECorrespondenciaAutomaticaEmPagaQuandoHospitalFatura() throws Exception {
+    @Test void atualizacaoMantemPagaAposRestaurarAutomaticoComQualquerSetor() throws Exception {
         service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
         var producao=service.importarProducao(hospital,ana,"2026-09",producao(),usuario);
         var primeira=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.MANTER_DIVERGENTE,null,"Teste","Divergencia temporaria",0L,null));
         var restaurada=revisoes.revisar(producao.relatorioId(),2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.RESTAURAR_AUTOMATICO,null,"Teste","Restaurado para calculo automatico",primeira.versao(),null));
-        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(revisoes.carregar(producao.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
         service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
         long nova=service.atualizar(producao.relatorioId(),restaurada.versao());
         var visitaAtualizada=revisoes.carregar(nova).atual().visitas().getFirst();
@@ -574,12 +574,12 @@ class BaseHospitalarIntegracaoTest {
         service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
         assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_PRODUCAO)).isEqualTo(1);
         var producao=service.importarProducao(hospital,null,"VARIOS","2026-09",producao(),usuario);
-        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_FATURAMENTO)).isEqualTo(1);
+        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO)).isEqualTo(1);
         var medicoUser=new UsuarioAutenticado(999,"medico@teste.local","Medico","","MEDICO",ana,true,false,0);
         liberacoes.liberar(producao.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao inicial",true),usuario);
         service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
         long nova=service.atualizar(producao.relatorioId(),0);
-        assertThat(portal.buscar(producao.relatorioId(),medicoUser).visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(portal.buscar(producao.relatorioId(),medicoUser).visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
         var visita=revisoes.carregar(nova).atual().visitas().getFirst();
         var revisao=revisoes.revisar(nova,2,new RevisaoVisitaRequest(RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA,visita.hospital().linha(),"Teste","Correspondencia conferida pelo administrador",0L,null));
         liberacoes.liberar(nova,new LiberacaoRelatorioService.Dados(revisao.versao(),"Faturamento confirmado",false),usuario);
