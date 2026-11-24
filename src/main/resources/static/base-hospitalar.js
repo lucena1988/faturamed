@@ -4,7 +4,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
   let arquivosCarregados = [], visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
-  const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',FATURADO_SEM_RECEBIMENTO:'Faturado sem recebimento',RECEBIDO_PARCIALMENTE:'Recebido parcialmente',SEM_SALDO:'Sem saldo a receber',EM_CONFERENCIA:'Em conferência'};
+  const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',PAGO:'Pago',EM_CONFERENCIA:'Em conferência'};
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
   function link(text, href) { const item = element('a', text); item.href = href; return item; }
@@ -64,10 +64,10 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     return box;
   }
   // Etapas a partir de faturado indicam conciliacao com status PAGA pelo hospital.
-  const ETAPAS_PAGAS = ['FATURADO_SEM_RECEBIMENTO', 'RECEBIDO_PARCIALMENTE', 'SEM_SALDO'];
+  const ETAPAS_PAGAS = ['PAGO'];
   function statusCell(etapa, competencia, texto) {
     const td = element('td');
-    if (ETAPAS_PAGAS.includes(etapa)) { const tag = element('span', `PAGO · ${mesAno(competencia)}`); tag.className = 'chip chip-pago'; td.append(tag, element('div', stages[etapa])); td.lastChild.className = 'muted'; }
+    if (ETAPAS_PAGAS.includes(etapa)) { const tag = element('span', `PAGO · ${mesAno(competencia)}`); tag.className = 'chip chip-pago'; td.append(tag); }
     else td.textContent = texto;
     return td;
   }
@@ -262,14 +262,14 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     for (const [label,value] of [['Produção sem base hospitalar',flow.producaoSemBase],['Ocorrências repetidas em análise',flow.ocorrenciasEmAnalise],['Duplicadas confirmadas excluídas dos totais',flow.duplicadas]]) {
       const item = element('div',label); item.append(element('strong',value)); find('flow-stats').append(item);
     }
-    find('flow-money').textContent = `Subtotais confirmados · Faturado: ${money(flow.faturado)} · Recebido: ${money(flow.recebido)} · Saldo: ${money(flow.saldo)}`;
+    find('flow-money').textContent = `Subtotais confirmados · Faturado: ${money(flow.faturado)} · Recebido: ${money(flow.recebido)}`;
     fillFlowOptions();
     const etapa = find('flow-filter').value, medico = find('flow-medico').value, empresa = find('flow-empresa').value;
     const filtradas = flow.visitas.filter(item => (!etapa || item.etapa === etapa) && (!medico || item.medico === medico)
       && (!empresa || (empresa === 'SEM' ? item.empresaId == null : String(item.empresaId) === empresa)));
     const soma = campo => filtradas.reduce((s, v) => s + (v[campo] || 0), 0);
     find('flow-filtered').textContent = (etapa || medico || empresa)
-      ? `${filtradas.length} procedimentos nos filtros · Faturado: ${money(soma('faturado'))} · Recebido: ${money(soma('recebido'))} · Saldo: ${money(soma('saldo'))}`
+      ? `${filtradas.length} procedimentos nos filtros · Faturado: ${money(soma('faturado'))} · Recebido: ${money(soma('recebido'))}`
       : `${filtradas.length} procedimentos`;
     const params = new URLSearchParams({hospitalId: find('hospital').value});
     for (const [chave, valor] of [['competencia', find('competencia-filter').value], ['etapa', etapa], ['medico', medico], ['empresa', empresa]]) if (valor) params.set(chave, valor);
@@ -301,13 +301,12 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
       const etapaCell = statusCell(visit.etapa, visit.competencia, stages[visit.etapa]); etapaCell.classList.add('col-etapa'); row.append(etapaCell);
       const valores = element('td'); valores.className = 'col-valores';
       if (visit.faturado == null) valores.append(element('div', 'Não confirmado'));
-      else for (const [rotulo, valor] of [['Faturado', visit.faturado], ['Recebido', visit.recebido], ['Saldo', visit.saldo]]) {
+      else for (const [rotulo, valor] of [['Faturado', visit.faturado], ['Recebido', visit.recebido]]) {
         const linha = element('div'); const r = element('span', rotulo); r.className = 'sub'; linha.append(r, element('span', money(valor))); valores.append(linha);
       }
       row.append(valores);
       const actions = element('td'); actions.className = 'col-acoes';
       if (visit.relatorio) actions.append(link('Revisar',`/conciliacao.html?relatorio=${visit.relatorio}&linha=${visit.linha}`));
-      if (visit.saldo > 0) actions.append(link('Recebimentos',`/recebimentos.html?relatorio=${visit.relatorio}`));
       row.append(actions); find('flow-rows').append(row);
     }
   }

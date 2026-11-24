@@ -263,7 +263,7 @@ class BaseHospitalarIntegracaoTest {
         assertThat(resumo.duplicadas()).isEqualTo(1);
         assertThat(resumo.ocorrenciasEmAnalise()).isZero();
         assertThat(resumo.faturado()).isEqualByComparingTo("100");
-        assertThat(resumo.recebido()).isEqualByComparingTo("0");
+        assertThat(resumo.recebido()).isEqualByComparingTo("100");
         assertThatThrownBy(()->service.decidir(id(repetida),new BaseHospitalarService.Decisao("VISITA_DISTINTA",null,"Nova tentativa indevida",null),usuario)).isInstanceOf(ConflitoRevisaoException.class);
     }
 
@@ -592,7 +592,7 @@ class BaseHospitalarIntegracaoTest {
         service.importarHospital(hospital,"2026-09",hospitalSituacao("Em analise","100","100"),usuario);
         assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_PRODUCAO)).isEqualTo(1);
         var producao=service.importarProducao(hospital,null,"VARIOS","2026-09",producao(),usuario);
-        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO)).isEqualTo(1);
+        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.PAGO)).isEqualTo(1);
         var medicoUser=new UsuarioAutenticado(999,"medico@teste.local","Medico","","MEDICO",ana,true,false,0);
         liberacoes.liberar(producao.relatorioId(),new LiberacaoRelatorioService.Dados(0L,"Publicacao inicial",true),usuario);
         service.importarHospital(hospital,"2026-09","ATUALIZAR",hospitalSituacao("Faturado","100","100"),usuario);
@@ -607,16 +607,16 @@ class BaseHospitalarIntegracaoTest {
         var resumo=acompanhamento.consultar(hospital);
         assertThat(resumo.visitasDistintas()).isEqualTo(1);
         assertThat(resumo.faturado()).isEqualByComparingTo("100");
-        assertThat(resumo.recebido()).isEqualByComparingTo("40");
-        assertThat(resumo.saldo()).isEqualByComparingTo("60");
-        assertThat(resumo.etapas().get(AcompanhamentoBaseHospitalarService.Etapa.RECEBIDO_PARCIALMENTE)).isEqualTo(1);
+        assertThat(resumo.recebido()).isEqualByComparingTo("100");
+        assertThat(resumo.saldo()).isEqualByComparingTo("0");
+        assertThat(resumo.etapas().get(AcompanhamentoBaseHospitalarService.Etapa.PAGO)).isEqualTo(1);
         var extrato=extratos.buscar(nova,new ExtratoMedicoService.Filtros(null,null,null,null),medicoUser);
         assertThat(extrato.resumo().recebidoAcumulado()).isEqualByComparingTo("40");
         assertThat(pdf.exportar(extrato)).startsWith("%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
         var financeiro=recebimentos.listar(nova).visitas().getFirst();
         recebimentos.estornar(nova,2,financeiro.historico().getFirst().id(),new RecebimentoService.Estorno("Estorno para conferir documentacao",financeiro.versao()),usuario);
         assertThat(extratos.buscar(nova,new ExtratoMedicoService.Filtros(null,null,null,null),medicoUser).resumo().recebidoAcumulado()).isEqualByComparingTo("0");
-        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO)).isEqualTo(1);
+        assertThat(acompanhamento.consultar(hospital).etapas().get(AcompanhamentoBaseHospitalarService.Etapa.PAGO)).isEqualTo(1);
     }
 
     @Test void fechamentoFaturadoUsaRepasseCadastradoQuandoPlanilhaNaoTraz() throws Exception {

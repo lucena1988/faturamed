@@ -9,7 +9,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
 class ExportadorAcompanhamentoTest {
-    private static final AcompanhamentoBaseHospitalarService.Etapa FATURADO=AcompanhamentoBaseHospitalarService.Etapa.FATURADO_SEM_RECEBIMENTO;
+    private static final AcompanhamentoBaseHospitalarService.Etapa FATURADO=AcompanhamentoBaseHospitalarService.Etapa.PAGO;
     private static final AcompanhamentoBaseHospitalarService.Etapa AGUARDANDO=AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_PRODUCAO;
     private AcompanhamentoBaseHospitalarService.Item item(int id,String medico,Long empresaId,String empresa,AcompanhamentoBaseHospitalarService.Etapa etapa,String valor) {
         BigDecimal v=valor==null?null:new BigDecimal(valor);
