@@ -1,9 +1,50 @@
 (function () {
   const form = document.querySelector('#access-form'), message = document.querySelector('#access-message');
   const rows = document.querySelector('#access-rows'), dialog = document.querySelector('#password-dialog');
-  let doctors = [], companies = [], hospitals = [], resetting = null;
+  let doctors = [], companies = [], hospitals = [], resetting = null, me = null;
   const api = FaturamedAuth.request;
   const json = (method, body) => ({method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const editDialog = document.querySelector('#edit-dialog'), editForm = document.querySelector('#edit-form');
+  let editing = null;
+  function editProfile() {
+    const p = editForm.perfil.value;
+    for (const [key, field, label] of [['MEDICO','medicoId','#edit-doctor-label'],['EMPRESA','empresaId','#edit-company-label'],['HOSPITAL','hospitalId','#edit-hospital-label']]) {
+      const on = p === key; document.querySelector(label).hidden = !on; editForm[field].disabled = !on; editForm[field].required = on;
+    }
+  }
+  function options(select, placeholder, list, label, current) {
+    // Shows active records plus the one currently linked, even if inactive.
+    select.replaceChildren(new Option(placeholder,''), ...list.filter(x=>x.ativo||x.id===current).map(x=>new Option(label(x)+(x.ativo?'':' (inativo)'),x.id)));
+    select.value = current ?? '';
+  }
+  function openEdit(user) {
+    editing = user;
+    editForm.nome.value = user.nome; editForm.email.value = user.email;
+    editForm.perfil.replaceChildren(...[...form.perfil.options].map(o=>new Option(o.text,o.value)));
+    if (![...editForm.perfil.options].some(o=>o.value===user.perfil)) editForm.perfil.append(new Option(user.perfil==='DEV'?'Administrador técnico (legado)':user.perfil,user.perfil));
+    editForm.perfil.value = user.perfil;
+    options(editForm.medicoId,'Selecione um médico',doctors,d=>`${d.nome} - CRM ${d.crm||"a preencher"}/${d.uf||"--"}`,user.medicoId);
+    options(editForm.empresaId,'Selecione uma empresa',companies,c=>c.nome,user.empresaId);
+    options(editForm.hospitalId,'Selecione um hospital',hospitals,h=>h.nome,user.hospitalId);
+    editForm.ativo.value = String(user.ativo);
+    document.querySelector('#edit-message').textContent = '';
+    editProfile(); editDialog.showModal();
+  }
+  editForm.perfil.addEventListener('change', editProfile);
+  document.querySelector('#edit-cancel').addEventListener('click', ()=>editDialog.close());
+  editForm.addEventListener('submit', async event => {
+    event.preventDefault(); const button = editForm.querySelector('[type=submit]'); button.disabled = true;
+    const p = editForm.perfil.value;
+    try {
+      await api(`/api/usuarios/${editing.id}`, json('PUT', {nome:editForm.nome.value,email:editForm.email.value,perfil:p,
+        medicoId:p==='MEDICO'?Number(editForm.medicoId.value):null,empresaId:p==='EMPRESA'?Number(editForm.empresaId.value):null,
+        hospitalId:p==='HOSPITAL'?Number(editForm.hospitalId.value):null,ativo:editForm.ativo.value==='true',versao:editing.versao}));
+      editDialog.close();
+      if (editing.id === me?.id) { location.reload(); return; } // a propria sessao e renovada apos a edicao
+      await load(); message.textContent = 'Acesso atualizado.';
+    } catch (error) { document.querySelector('#edit-message').textContent = error.message; }
+    finally { button.disabled = false; }
+  });
   function profile() {
     const medical = form.perfil.value === 'MEDICO', company = form.perfil.value === 'EMPRESA', hospital = form.perfil.value === 'HOSPITAL';
     document.querySelector('#access-hospital-label').hidden = !hospital; form.hospitalId.disabled = !hospital; form.hospitalId.required = hospital;
@@ -30,9 +71,10 @@
         try {await api(`/api/usuarios/${user.id}/situacao`,json('PUT',{ativo:!user.ativo,versao:user.versao})); await load();message.textContent='Situação atualizada.';}
         catch(error){message.textContent=error.message;toggle.disabled=false;}
       });
+      const edit=document.createElement('button');edit.type='button';edit.className='text-button';edit.textContent='Editar';edit.addEventListener('click',()=>openEdit(user));
       const reset=document.createElement('button');reset.type='button';reset.className='text-button';reset.textContent='Redefinir senha';
       reset.addEventListener('click',()=>{resetting=user;document.querySelector('#reset-user').textContent=user.email;document.querySelector('#reset-form').reset();document.querySelector('#reset-message').textContent='';dialog.showModal();});
-      actions.append(toggle,reset);tr.append(actions);rows.append(tr);
+      actions.append(edit,toggle,reset);tr.append(actions);rows.append(tr);
     }
   }
   form.perfil.addEventListener('change',profile);
@@ -50,5 +92,5 @@
     catch(error){document.querySelector('#reset-message').textContent=error.message;}
     finally{button.disabled=false;}
   });
-  (async()=>{try{const user=await api('/api/auth/me');if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'),new Option('Empresa','EMPRESA'),new Option('Hospital','HOSPITAL'));document.querySelector('h1').textContent='Acessos de médicos, empresas e hospitais';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}[doctors,companies,hospitals]=await Promise.all([api('/api/medicos'),api('/api/empresas-clientes'),api('/api/hospitais')]);form.hospitalId.replaceChildren(new Option('Selecione um hospital',''),...hospitals.filter(h=>h.ativo).map(h=>new Option(h.nome,h.id)));form.empresaId.replaceChildren(new Option('Selecione uma empresa',''),...companies.filter(c=>c.ativo).map(c=>new Option(c.nome,c.id)));form.medicoId.replaceChildren(new Option('Selecione um médico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm||"a preencher"}/${d.uf||"--"}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
+  (async()=>{try{const user=await api('/api/auth/me');me=user;if(user.perfil==='OPERADOR'){form.perfil.replaceChildren(new Option('Médico','MEDICO'),new Option('Empresa','EMPRESA'),new Option('Hospital','HOSPITAL'));document.querySelector('h1').textContent='Acessos de médicos, empresas e hospitais';document.querySelector('a[href="chamados.html"]').textContent='Acompanhar chamados';}[doctors,companies,hospitals]=await Promise.all([api('/api/medicos'),api('/api/empresas-clientes'),api('/api/hospitais')]);form.hospitalId.replaceChildren(new Option('Selecione um hospital',''),...hospitals.filter(h=>h.ativo).map(h=>new Option(h.nome,h.id)));form.empresaId.replaceChildren(new Option('Selecione uma empresa',''),...companies.filter(c=>c.ativo).map(c=>new Option(c.nome,c.id)));form.medicoId.replaceChildren(new Option('Selecione um médico',''),...doctors.filter(d=>d.ativo).map(d=>new Option(`${d.nome} - CRM ${d.crm||"a preencher"}/${d.uf||"--"}`,d.id)));profile();await load();}catch(error){message.textContent=error.message;}})();
 })();

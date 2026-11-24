@@ -33,6 +33,10 @@ public class AcessoController {
     @GetMapping("/api/usuarios") public List<UsuarioService.Usuario> listar(@AuthenticationPrincipal UsuarioAutenticado user) { return users.listar().stream().filter(u -> !user.perfil().equals("OPERADOR") || GERIDOS_POR_FUNCIONARIO.contains(u.perfil())).toList(); }
     @PostMapping("/api/usuarios") @ResponseStatus(HttpStatus.CREATED)
     public UsuarioService.Usuario criar(@Valid @RequestBody UsuarioService.Novo dados,@AuthenticationPrincipal UsuarioAutenticado user) { exigirGestao(dados.perfil(),user); return users.criar(dados,user.id()); }
+    @PutMapping("/api/usuarios/{id}")
+    public UsuarioService.Usuario editar(@PathVariable long id,@Valid @RequestBody UsuarioService.Edicao dados,@AuthenticationPrincipal UsuarioAutenticado user) {
+        exigirGestaoDoUsuario(id,user); exigirGestao(dados.perfil(),user); return users.editar(id,dados,user.id());
+    }
     @PutMapping("/api/usuarios/{id}/situacao")
     public UsuarioService.Usuario situacao(@PathVariable long id,@Valid @RequestBody UsuarioService.Situacao dados,@AuthenticationPrincipal UsuarioAutenticado user) { exigirGestaoDoUsuario(id,user); return users.situacao(id,dados,user.id()); }
     @PostMapping("/api/usuarios/{id}/senha") @ResponseStatus(HttpStatus.NO_CONTENT)
