@@ -91,7 +91,7 @@ public class RevisaoVisitasService {
                 var anterior = visitas.stream().filter(v -> v.linhaMedico() == proposta.getKey()).findFirst().orElseThrow();
                 var h = proposta.getValue();
                 var automatica = new ConciliadorVisitas.Visita(anterior.linhaMedico(), anterior.atendimento(), h.data(),
-                        LeitorPlanilhaVisitas.normalizar(h.setor()).equals("faturado") ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE,
+                        ConciliadorVisitas.faturado(h) ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE,
                         "Correspondencia unica e exclusiva apos revisao da linha " + linha,
                           anterior.original(), h, anterior.candidatos(),null,anterior.medicoProducao());
                 revisaoId = jdbc.queryForObject("""

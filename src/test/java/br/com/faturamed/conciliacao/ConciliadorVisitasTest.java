@@ -56,11 +56,11 @@ class ConciliadorVisitasTest {
     }
 
     @Test
-    void naoMarcaPagaQuandoSetorNaoEFaturado() {
+    void marcaPagaParaQualquerSetorDaPlanilhaDoHospital() {
         var campos = new java.util.HashMap<>(hospital(2, "Medico A", "Conta1", "2026-01-01").campos());
         campos.put("setor", "Em analise");
         var resultado = conferir(List.of(medico(2, "2026-01-01")), List.of(new LeitorPlanilhaVisitas.Linha(2, campos)));
-        assertThat(resultado.visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        assertThat(resultado.visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
     }
 
     @Test

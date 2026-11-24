@@ -46,10 +46,10 @@ class AtualizadorConciliacaoTest {
                 .isInstanceOf(ConflitoRevisaoException.class);
         assertThatThrownBy(()->versoes.atualizar(anterior,"m.xlsx","h.xlsx",List.of(medico(2,"A")),List.of())).isInstanceOf(ConflitoRevisaoException.class);
     }
-    @Test void reavaliaFaturamentoAindaNaoRevisado() {
+    @Test void preservaPagaQuandoApenasOSetorMuda() {
         var anterior=estado(List.of(medico(2,"A")),List.of(hospital(2,"A","Em analise","85")));
         var r=versoes.atualizar(anterior,"m.xlsx","h.xlsx",List.of(medico(2,"A")),List.of(hospital(2,"A","Faturado","85")));
-        assertThat(r.reavaliadas()).isEqualTo(1);assertThat(r.relatorio().resumo()).containsEntry(ConciliadorVisitas.Status.PAGA,1L);
+        assertThat(r.preservadas()).isEqualTo(1);assertThat(r.relatorio().resumo()).containsEntry(ConciliadorVisitas.Status.PAGA,1L);
     }
     @Test void decisaoManualPendenteNaoPermiteAssociarCandidatoPorExclusao() {
         var original=estado(List.of(medico(2,"A")),List.of());var v=original.atual().visitas().getFirst();

@@ -25,11 +25,11 @@ class AcompanhamentoRevisaoTest {
         assertThat(item.origem()).isEqualTo(AcompanhamentoRevisao.Origem.AUTOMATICA_IMPORTACAO);
         assertThat(item.precisaConferencia()).isFalse();
     }
-    @Test void pendenteConferidaPodeSerEnviadaSemConfundirComPagamento() {
+    @Test void registroDoHospitalConferidoContaComoFaturadoMesmoComOutroSetor() {
         var v=visita(ConciliadorVisitas.Status.PENDENTE,hospital("Medico","Em analise","85"));
         assertThat(analisar(v,null).precisaConferencia()).isTrue();
         var item=analisar(v,RevisaoVisitaRequest.Acao.CONFIRMAR_CORRESPONDENCIA);
-        assertThat(item.categoria()).isEqualTo(AcompanhamentoRevisao.Categoria.AGUARDANDO_FATURAMENTO);
+        assertThat(item.categoria()).isEqualTo(AcompanhamentoRevisao.Categoria.CONFERENCIA_MANUAL);
         assertThat(item.precisaConferencia()).isFalse();
     }
     @Test void repasseInconsistenteContinuaPrecisandoConferenciaAposRevisao() {

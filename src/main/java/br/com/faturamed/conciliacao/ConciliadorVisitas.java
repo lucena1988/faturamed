@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class ConciliadorVisitas {
     public enum Status { PAGA, PENDENTE, DIVERGENTE, EXCLUIDA }
+
+    /** Todo registro que veio na planilha do hospital conta como faturado, independentemente da coluna Setor. */
+    public static boolean faturado(RegistroHospital registro) { return registro != null; }
     public record Chave(String atendimento, LocalDate data) {}
     public record RegistroHospital(int linha, String atendimento, LocalDate data, String paciente,
             String convenio, String medico, String codigo, String procedimento, String conta,
@@ -150,7 +153,7 @@ public class ConciliadorVisitas {
                     .compareTo(new BigDecimal("0.01")) > 0) {
                 status = Status.DIVERGENTE;
                 motivo = "Repasse informado diverge de Valor Tot x Regra";
-            } else if (LeitorPlanilhaVisitas.normalizar(unico.setor()).equals("faturado")) {
+            } else if (ConciliadorVisitas.faturado(unico)) {
                 status = Status.PAGA;
                 motivo = "Correspondencia unica no faturamento do hospital";
             } else {
