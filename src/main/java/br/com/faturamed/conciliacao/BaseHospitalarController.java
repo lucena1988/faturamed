@@ -14,10 +14,14 @@ public class BaseHospitalarController {
     private final BaseHospitalarService service;
     private final AcompanhamentoBaseHospitalarService acompanhamento;
     private final ExclusaoArquivoHospitalService exclusoes;
+    private final ExportadorAcompanhamento exportador;
+    private final HospitalCadastroService hospitais;
     private final br.com.faturamed.seguranca.UsuarioService usuarios;
     private final org.springframework.security.crypto.password.PasswordEncoder encoder;
     public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento,ExclusaoArquivoHospitalService exclusoes,
-            br.com.faturamed.seguranca.UsuarioService usuarios,org.springframework.security.crypto.password.PasswordEncoder encoder) {
+            br.com.faturamed.seguranca.UsuarioService usuarios,org.springframework.security.crypto.password.PasswordEncoder encoder,
+            ExportadorAcompanhamento exportador,HospitalCadastroService hospitais) {
+        this.exportador=exportador; this.hospitais=hospitais;
         this.service=service; this.acompanhamento=acompanhamento; this.exclusoes=exclusoes; this.usuarios=usuarios; this.encoder=encoder;
     }
     public record ConfirmacaoExclusao(String senha) {}
@@ -32,6 +36,17 @@ public class BaseHospitalarController {
         }
         usuarios.sucesso(usuario.id());
         return exclusoes.excluir(id,usuario);
+    }
+    @GetMapping("/acompanhamento/exportar")
+    public ResponseEntity<byte[]> exportarAcompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia,
+            @RequestParam(required=false) String etapa,@RequestParam(required=false) String medico,@RequestParam(required=false) String empresa) throws Exception {
+        var filtros=new ExportadorAcompanhamento.Filtros(competencia,etapa,medico,empresa);
+        var itens=ExportadorAcompanhamento.filtrar(acompanhamento.consultar(hospitalId,competencia).visitas(),filtros);
+        byte[] conteudo=exportador.exportar(hospitais.buscar(hospitalId).nome(),filtros,itens);
+        String nome="acompanhamento-"+(competencia==null||competencia.isBlank()?"todas":competencia)+".xlsx";
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename(nome,StandardCharsets.UTF_8).build().toString())
+                .header(HttpHeaders.CACHE_CONTROL,"no-store").body(conteudo);
     }
     @GetMapping("/acompanhamento")
     public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) throws Exception { return acompanhamento.consultar(hospitalId,competencia); }

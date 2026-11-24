@@ -242,6 +242,17 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
       ? 'Na produção individual, selecione o médico e envie Atendimento e Dt.'
       : 'Na produção coletiva, envie Atendimento e Dt. Médico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
   }
+  // Opcoes de medico e empresa vem das proprias linhas do acompanhamento, preservando a selecao.
+  function fillFlowOptions() {
+    const medicos = [...new Set(flow.visitas.map(v => v.medico).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const empresas = new Map(); let semEmpresa = false;
+    for (const v of flow.visitas) { if (v.empresaId != null) empresas.set(String(v.empresaId), v.empresa); else semEmpresa = true; }
+    const selMedico = find('flow-medico'), selEmpresa = find('flow-empresa'), medicoAtual = selMedico.value, empresaAtual = selEmpresa.value;
+    selMedico.replaceChildren(new Option('Todos os médicos', ''), ...medicos.map(m => new Option(m, m)));
+    selEmpresa.replaceChildren(new Option('Todas as empresas', ''), ...[...empresas].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([id, nome]) => new Option(nome, id)), ...(semEmpresa ? [new Option('Sem empresa (sem produção vinculada)', 'SEM')] : []));
+    selMedico.value = medicos.includes(medicoAtual) ? medicoAtual : '';
+    selEmpresa.value = [...selEmpresa.options].some(o => o.value === empresaAtual) ? empresaAtual : '';
+  }
   function renderFlow() {
     find('flow-stats').replaceChildren(); find('flow-rows').replaceChildren(); find('flow-money').textContent = '';
     if (!flow) return;
@@ -252,9 +263,20 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
       const item = element('div',label); item.append(element('strong',value)); find('flow-stats').append(item);
     }
     find('flow-money').textContent = `Subtotais confirmados · Faturado: ${money(flow.faturado)} · Recebido: ${money(flow.recebido)} · Saldo: ${money(flow.saldo)}`;
-    for (const visit of flow.visitas.filter(item => !find('flow-filter').value || item.etapa === find('flow-filter').value)) {
+    fillFlowOptions();
+    const etapa = find('flow-filter').value, medico = find('flow-medico').value, empresa = find('flow-empresa').value;
+    const filtradas = flow.visitas.filter(item => (!etapa || item.etapa === etapa) && (!medico || item.medico === medico)
+      && (!empresa || (empresa === 'SEM' ? item.empresaId == null : String(item.empresaId) === empresa)));
+    const soma = campo => filtradas.reduce((s, v) => s + (v[campo] || 0), 0);
+    find('flow-filtered').textContent = (etapa || medico || empresa)
+      ? `${filtradas.length} procedimentos nos filtros · Faturado: ${money(soma('faturado'))} · Recebido: ${money(soma('recebido'))} · Saldo: ${money(soma('saldo'))}`
+      : `${filtradas.length} procedimentos`;
+    const params = new URLSearchParams({hospitalId: find('hospital').value});
+    for (const [chave, valor] of [['competencia', find('competencia-filter').value], ['etapa', etapa], ['medico', medico], ['empresa', empresa]]) if (valor) params.set(chave, valor);
+    find('flow-export').href = `/api/base-hospitalar/acompanhamento/exportar?${params}`;
+    for (const visit of filtradas) {
       const row = element('tr');
-      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.medico || 'Não identificado',mesAno(visit.competenciaProducao)]) row.append(element('td',value));
+      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.medico || 'Não identificado',visit.empresa || '—',mesAno(visit.competenciaProducao)]) row.append(element('td',value));
       const fat = element('td', mesAno(visit.competencia));
       if (visit.competenciaProducao && visit.competencia !== visit.competenciaProducao) { fat.className = 'comp-outra'; fat.title = 'Faturado pelo hospital em competência diferente da produção'; }
       row.append(fat);
@@ -296,7 +318,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     document.querySelectorAll('.base-tabs [data-tab]').forEach(item => { item.setAttribute('aria-selected', String(item === tab)); find(item.dataset.tab).hidden = item !== tab; });
   }));
   find('flow-filter').replaceChildren(new Option('Todas as etapas',''),...Object.entries(stages).map(([value,label]) => new Option(label,value)));
-  find('flow-filter').addEventListener('change', renderFlow);
+  for (const id of ['flow-filter','flow-medico','flow-empresa']) find(id).addEventListener('change', renderFlow);
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
   find('history-close').addEventListener('click', () => find('history-dialog').close());
   for (const id of ['status','tipo-filter','search']) find(id).addEventListener('input', renderVisits);

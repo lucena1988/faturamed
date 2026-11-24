@@ -85,3 +85,6 @@ td a, td button { margin: 4px; }
 .faturadas { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: .8rem; color: var(--muted); }
 .chip.chip-outra, .comp-outra { background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
 .chip.chip-pago { white-space: nowrap; display: inline-block; background: var(--success-bg); color: var(--success-fg); font-weight: 700; }
+.flow-filters { align-items: end; margin-bottom: 4px; }
+.flow-filters select { min-width: 200px; }
+.button-link { display: inline-block; padding: 10px 16px; border-radius: var(--radius); background: var(--primary); color: #fff !important; font-weight: 700; text-decoration: none; }
