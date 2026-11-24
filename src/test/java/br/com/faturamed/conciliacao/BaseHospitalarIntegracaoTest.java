@@ -85,6 +85,24 @@ class BaseHospitalarIntegracaoTest {
         long relatorio=service.importarProducao(hospital,ana,"2026-09",producao,usuario).relatorioId();
         assertThat(revisoes.carregar(relatorio).atual().visitas()).extracting(ConciliadorVisitas.Visita::status).containsOnly(ConciliadorVisitas.Status.PAGA);
     }
+    @Test void migracaoReclassificaRepeticoesAntigasDeExamesDistintos() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        var eco=List.of("57480748","2026-09-18",nome(ana),"40901106","Ecodopplercardiograma Transtoracico","266.12","0.5","133.06","Faturado");
+        var doppler=List.of("57480748","2026-09-18",nome(ana),"40901360","Doppler Colorido De Vasos Cervicais","273.95","0.5","136.97","Faturado");
+        service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,eco,doppler,eco)),usuario);
+        var visitas=service.visitas(hospital);
+        int original=visitas.stream().filter(v->"40901106".equals(jdbc.queryForObject("select campos->>'cod produto' from visita_base_hospitalar where id=?",String.class,v.get("id"))) && v.get("decisao").equals("ORIGINAL")).map(this::id).findFirst().orElseThrow();
+        int exameDistinto=visitas.stream().filter(v->"40901360".equals(jdbc.queryForObject("select campos->>'cod produto' from visita_base_hospitalar where id=?",String.class,v.get("id")))).map(this::id).findFirst().orElseThrow();
+        int repeticaoReal=visitas.stream().filter(v->v.get("decisao").equals("EM_ANALISE")).map(this::id).findFirst().orElseThrow();
+        // Estado anterior a correcao: o exame diferente tinha sido marcado como repeticao.
+        jdbc.update("update visita_base_hospitalar set decisao='EM_ANALISE',anterior_id=? where id=?",original,exameDistinto);
+        String script=new String(getClass().getResourceAsStream("/db/migration/V56__reclassifica_exames_distintos.sql").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+        jdbc.execute(script);
+        assertThat(jdbc.queryForMap("select decisao,anterior_id from visita_base_hospitalar where id=?",exameDistinto))
+                .containsEntry("decisao","VISITA_DISTINTA").containsEntry("anterior_id",null);
+        assertThat(service.historico(exameDistinto)).singleElement().satisfies(e->assertThat(e.get("decisao")).isEqualTo("VISITA_DISTINTA"));
+        assertThat(jdbc.queryForObject("select decisao from visita_base_hospitalar where id=?",String.class,repeticaoReal)).isEqualTo("EM_ANALISE");
+    }
     @Test void mesmoExameRepetidoNoMesmoAtendimentoContinuaEmAnalise() throws Exception {
         var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
         var linha=List.of("57480748","2026-09-18",nome(ana),"40901106","Ecodopplercardiograma Transtoracico","266.12","0.5","133.06","Faturado");
