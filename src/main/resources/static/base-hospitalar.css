@@ -81,3 +81,4 @@ td a, td button { margin: 4px; }
 .chip { font-size: .8rem; padding: 2px 10px; border-radius: 999px; background: var(--info-bg); color: var(--info-fg); }
 .file-name { overflow-wrap: anywhere; max-width: 320px; }
 @media (max-width: 760px) { .form-row { grid-template-columns: 1fr; } }
+.conciliation-workspace td button.danger-link { background: transparent !important; color: var(--rose, #be123c) !important; border: 0; padding: 0; text-decoration: underline; box-shadow: none; font-weight: 600; cursor: pointer; }
