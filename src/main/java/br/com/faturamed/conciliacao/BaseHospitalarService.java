@@ -318,9 +318,18 @@ public class BaseHospitalarService {
                 List.of(new LeitorPlanilhaVisitas.Linha(anterior.linhaMedico(),anterior.original())),List.of(hospital),medico).visitas().getFirst();
     }
 
+    /** Tipo informado na importacao. No hospital, substitui a classificacao automatica dos procedimentos do arquivo; na producao, e apenas informativo. */
+    @Transactional
+    public void definirTipoArquivo(long arquivoId,String tipo) {
+        var valor=TipoProcedimento.de(tipo);
+        if(valor==null) return;
+        jdbc.update("update arquivo_base_hospitalar set tipo_procedimento=? where id=?",valor.name(),arquivoId);
+        jdbc.update("update visita_base_hospitalar set tipo_procedimento=? where arquivo_atual_id=?",valor.name(),arquivoId);
+    }
+
     @Transactional(readOnly=true)
     public List<Map<String,Object>> arquivos(long hospitalId) {
-        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
+        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,a.tipo_procedimento,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
     }
 
     @Transactional(readOnly=true)
