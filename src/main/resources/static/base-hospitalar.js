@@ -274,19 +274,38 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     const params = new URLSearchParams({hospitalId: find('hospital').value});
     for (const [chave, valor] of [['competencia', find('competencia-filter').value], ['etapa', etapa], ['medico', medico], ['empresa', empresa]]) if (valor) params.set(chave, valor);
     find('flow-export').href = `/api/base-hospitalar/acompanhamento/exportar?${params}`;
+    // Colunas agrupadas para caber na tela; o Excel mantem um campo por coluna.
+    const celula = (principal, secundario, classe) => {
+      const td = element('td'); td.append(element('div', principal));
+      if (secundario) { const sub = element('div', secundario); sub.className = 'sub'; td.append(sub); }
+      if (classe) td.className = classe; return td;
+    };
+    const dataBr = data => data ? String(data).slice(0, 10).split('-').reverse().join('/') : '—';
     for (const visit of filtradas) {
       const row = element('tr');
-      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.paciente || '—',visit.convenio || '—']) row.append(element('td',value));
-      const proc = element('td'); proc.className = 'proc-cell';
-      if (visit.codigoProcedimento) { const cod = element('div', visit.codigoProcedimento); cod.className = 'muted'; proc.append(cod); }
-      proc.append(element('div', visit.procedimento || 'Não informado')); row.append(proc);
-      for (const value of [visit.medico || 'Não identificado',visit.empresa || '—',mesAno(visit.competenciaProducao)]) row.append(element('td',value));
-      const fat = element('td', mesAno(visit.competencia));
-      if (visit.competenciaProducao && visit.competencia !== visit.competenciaProducao) { fat.className = 'comp-outra'; fat.title = 'Faturado pelo hospital em competência diferente da produção'; }
-      row.append(fat);
-      row.append(statusCell(visit.etapa, visit.competencia, stages[visit.etapa]));
-      for (const value of [money(visit.faturado),money(visit.recebido),money(visit.saldo)]) row.append(element('td',value));
-      const actions = element('td');
+      row.append(element('td', visit.visitaId));
+      row.append(celula(visit.atendimento, dataBr(visit.data)));
+      row.append(celula(visit.paciente || '—', visit.convenio || null, 'col-paciente'));
+      const proc = celula(visit.procedimento || 'Não informado', null, 'col-proc');
+      if (visit.codigoProcedimento) { const cod = element('div', visit.codigoProcedimento); cod.className = 'sub'; proc.prepend(cod); }
+      row.append(proc);
+      row.append(celula(visit.medico || 'Não identificado', visit.empresa || null, 'col-medico'));
+      const comp = element('td'); comp.className = 'col-comp';
+      const outra = visit.competenciaProducao && visit.competencia !== visit.competenciaProducao;
+      for (const [rotulo, valor, destaque] of [['Prod.', mesAno(visit.competenciaProducao), false], ['Fat.', mesAno(visit.competencia), outra]]) {
+        const linha = element('div'); linha.append(element('span', `${rotulo} `)); linha.firstChild.className = 'sub';
+        const v = element('strong', valor); if (destaque) { v.className = 'comp-outra'; v.title = 'Faturado pelo hospital em competência diferente da produção'; }
+        linha.append(v); comp.append(linha);
+      }
+      row.append(comp);
+      const etapaCell = statusCell(visit.etapa, visit.competencia, stages[visit.etapa]); etapaCell.classList.add('col-etapa'); row.append(etapaCell);
+      const valores = element('td'); valores.className = 'col-valores';
+      if (visit.faturado == null) valores.append(element('div', 'Não confirmado'));
+      else for (const [rotulo, valor] of [['Faturado', visit.faturado], ['Recebido', visit.recebido], ['Saldo', visit.saldo]]) {
+        const linha = element('div'); const r = element('span', rotulo); r.className = 'sub'; linha.append(r, element('span', money(valor))); valores.append(linha);
+      }
+      row.append(valores);
+      const actions = element('td'); actions.className = 'col-acoes';
       if (visit.relatorio) actions.append(link('Revisar',`/conciliacao.html?relatorio=${visit.relatorio}&linha=${visit.linha}`));
       if (visit.saldo > 0) actions.append(link('Recebimentos',`/recebimentos.html?relatorio=${visit.relatorio}`));
       row.append(actions); find('flow-rows').append(row);
