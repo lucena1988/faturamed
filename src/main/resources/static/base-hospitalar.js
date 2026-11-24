@@ -3,7 +3,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   const find = id => document.getElementById(id);
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
-  let visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
+  let arquivosCarregados = [], visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
   const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',FATURADO_SEM_RECEBIMENTO:'Faturado sem recebimento',RECEBIDO_PARCIALMENTE:'Recebido parcialmente',SEM_SALDO:'Sem saldo a receber',EM_CONFERENCIA:'Em conferência'};
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
@@ -21,7 +21,10 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     find('visits').replaceChildren();
     for (const visit of filtered) {
       const row = element('tr');
-      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, TIPOS_PROCEDIMENTO[visit.tipo_procedimento] || 'Visita', visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado', labels[visit.situacao], visit.anterior_id || '—']) row.append(element('td', value));
+      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, TIPOS_PROCEDIMENTO[visit.tipo_procedimento] || 'Visita', visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado']) row.append(element('td', value));
+      const etapa = flow?.visitas.find(item => item.visitaId === visit.id)?.etapa;
+      row.append(visit.situacao === 'CONCILIADA' ? statusCell(etapa, visit.competencia, labels[visit.situacao]) : element('td', labels[visit.situacao]));
+      row.append(element('td', visit.anterior_id || '—'));
       const actions = element('td');
       if (visit.decisao === 'EM_ANALISE') actions.append(button('Analisar repetição', async () => openDecision(visit)));
       actions.append(button('Histórico', async () => {
@@ -43,17 +46,38 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
       await perform(async () => {
         const current = await request(`/api/conciliacoes/visitas/${file.relatorio_id}/acompanhamento`);
         const result = await request(`/api/base-hospitalar/relatorios/${file.relatorio_id}/atualizar?versao=${current.versao}`, {method:'POST'});
-        showMessage('success', 'Nova versão criada. Confira e libere novamente para o médico. ', link('Abrir relatório', `/conciliacao.html?relatorio=${result.id}`));
         await load();
+        const atualizado = arquivosCarregados.find(item => item.id === file.id) || file;
+        const resumo = parseFaturadas(atualizado).map(({comp, total}) => `${mesAno(comp)}: ${total}`).join(' · ');
+        showMessage('success', `Nova versão criada. Procedimentos conciliados por competência faturada pelo hospital — ${resumo || 'nenhum'}. Confira e libere novamente para o médico. `, link('Abrir relatório', `/conciliacao.html?relatorio=${result.id}`));
       });
     });
+  }
+  const mesAno = comp => comp ? comp.split('-').reverse().join('/') : '—';
+  function parseFaturadas(file) { return String(file.competencias_faturadas || '').split(',').filter(Boolean).map(item => { const [comp, total] = item.split(':'); return {comp, total: Number(total)}; }); }
+  function competenciasFaturadas(file) {
+    const box = element('div'); box.className = 'faturadas';
+    const lista = parseFaturadas(file);
+    if (!lista.length) { box.append(element('span', 'Nenhum procedimento conciliado ainda')); return box; }
+    box.append(element('span', 'Faturado pelo hospital em: '));
+    for (const {comp, total} of lista) { const chip = element('span', `${mesAno(comp)} · ${total}`); chip.className = 'chip' + (comp !== file.competencia ? ' chip-outra' : ''); chip.title = comp !== file.competencia ? 'Competência diferente da produção' : 'Mesma competência da produção'; box.append(chip); }
+    return box;
+  }
+  // Etapas a partir de faturado indicam conciliacao com status PAGA pelo hospital.
+  const ETAPAS_PAGAS = ['FATURADO_SEM_RECEBIMENTO', 'RECEBIDO_PARCIALMENTE', 'SEM_SALDO'];
+  function statusCell(etapa, competencia, texto) {
+    const td = element('td');
+    if (ETAPAS_PAGAS.includes(etapa)) { const tag = element('span', `PAGO · ${mesAno(competencia)}`); tag.className = 'chip chip-pago'; td.append(tag, element('div', stages[etapa])); td.lastChild.className = 'muted'; }
+    else td.textContent = texto;
+    return td;
   }
   function fileRow(file) {
     const row = element('tr');
     const origem = file.tipo === 'HOSPITAL' ? (file.modo_hospital === 'ATUALIZAR' ? 'Hospital · atualização' : 'Hospital') : 'Produção';
     const tipo = TIPOS_PROCEDIMENTO[file.tipo_procedimento] || (file.tipo === 'HOSPITAL' ? 'Automático' : '—');
     const medico = file.tipo === 'PRODUCAO' ? (file.medico || (file.modo_producao === 'VARIOS' ? 'Vários médicos' : '—')) : '—';
-    const nome = element('td', file.nome); nome.className = 'file-name';
+    const nome = element('td'); nome.className = 'file-name'; nome.append(element('div', file.nome));
+    if (file.tipo === 'PRODUCAO') nome.append(competenciasFaturadas(file));
     row.append(nome);
     for (const value of [origem, tipo, medico, file.quantidade_registros ?? '—', String(file.criado_em || '').slice(0, 10).split('-').reverse().join('/')]) row.append(element('td', value));
     const actions = element('td'); actions.append(link('Baixar', `/api/base-hospitalar/arquivos/${file.id}/original`));
@@ -109,6 +133,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     const filter = find('competencia-filter'), atual = filter.value, comps = [...new Set(files.map(f => f.competencia))].sort().reverse();
     filter.replaceChildren(new Option('Todas as competências', ''), ...comps.map(c => new Option(c.replace('-', '/'), c)));
     filter.value = comps.includes(atual) ? atual : '';
+    arquivosCarregados = files;
     files = files.filter(f => !filter.value || f.competencia === filter.value);
     visits = data; flow = tracking; renderFlow(); renderVisits(); renderCompetencias(files);
   }
@@ -229,7 +254,12 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     find('flow-money').textContent = `Subtotais confirmados · Faturado: ${money(flow.faturado)} · Recebido: ${money(flow.recebido)} · Saldo: ${money(flow.saldo)}`;
     for (const visit of flow.visitas.filter(item => !find('flow-filter').value || item.etapa === find('flow-filter').value)) {
       const row = element('tr');
-      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.medico || 'Não identificado',stages[visit.etapa],money(visit.faturado),money(visit.recebido),money(visit.saldo)]) row.append(element('td',value));
+      for (const value of [visit.visitaId,visit.atendimento,visit.data,visit.medico || 'Não identificado',mesAno(visit.competenciaProducao)]) row.append(element('td',value));
+      const fat = element('td', mesAno(visit.competencia));
+      if (visit.competenciaProducao && visit.competencia !== visit.competenciaProducao) { fat.className = 'comp-outra'; fat.title = 'Faturado pelo hospital em competência diferente da produção'; }
+      row.append(fat);
+      row.append(statusCell(visit.etapa, visit.competencia, stages[visit.etapa]));
+      for (const value of [money(visit.faturado),money(visit.recebido),money(visit.saldo)]) row.append(element('td',value));
       const actions = element('td');
       if (visit.relatorio) actions.append(link('Revisar',`/conciliacao.html?relatorio=${visit.relatorio}&linha=${visit.linha}`));
       if (visit.saldo > 0) actions.append(link('Recebimentos',`/recebimentos.html?relatorio=${visit.relatorio}`));
