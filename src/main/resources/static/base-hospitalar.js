@@ -3,7 +3,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   const find = id => document.getElementById(id);
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
-  let arquivosCarregados = [], visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
+  let periodo = null, arquivosCarregados = [], visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
   const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',PAGO:'Pago',EM_CONFERENCIA:'Em conferência'};
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
@@ -265,14 +265,16 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     find('flow-money').textContent = `Subtotais confirmados · Faturado: ${money(flow.faturado)} · Recebido: ${money(flow.recebido)}`;
     fillFlowOptions();
     const etapa = find('flow-filter').value, medico = find('flow-medico').value, empresa = find('flow-empresa').value;
+    const {inicio, fim} = periodo ? periodo.valor() : {inicio: null, fim: null};
     const filtradas = flow.visitas.filter(item => (!etapa || item.etapa === etapa) && (!medico || item.medico === medico)
-      && (!empresa || (empresa === 'SEM' ? item.empresaId == null : String(item.empresaId) === empresa)));
+      && (!empresa || (empresa === 'SEM' ? item.empresaId == null : String(item.empresaId) === empresa))
+      && (!inicio || (String(item.data).slice(0, 10) >= inicio && String(item.data).slice(0, 10) <= fim)));
     const soma = campo => filtradas.reduce((s, v) => s + (v[campo] || 0), 0);
-    find('flow-filtered').textContent = (etapa || medico || empresa)
+    find('flow-filtered').textContent = (etapa || medico || empresa || inicio)
       ? `${filtradas.length} procedimentos nos filtros · Faturado: ${money(soma('faturado'))} · Recebido: ${money(soma('recebido'))}`
       : `${filtradas.length} procedimentos`;
     const params = new URLSearchParams({hospitalId: find('hospital').value});
-    for (const [chave, valor] of [['competencia', find('competencia-filter').value], ['etapa', etapa], ['medico', medico], ['empresa', empresa]]) if (valor) params.set(chave, valor);
+    for (const [chave, valor] of [['competencia', find('competencia-filter').value], ['etapa', etapa], ['medico', medico], ['empresa', empresa], ['dataInicio', inicio], ['dataFim', fim]]) if (valor) params.set(chave, valor);
     find('flow-export').href = `/api/base-hospitalar/acompanhamento/exportar?${params}`;
     // Colunas agrupadas para caber na tela; o Excel mantem um campo por coluna.
     const celula = (principal, secundario, classe) => {
@@ -341,6 +343,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   }));
   find('flow-filter').replaceChildren(new Option('Todas as etapas',''),...Object.entries(stages).map(([value,label]) => new Option(label,value)));
   for (const id of ['flow-filter','flow-medico','flow-empresa']) find(id).addEventListener('change', renderFlow);
+  periodo = window.FmPeriodo.criar(find('flow-periodo'), {aoMudar: renderFlow, rotulo: 'Período do procedimento'});
   find('decision-close').addEventListener('click', () => find('decision-dialog').close());
   find('history-close').addEventListener('click', () => find('history-dialog').close());
   for (const id of ['status','tipo-filter','search']) find(id).addEventListener('input', renderVisits);

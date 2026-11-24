@@ -25,6 +25,12 @@ class ExportadorAcompanhamentoTest {
         assertThat(ExportadorAcompanhamento.filtrar(itens,new ExportadorAcompanhamento.Filtros(null,null,null,"SEM"))).extracting(AcompanhamentoBaseHospitalarService.Item::visitaId).containsExactly(3);
         assertThat(ExportadorAcompanhamento.filtrar(itens,new ExportadorAcompanhamento.Filtros(null,FATURADO.name(),"Ana","5"))).extracting(AcompanhamentoBaseHospitalarService.Item::visitaId).containsExactly(1);
     }
+    @Test void filtraPorPeriodoDoProcedimentoInclusive() {
+        var dia=LocalDate.of(2026,8,1);
+        assertThat(ExportadorAcompanhamento.filtrar(itens,new ExportadorAcompanhamento.Filtros(null,null,null,null,dia,dia))).hasSize(3);
+        assertThat(ExportadorAcompanhamento.filtrar(itens,new ExportadorAcompanhamento.Filtros(null,null,null,null,dia.plusDays(1),null))).isEmpty();
+        assertThat(ExportadorAcompanhamento.filtrar(itens,new ExportadorAcompanhamento.Filtros(null,null,null,null,null,dia.minusDays(1)))).isEmpty();
+    }
     @Test void geraPlanilhaComMesmasColunasEStatusPago() throws Exception {
         byte[] xlsx=new ExportadorAcompanhamento().exportar("Hospital H",new ExportadorAcompanhamento.Filtros("2026-07",null,"Ana",null),
                 ExportadorAcompanhamento.filtrar(itens,new ExportadorAcompanhamento.Filtros(null,null,"Ana",null)));
@@ -41,7 +47,7 @@ class ExportadorAcompanhamentoTest {
             assertThat(sheet.getRow(1).getCell(5).getStringCellValue()).isEqualTo("Sul America");
             assertThat(sheet.getRow(1).getCell(6).getStringCellValue()).isEqualTo("40901106");
             assertThat(sheet.getRow(1).getCell(7).getStringCellValue()).isEqualTo("Ecodoppler");
-            assertThat(wb.getSheet("Resumo").getRow(3).getCell(1).getStringCellValue()).isEqualTo("Ana");
+            assertThat(wb.getSheet("Resumo").getRow(4).getCell(1).getStringCellValue()).isEqualTo("Ana");
         }
     }
 }
