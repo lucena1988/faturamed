@@ -11,7 +11,9 @@ import org.springframework.stereotype.Component;
 /** Relatorio do acompanhamento por etapa com os mesmos dados e filtros da tela. */
 @Component
 public class ExportadorAcompanhamento {
-    public record Filtros(String competencia,String etapa,String medico,String empresa) {}
+    public record Filtros(String competencia,String etapa,String medico,String empresa,LocalDate dataInicio,LocalDate dataFim) {
+        public Filtros(String competencia,String etapa,String medico,String empresa) { this(competencia,etapa,medico,empresa,null,null); }
+    }
 
     private static final Map<AcompanhamentoBaseHospitalarService.Etapa,String> ETAPAS=Map.of(
             AcompanhamentoBaseHospitalarService.Etapa.AGUARDANDO_PRODUCAO,"Aguardando producao",
@@ -25,6 +27,8 @@ public class ExportadorAcompanhamento {
     public static List<AcompanhamentoBaseHospitalarService.Item> filtrar(List<AcompanhamentoBaseHospitalarService.Item> itens,Filtros f) {
         return itens.stream()
                 .filter(i->vazio(f.etapa()) || i.etapa().name().equals(f.etapa()))
+                .filter(i->f.dataInicio()==null || i.data()!=null && !i.data().isBefore(f.dataInicio()))
+                .filter(i->f.dataFim()==null || i.data()!=null && !i.data().isAfter(f.dataFim()))
                 .filter(i->vazio(f.medico()) || f.medico().equals(i.medico()))
                 .filter(i->vazio(f.empresa()) || ("SEM".equals(f.empresa()) ? i.empresaId()==null : f.empresa().equals(String.valueOf(i.empresaId()))))
                 .toList();
@@ -42,6 +46,7 @@ public class ExportadorAcompanhamento {
                     new Object[]{"Hospital",hospital},
                     new Object[]{"Competencia",vazio(filtros.competencia())?"Todas":mesAno(filtros.competencia())},
                     new Object[]{"Etapa",vazio(filtros.etapa())?"Todas":ETAPAS.get(AcompanhamentoBaseHospitalarService.Etapa.valueOf(filtros.etapa()))},
+                    new Object[]{"Periodo do procedimento",filtros.dataInicio()==null&&filtros.dataFim()==null?"Qualquer data":br(filtros.dataInicio())+" a "+br(filtros.dataFim())},
                     new Object[]{"Medico",vazio(filtros.medico())?"Todos":filtros.medico()},
                     new Object[]{"Empresa",vazio(filtros.empresa())?"Todas":"SEM".equals(filtros.empresa())?"Sem empresa":itens.stream().map(AcompanhamentoBaseHospitalarService.Item::empresa).filter(Objects::nonNull).findFirst().orElse("—")},
                     new Object[]{"Gerado em",LocalDate.now()},
@@ -74,6 +79,7 @@ public class ExportadorAcompanhamento {
     private static BigDecimal soma(List<AcompanhamentoBaseHospitalarService.Item> itens,java.util.function.Function<AcompanhamentoBaseHospitalarService.Item,BigDecimal> campo) {
         return itens.stream().map(campo).filter(Objects::nonNull).reduce(BigDecimal.ZERO,BigDecimal::add);
     }
+    private static String br(LocalDate d) { return d==null?"...":String.format("%02d/%02d/%d",d.getDayOfMonth(),d.getMonthValue(),d.getYear()); }
     private static String texto(String s) { return vazio(s)?"—":s; }
     private static boolean vazio(String s) { return s==null||s.isBlank(); }
     private static String mesAno(String comp) { return vazio(comp)?"—":comp.length()==7?comp.substring(5)+"/"+comp.substring(0,4):comp; }

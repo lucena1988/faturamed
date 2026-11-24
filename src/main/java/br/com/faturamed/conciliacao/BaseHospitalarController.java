@@ -39,8 +39,10 @@ public class BaseHospitalarController {
     }
     @GetMapping("/acompanhamento/exportar")
     public ResponseEntity<byte[]> exportarAcompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia,
-            @RequestParam(required=false) String etapa,@RequestParam(required=false) String medico,@RequestParam(required=false) String empresa) throws Exception {
-        var filtros=new ExportadorAcompanhamento.Filtros(competencia,etapa,medico,empresa);
+            @RequestParam(required=false) String etapa,@RequestParam(required=false) String medico,@RequestParam(required=false) String empresa,
+            @RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso=org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dataInicio,
+            @RequestParam(required=false) @org.springframework.format.annotation.DateTimeFormat(iso=org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate dataFim) throws Exception {
+        var filtros=new ExportadorAcompanhamento.Filtros(competencia,etapa,medico,empresa,dataInicio,dataFim);
         var itens=ExportadorAcompanhamento.filtrar(acompanhamento.consultar(hospitalId,competencia).visitas(),filtros);
         byte[] conteudo=exportador.exportar(hospitais.buscar(hospitalId).nome(),filtros,itens);
         String nome="acompanhamento-"+(competencia==null||competencia.isBlank()?"todas":competencia)+".xlsx";
