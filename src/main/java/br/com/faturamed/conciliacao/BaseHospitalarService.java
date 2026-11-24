@@ -329,7 +329,7 @@ public class BaseHospitalarService {
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> arquivos(long hospitalId) {
-        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,a.tipo_procedimento,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
+        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,a.tipo_procedimento,m.nome as medico,(select string_agg(c.competencia||':'||c.total,',' order by c.competencia) from (select h.competencia,count(*) as total from vinculo_base_hospitalar b join visita_base_hospitalar v on v.id=b.visita_id join arquivo_base_hospitalar h on h.id=v.arquivo_id where a.relatorio_id is not null and b.relatorio_id=a.relatorio_id group by h.competencia) c) as competencias_faturadas,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
     }
 
     @Transactional(readOnly=true)

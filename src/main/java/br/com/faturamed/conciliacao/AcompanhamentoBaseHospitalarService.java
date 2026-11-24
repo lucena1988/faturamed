@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.*;
 public class AcompanhamentoBaseHospitalarService {
     public enum Etapa { AGUARDANDO_PRODUCAO, AGUARDANDO_FATURAMENTO, FATURADO_SEM_RECEBIMENTO, RECEBIDO_PARCIALMENTE, SEM_SALDO, EM_CONFERENCIA }
     public record Item(int visitaId,String atendimento,LocalDate data,String medico,Etapa etapa,Long relatorio,Integer linha,
-            BigDecimal faturado,BigDecimal recebido,BigDecimal saldo) {}
+            BigDecimal faturado,BigDecimal recebido,BigDecimal saldo,String competencia,String competenciaProducao) {}
     public record Resultado(Map<Etapa,Long> etapas,long visitasDistintas,long ocorrenciasEmAnalise,long duplicadas,
             long producaoSemBase,BigDecimal faturado,BigDecimal recebido,BigDecimal saldo,List<Item> visitas) {}
     private final JdbcTemplate jdbc;
@@ -28,8 +28,10 @@ public class AcompanhamentoBaseHospitalarService {
         String comp=competencia==null||competencia.isBlank()?null:BaseHospitalarService.normalizarCompetencia(competencia);
         Map<String,RecebimentoService.Visita> financeiro=new HashMap<>();
         long producaoSemBase=0;
+        Map<Long,String> competenciaProducao=new HashMap<>();
         for(var producao:jdbc.queryForList("select relatorio_id,competencia from arquivo_base_hospitalar where hospital_id=? and tipo='PRODUCAO' and relatorio_id is not null",hospitalId)) {
             long relatorio=((Number)producao.get("relatorio_id")).longValue();
+            competenciaProducao.put(relatorio,(String)producao.get("competencia"));
             for(var visita:recebimentos.listar(relatorio).visitas()) financeiro.put(relatorio+":"+visita.linha(),visita);
             if(comp==null || comp.equals(producao.get("competencia"))) producaoSemBase+=revisoes.carregar(relatorio).atual().visitas().stream().filter(FilaCobranca::elegivel).count();
         }
@@ -55,7 +57,7 @@ public class AcompanhamentoBaseHospitalarService {
             boolean confirmado=saldo!=null && !saldo.inconsistente() && saldo.faturado()!=null && etapa!=Etapa.EM_CONFERENCIA;
             itens.add(new Item(id,visita.get("atendimento").toString(),((java.sql.Date)visita.get("data_visita")).toLocalDate(),
                     visita.get("medico_nome").toString(),etapa,relatorio,linha,confirmado?saldo.faturado():null,
-                    confirmado?saldo.recebido():null,confirmado?saldo.saldo():null));
+                    confirmado?saldo.recebido():null,confirmado?saldo.saldo():null,(String)visita.get("competencia"),relatorio==null?null:competenciaProducao.get(relatorio)));
         }
         Map<Etapa,Long> contagens=new EnumMap<>(Etapa.class);
         for(var etapa:Etapa.values()) contagens.put(etapa,itens.stream().filter(item->item.etapa()==etapa).count());
