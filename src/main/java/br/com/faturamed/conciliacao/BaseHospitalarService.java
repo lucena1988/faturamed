@@ -76,8 +76,9 @@ public class BaseHospitalarService {
                 atualizadas++;
                 continue;
             }
-            var anteriores=jdbc.queryForList("select id,medico_nome from visita_base_hospitalar where hospital_id=? and atendimento=? and data_visita=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId,registro.atendimento(),registro.data());
-            var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),texto(anterior,"medico_nome"),cadastros)).toList();
+            var anteriores=jdbc.queryForList("select id,medico_nome,campos->>'cod produto' as codigo,campos->>'produto' as produto from visita_base_hospitalar where hospital_id=? and atendimento=? and data_visita=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId,registro.atendimento(),registro.data());
+            var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),texto(anterior,"medico_nome"),cadastros)
+                    && mesmoProcedimento(registro.codigo(),registro.procedimento(),Objects.toString(anterior.get("codigo"),""),Objects.toString(anterior.get("produto"),""))).toList();
             Integer anteriorId=semelhantes.isEmpty()?null:(int)numero(semelhantes.getFirst(),"id");
             if(anteriorId!=null) divergencias++;
             jdbc.update("""
@@ -478,6 +479,14 @@ public class BaseHospitalarService {
     private Long identificar(String nome,List<MedicoCadastroService.Medico> cadastros) {
         return medicos.identificarNome(nome,cadastros);
     }
+    /** Mesmo atendimento, data e medico com codigo ou nome de procedimento diferentes sao procedimentos distintos (ex.: dois exames no mesmo dia). */
+    static boolean mesmoProcedimento(String codigo,String nome,String outroCodigo,String outroNome) {
+        String a=LeitorPlanilhaVisitas.identificador(Objects.toString(codigo,"")).replaceAll("[^0-9A-Za-z]",""),b=LeitorPlanilhaVisitas.identificador(Objects.toString(outroCodigo,"")).replaceAll("[^0-9A-Za-z]","");
+        if(!a.isBlank() && !b.isBlank()) return a.equals(b);
+        String x=LeitorPlanilhaVisitas.normalizar(Objects.toString(nome,"")),y=LeitorPlanilhaVisitas.normalizar(Objects.toString(outroNome,""));
+        return x.isBlank() || y.isBlank() || x.equals(y);
+    }
+
     private boolean mesmoMedico(String primeiro,String segundo,List<MedicoCadastroService.Medico> cadastros) {
         if(primeiro.isBlank() || segundo.isBlank()) return true;
         Long primeiroId=identificar(primeiro,cadastros),segundoId=identificar(segundo,cadastros);

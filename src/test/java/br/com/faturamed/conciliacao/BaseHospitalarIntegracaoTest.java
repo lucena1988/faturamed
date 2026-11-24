@@ -74,6 +74,24 @@ class BaseHospitalarIntegracaoTest {
     }
     int id(Map<String,Object> visita) { return ((Number)visita.get("id")).intValue(); }
 
+    @Test void examesDiferentesNoMesmoAtendimentoEDataNaoSaoRepeticao() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        var resultado=service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,
+                List.of("57480748","2026-09-18",nome(ana),"40901106","Ecodopplercardiograma Transtoracico","266.12","0.5","133.06","Faturado"),
+                List.of("57480748","2026-09-18",nome(ana),"40901360","Doppler Colorido De Vasos Cervicais","273.95","0.5","136.97","Faturado"))),usuario);
+        assertThat(resultado.divergencias()).isZero();
+        assertThat(service.visitas(hospital)).extracting(v->v.get("decisao")).containsOnly("ORIGINAL");
+        var producao=planilha(List.of(List.of("Atendimento","Dt.","Cod Produto"),List.of("57480748","2026-09-18","40901106"),List.of("57480748","2026-09-18","40901360")));
+        long relatorio=service.importarProducao(hospital,ana,"2026-09",producao,usuario).relatorioId();
+        assertThat(revisoes.carregar(relatorio).atual().visitas()).extracting(ConciliadorVisitas.Visita::status).containsOnly(ConciliadorVisitas.Status.PAGA);
+    }
+    @Test void mesmoExameRepetidoNoMesmoAtendimentoContinuaEmAnalise() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        var linha=List.of("57480748","2026-09-18",nome(ana),"40901106","Ecodopplercardiograma Transtoracico","266.12","0.5","133.06","Faturado");
+        var resultado=service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,linha,linha)),usuario);
+        assertThat(resultado.divergencias()).isEqualTo(1);
+    }
+
     @Test void producaoSemAtendimentoAguardaHospitalEConciliaPorDataEMedicoNaAtualizacao() throws Exception {
         var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
         service.importarHospital(hospital,"2026-08",planilha(List.of(cabecalho,List.of("500","2026-08-10",nome(ana),"101","Visita","100","1","100","Faturado"))),usuario);
