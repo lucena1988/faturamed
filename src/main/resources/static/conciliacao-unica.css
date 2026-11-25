@@ -10,4 +10,10 @@
 .chip.chip-divergente { background: var(--danger-bg); color: var(--danger-fg); font-weight: 700; }
 .chip.chip-analise { background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
 .chip.chip-inferido { margin-left: 6px; background: var(--surface-soft); color: var(--muted); }
+.chip.chip-duplicada { background: var(--surface-soft); color: var(--muted); text-decoration: line-through; }
+#competencia-dialog, #repeticao-dialog { max-width: 620px; width: calc(100% - 32px); }
+#historico-dialog { max-width: 700px; }
+#competencia-mensagem:empty, #repeticao-mensagem:empty { display: none; }
+#competencia-mensagem:not(:empty), #repeticao-mensagem:not(:empty) { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--danger-line); background: var(--danger-bg); color: var(--danger-fg); font-weight: 600; }
+td.acoes button { margin: 3px 0; display: block; }
 .conciliation-table td.motivo { min-width: 260px; font-size: .85rem; color: var(--muted); }
