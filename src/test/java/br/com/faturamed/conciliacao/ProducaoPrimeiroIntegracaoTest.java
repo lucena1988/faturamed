@@ -87,6 +87,44 @@ class ProducaoPrimeiroIntegracaoTest {
         assertThat(visitas.get(1).get("medico_id")).isNull();
     }
 
+    @Test void codigoENomeDoExameVemDasColunasDaPlanilhaDaProducaoEOTipoEClassificadoPorLinha() throws Exception {
+        var arquivo=planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento"),
+                List.of("1","2026-09-01","40901106","Ecodopplercardiograma Transtoracico"),
+                List.of("2","2026-09-01","10102019","Visita hospitalar"),
+                List.of("3","2026-09-01","","")));
+        service.importar(hospital,ana,arquivo,usuario);
+        var visitas=service.visitas(hospital,null);
+        assertThat(visitas.get(0)).containsEntry("codigo_procedimento","40901106").containsEntry("procedimento","Ecodopplercardiograma Transtoracico").containsEntry("tipo_procedimento","EXAME");
+        assertThat(visitas.get(1)).containsEntry("codigo_procedimento","10102019").containsEntry("procedimento","Visita hospitalar").containsEntry("tipo_procedimento","VISITA");
+        // Sem codigo nem nome nao ha o que mostrar nem classificar.
+        assertThat(visitas.get(2).get("codigo_procedimento")).isNull();
+        assertThat(visitas.get(2).get("procedimento")).isNull();
+        assertThat(visitas.get(2).get("tipo_procedimento")).isNull();
+        // Os dados brutos da planilha nao vazam para a resposta da tela.
+        assertThat(visitas.get(0)).doesNotContainKeys("campos","tipo_gravado");
+    }
+
+    @Test void tipoInformadoNaImportacaoVaiParaTodasAsLinhasESobrepoeAClassificacao() throws Exception {
+        var arquivo=planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento"),
+                List.of("1","2026-09-01","10102019","Visita hospitalar"),List.of("2","2026-09-02","","")));
+        var resultado=service.importar(hospital,ana,TipoProcedimento.CONSULTA,arquivo,usuario);
+        assertThat(service.visitas(hospital,null)).extracting(v->v.get("tipo_procedimento")).containsExactly("CONSULTA","CONSULTA");
+        assertThat(jdbc.queryForObject("select tipo_procedimento from producao_arquivo where id=?",String.class,resultado.arquivoId())).isEqualTo("CONSULTA");
+    }
+
+    @Test void repeticaoEntreArquivosDistingueExamesDiferentesDoMesmoAtendimento() throws Exception {
+        service.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento"),
+                List.of("5","2026-09-01","40901106","Ecodopplercardiograma Transtoracico"))),usuario);
+        // Outro exame no mesmo atendimento e dia, em outro arquivo, e visita legitima.
+        var outroExame=service.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento"),
+                List.of("5","2026-09-01","40901360","Doppler Colorido De Vasos Cervicais"))),usuario);
+        assertThat(outroExame.emAnalise()).isZero();
+        // O mesmo exame reapresentado entra em analise.
+        var reapresentado=service.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento","Obs"),
+                List.of("5","2026-09-01","40901106","Ecodopplercardiograma Transtoracico","de novo"))),usuario);
+        assertThat(reapresentado.emAnalise()).isEqualTo(1);
+    }
+
     @Test void linhaSemDataERejeitadaENadaEGravado() throws Exception {
         var arquivo=planilha(List.of(List.of("Atendimento","Dt."),List.of("1","")));
         assertThatThrownBy(()->service.importar(hospital,ana,arquivo,usuario)).isInstanceOf(IllegalArgumentException.class);

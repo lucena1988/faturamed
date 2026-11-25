@@ -23,6 +23,15 @@
     try { await action(); }
     finally { busy = false; document.querySelectorAll('button, input, select').forEach(control => { control.disabled = false; }); }
   }
+  const TIPOS = {VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro'};
+  // Codigo do exame em destaque discreto e o nome embaixo, como vieram na planilha.
+  function celulaExame(codigo, nome) {
+    const td = element('td');
+    if (!codigo && !nome) { td.textContent = 'Não informado'; return td; }
+    if (codigo) { const c = element('div', codigo); c.className = 'muted'; td.append(c); }
+    td.append(element('div', nome || '—'));
+    return td;
+  }
   const nomeMedico = visita => medicos.find(m => m.id === visita.medico_id)?.nome || visita.medico_nome || '';
 
   function renderCards() {
@@ -64,8 +73,8 @@
     selMed.value = [...selMed.options].some(o => o.value === medAtual) ? medAtual : '';
   }
   function renderVisits() {
-    const comp = find('competencia-filter').value, status = find('status').value, med = find('medico-filter').value, busca = find('search').value.trim();
-    const filtradas = visitas.filter(v => (!comp || v.competencia === comp) && (!status || v.situacao === status)
+    const comp = find('competencia-filter').value, status = find('status').value, med = find('medico-filter').value, busca = find('search').value.trim(), tipo = find('tipo-filter').value;
+    const filtradas = visitas.filter(v => (!comp || v.competencia === comp) && (!status || v.situacao === status) && (!tipo || v.tipo_procedimento === tipo)
       && (!med || (med === '__SEM__' ? !nomeMedico(v) : nomeMedico(v) === med)) && v.atendimento.includes(busca));
     find('visits').replaceChildren();
     for (const v of filtradas) {
@@ -78,7 +87,8 @@
       const cell = element('td', mesAno(v.competencia));
       if (v.competencia !== v.competencia_derivada) { const tag = element('div', `Original ${mesAno(v.competencia_derivada)}`); tag.className = 'muted'; cell.append(tag); }
       row.append(cell);
-      row.append(element('td', v.procedimento || 'Não informado'));
+      row.append(celulaExame(v.codigo_procedimento, v.procedimento));
+      row.append(element('td', TIPOS[v.tipo_procedimento] || '—'));
       const situacao = element('td'); const chip = element('span', ROTULOS[v.situacao] || v.situacao); chip.className = `chip ${CLASSES[v.situacao] || ''}`; situacao.append(chip); row.append(situacao);
       const motivo = element('td', v.motivo); motivo.className = 'motivo';
       if (v.relatorio_id) {
@@ -146,7 +156,8 @@
     find('orphans').replaceChildren();
     for (const h of semProducao) {
       const row = element('tr');
-      for (const value of [h.id, h.atendimento, dataBr(h.data_visita), mesAno(h.competencia_exame), h.medico_nome || 'Não identificado', h.procedimento || 'Não informado']) row.append(element('td', value));
+      for (const value of [h.id, h.atendimento, dataBr(h.data_visita), mesAno(h.competencia_exame), h.medico_nome || 'Não identificado']) row.append(element('td', value));
+      row.append(celulaExame(h.codigo_procedimento, h.procedimento));
       find('orphans').append(row);
     }
     const aba = document.querySelector('[data-tab="tab-sem-producao"]');
@@ -268,6 +279,7 @@
     const form = event.currentTarget, data = new FormData(form);
     if (!find('hospital').value) { showMessage('error', 'Selecione um hospital ativo.'); return; }
     if (!data.get('medicoId')) data.delete('medicoId');
+    if (!data.get('tipoProcedimento')) data.delete('tipoProcedimento');
     data.set('hospitalId', find('hospital').value);
     try {
       await perform(async () => {
@@ -309,7 +321,7 @@
   document.querySelectorAll('.base-tabs [data-tab]').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.base-tabs [data-tab]').forEach(item => { item.setAttribute('aria-selected', String(item === tab)); find(item.dataset.tab).hidden = item !== tab; });
   }));
-  for (const id of ['competencia-filter', 'status', 'medico-filter', 'search']) find(id).addEventListener('input', () => { renderCards(); renderVisits(); });
+  for (const id of ['competencia-filter', 'status', 'medico-filter', 'tipo-filter', 'search']) find(id).addEventListener('input', () => { renderCards(); renderVisits(); });
   find('hospital').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
   // Atualizar repete a conciliacao (idempotente), util se uma importacao foi interrompida.
   find('reload').addEventListener('click', async () => {

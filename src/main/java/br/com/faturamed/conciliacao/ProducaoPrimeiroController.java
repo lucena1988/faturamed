@@ -88,8 +88,9 @@ public class ProducaoPrimeiroController {
     /** Sem competencia: ela deriva da data de cada visita. medicoId so e enviado em producao de um unico medico. */
     @PostMapping(value="/producao",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public ProducaoPrimeiroService.Resultado producao(@RequestParam long hospitalId,@RequestParam(required=false) Long medicoId,
+            @RequestParam(required=false) String tipoProcedimento,
             @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
-        return service.importar(hospitalId,medicoId,arquivo,usuario);
+        return service.importar(hospitalId,medicoId,TipoProcedimento.de(tipoProcedimento),arquivo,usuario);
     }
     @GetMapping("/visitas")
     public List<Map<String,Object>> visitas(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) {
