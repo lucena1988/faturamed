@@ -89,7 +89,7 @@
       const acoes = element('td'); acoes.className = 'acoes';
       const botao = (texto, acao) => { const b = element('button', texto); b.type = 'button'; b.addEventListener('click', () => acao(v)); acoes.append(b); };
       if (v.decisao === 'EM_ANALISE') botao('Analisar repetição', abrirRepeticao);
-      if (!v.relatorio_id && v.decisao !== 'DUPLICADA') botao('Corrigir competência', abrirCompetencia);
+      if (v.decisao !== 'DUPLICADA') botao('Corrigir competência', abrirCompetencia);
       botao('Histórico', abrirHistorico);
       row.append(acoes);
       find('visits').append(row);
@@ -100,6 +100,10 @@
   function abrirCompetencia(v) {
     visitaAtual = v; find('competencia-form').reset(); find('competencia-mensagem').textContent = '';
     find('competencia-resumo').textContent = `${resumoVisita(v)}. Competência atual: ${mesAno(v.competencia)}${v.competencia !== v.competencia_derivada ? ` (pela data: ${mesAno(v.competencia_derivada)})` : ''}.`;
+    // A competencia de um relatorio e uma so: a correcao vale para todas as visitas dele.
+    const aviso = find('competencia-relatorio');
+    aviso.hidden = !v.relatorio_id;
+    if (v.relatorio_id) aviso.textContent = `Esta visita está no relatório ${v.relatorio_id}, com ${v.visitas_no_relatorio} ${Number(v.visitas_no_relatorio) === 1 ? 'visita' : 'visitas'}. A competência é do relatório inteiro: a correção vale para todas elas. Liberação ao médico e recebimentos não mudam.`;
     find('competencia-dialog').showModal();
   }
   function abrirRepeticao(v) {
@@ -126,8 +130,9 @@
   find('competencia-form').addEventListener('submit', event => {
     event.preventDefault();
     const dados = Object.fromEntries(new FormData(event.currentTarget));
+    const noRelatorio = Boolean(visitaAtual.relatorio_id);
     enviarAjuste('competencia-dialog', 'competencia-mensagem', 'competencia', {competencia: dados.competencia.trim() || null, justificativa: dados.justificativa},
-      dados.competencia.trim() ? 'Competência corrigida. O ajuste ficou no histórico da visita.' : 'Competência restaurada pela data do atendimento.');
+      (dados.competencia.trim() ? 'Competência corrigida' : 'Competência restaurada pela data do atendimento') + (noRelatorio ? ' em todo o relatório.' : '.') + ' O ajuste ficou no histórico.');
   });
   find('repeticao-form').addEventListener('submit', event => {
     event.preventDefault();
@@ -194,14 +199,25 @@
     const aGerar = grupos.filter(g => g.medico_id && g.disponiveis > 0).length;
     aba.textContent = `Relatórios ao médico${aGerar ? ` (${aGerar} a gerar)` : ''}`;
   }
+  // Repeticoes do hospital em analise se decidem na tela de acompanhamento (mesma decisao e historico de sempre).
+  function renderAvisoHospital(repeticoes) {
+    const aviso = find('aviso-hospital');
+    aviso.hidden = !repeticoes;
+    if (!repeticoes) return;
+    aviso.replaceChildren(element('span', `${repeticoes} ${repeticoes === 1 ? 'registro do hospital repetido aguarda' : 'registros do hospital repetidos aguardam'} análise e ${repeticoes === 1 ? 'não entra' : 'não entram'} na conciliação até a decisão. `));
+    const abrir = element('a', 'Analisar no acompanhamento da base'); abrir.href = `base-hospitalar.html?hospitalId=${find('hospital').value}`;
+    aviso.append(abrir, element('span', '. Depois, use Atualizar aqui para conciliar de novo.'));
+  }
   async function load() {
     const id = ++geracao, hospitalId = find('hospital').value;
+    let repeticoes = 0;
     if (!hospitalId) { visitas = []; semProducao = []; grupos = []; } else {
-      const [lista, orfaos, porGrupo] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`)]);
+      const [lista, orfaos, porGrupo, hospitalVisitas] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/visitas?hospitalId=${hospitalId}`)]);
       if (id !== geracao) return;
       visitas = lista; semProducao = orfaos; grupos = porGrupo;
+      repeticoes = hospitalVisitas.filter(item => item.decisao === 'EM_ANALISE').length;
     }
-    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports();
+    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports(); renderAvisoHospital(repeticoes);
   }
   function resumoConciliacao(c) {
     if (!c) return '';

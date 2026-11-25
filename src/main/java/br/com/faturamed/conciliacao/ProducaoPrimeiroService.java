@@ -101,10 +101,14 @@ public class ProducaoPrimeiroService {
                        coalesce(v.competencia_manual,v.competencia) as competencia,v.competencia as competencia_derivada,
                        v.decisao,v.anterior_id,v.situacao,v.motivo,v.hospital_visita_id,v.medico_inferido,
                        a.relatorio_id as relatorio_id,v.linha_relatorio,
+                       (select count(*) from producao_visita x where x.arquivo_relatorio_id=v.arquivo_relatorio_id) as visitas_no_relatorio,
                        coalesce(nullif(v.campos->>'produto',''),h.campos->>'produto') as procedimento,
                        coalesce(nullif(v.campos->>'cod produto',''),h.campos->>'cod produto') as codigo_procedimento
-                from producao_visita v left join visita_base_hospitalar h on h.id=v.hospital_visita_id
-                left join arquivo_base_hospitalar a on a.id=v.arquivo_relatorio_id where v.hospital_id=? and (?::text is null or coalesce(v.competencia_manual,v.competencia)=?)
+                from producao_visita v
+                left join arquivo_base_hospitalar a on a.id=v.arquivo_relatorio_id
+                left join vinculo_base_hospitalar b on b.relatorio_id=a.relatorio_id and b.linha_producao=v.linha_relatorio
+                left join visita_base_hospitalar h on h.id=coalesce(v.hospital_visita_id,b.visita_id)
+                where v.hospital_id=? and (?::text is null or coalesce(v.competencia_manual,v.competencia)=?)
                 order by v.data_visita,v.id
                 """,hospitalId,competencia,competencia);
     }

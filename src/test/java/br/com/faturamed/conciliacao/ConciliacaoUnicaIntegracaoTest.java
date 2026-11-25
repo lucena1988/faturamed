@@ -130,6 +130,8 @@ class ConciliacaoUnicaIntegracaoTest {
         var visita=producao.visitas(hospital,"2026-09").getFirst();
         assertThat(((Number)visita.get("relatorio_id")).longValue()).isEqualTo(resultado.relatorioId());
         assertThat(visita.get("linha_relatorio")).isEqualTo(2);
+        // Dentro do relatorio o vinculo vive no relatorio; a tela ainda mostra o procedimento do hospital.
+        assertThat(visita.get("procedimento")).isEqualTo("Visita");
         var depois=relatorios.grupos(hospital);
         assertThat(depois).filteredOn(g->"2026-09".equals(g.get("competencia"))).singleElement()
                 .satisfies(g->{ assertThat(g.get("disponiveis")).isEqualTo(0L); assertThat(g.get("em_relatorio")).isEqualTo(1L); });

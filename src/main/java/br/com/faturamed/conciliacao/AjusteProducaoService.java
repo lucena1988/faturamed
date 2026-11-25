@@ -29,7 +29,7 @@ public class AjusteProducaoService {
         BaseHospitalarService.validarTexto(justificativa,"Justificativa");
         var visita=travar(visitaId);
         if("DUPLICADA".equals(visita.get("decisao"))) throw new ConflitoRevisaoException("Visita duplicada nao tem competencia a corrigir");
-        if(visita.get("arquivo_relatorio_id")!=null) throw new ConflitoRevisaoException("A visita ja esta em um relatorio. Ajuste pelo relatorio");
+        if(visita.get("arquivo_relatorio_id")!=null) { corrigirCompetenciaDoRelatorio(visita,competencia,justificativa,usuario); return; }
         String derivada=visita.get("competencia").toString();
         String atual=visita.get("competencia_manual")==null?derivada:visita.get("competencia_manual").toString();
         boolean restaurar=competencia==null || competencia.isBlank();
@@ -37,6 +37,36 @@ public class AjusteProducaoService {
         if(nova.equals(atual)) throw new IllegalArgumentException("A visita ja esta nessa competencia");
         jdbc.update("update producao_visita set competencia_manual=? where id=?",nova.equals(derivada)?null:nova,visitaId);
         registrar(visitaId,nova.equals(derivada)?"RESTAURAR_COMPETENCIA":"CORRIGIR_COMPETENCIA",atual,nova,justificativa,usuario);
+    }
+
+    /**
+     * A competencia de um relatorio e a do arquivo da producao que o originou, entao a correcao vale para todas as
+     * visitas dele. Liberacao, portal do medico e recebimentos nao dependem dela; o historico guarda um registro por visita.
+     * Em branco, volta para a competencia derivada da data, desde que seja a mesma em todas as visitas.
+     */
+    private void corrigirCompetenciaDoRelatorio(Map<String,Object> visita,String competencia,String justificativa,UsuarioAutenticado usuario) {
+        long arquivoId=((Number)visita.get("arquivo_relatorio_id")).longValue();
+        var arquivo=jdbc.queryForMap("select hospital_id,medico_id,competencia,hash from arquivo_base_hospitalar where id=? for update",arquivoId);
+        var visitas=jdbc.queryForList("select id,competencia,coalesce(competencia_manual,competencia) as efetiva from producao_visita where arquivo_relatorio_id=? order by id",arquivoId);
+        String atual=arquivo.get("competencia").toString();
+        boolean restaurar=competencia==null || competencia.isBlank();
+        String nova;
+        if(restaurar) {
+            var derivadas=new TreeSet<String>();
+            visitas.forEach(item->derivadas.add(item.get("competencia").toString()));
+            if(derivadas.size()!=1) throw new IllegalArgumentException("As visitas do relatorio tem competencias de origem diferentes. Informe a competencia desejada");
+            nova=derivadas.first();
+        } else nova=BaseHospitalarService.normalizarCompetencia(competencia);
+        if(nova.equals(atual)) throw new IllegalArgumentException("O relatorio ja esta nessa competencia");
+        Long repetido=jdbc.queryForList("""
+                select id from arquivo_base_hospitalar where hospital_id=? and tipo='PRODUCAO' and competencia=? and hash=?
+                  and medico_id is not distinct from ? and id<>?
+                """,Long.class,arquivo.get("hospital_id"),nova,arquivo.get("hash"),arquivo.get("medico_id"),arquivoId).stream().findFirst().orElse(null);
+        if(repetido!=null) throw new IllegalArgumentException("Ja existe um relatorio identico nessa competencia");
+        jdbc.update("update arquivo_base_hospitalar set competencia=? where id=?",nova,arquivoId);
+        jdbc.update("update producao_visita set competencia_manual=case when competencia=? then null else ? end where arquivo_relatorio_id=?",nova,nova,arquivoId);
+        for(var item:visitas)
+            registrar(((Number)item.get("id")).longValue(),restaurar?"RESTAURAR_COMPETENCIA":"CORRIGIR_COMPETENCIA",item.get("efetiva").toString(),nova,justificativa,usuario);
     }
 
     @Transactional(rollbackFor=Exception.class)

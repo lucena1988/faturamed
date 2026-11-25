@@ -3,7 +3,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   const find = id => document.getElementById(id);
   const labels = {AGUARDANDO_PRODUCAO:'Aguardando produção',CONCILIADA:'Conciliada',DIVERGENTE:'Divergente',DUPLICADO_PAGO_OUTRO_MES:'Duplicado pago em outro mês',DUPLICADO_MESMA_COMPETENCIA:'Duplicidade confirmada na mesma competência'};
   const request = window.FaturamedAuth.request;
-  let periodo = null, arquivosCarregados = [], visits = [], generation = 0, selectedVisit, busy = false, flow = null, doctors = [], companies = [];
+  let periodo = null, arquivosCarregados = [], visits = [], generation = 0, selectedVisit, busy = false, flow = null;
   const stages = {AGUARDANDO_PRODUCAO:'Aguardando produção',AGUARDANDO_FATURAMENTO:'Aguardando faturamento',PAGO:'Pago',EM_CONFERENCIA:'Em conferência'};
   const money = value => value == null ? 'Não confirmado' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
   function element(tag, text) { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; }
@@ -156,120 +156,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     busy = true;
     document.querySelectorAll('button, input, select, textarea').forEach(control => { control.disabled = true; });
     try { await action(); }
-    finally { busy = false; document.querySelectorAll('button, input, select, textarea').forEach(control => { control.disabled = false; }); updateDecision(); updateProduction(); }
-  }
-  function normalizarCompetencia(raw) {
-    if (!raw) return null;
-    const str = raw.trim();
-    if (!str) return null;
-    if (/^(19|20)\d{2}-\d{2}$/.test(str)) {
-      const mes = Number(str.slice(5, 7));
-      if (mes >= 1 && mes <= 12) return str;
-      return null;
-    }
-    if (/^(19|20)\d{2}\/\d{2}$/.test(str)) {
-      const mes = Number(str.slice(5, 7));
-      if (mes >= 1 && mes <= 12) return str.replace('/', '-');
-      return null;
-    }
-    const mmYyyy = str.match(/^(\d{1,2})[\/\-]((?:19|20)\d{2})$/);
-    if (mmYyyy) {
-      const mes = Number(mmYyyy[1]);
-      if (mes >= 1 && mes <= 12) {
-        return `${mmYyyy[2]}-${String(mes).padStart(2, '0')}`;
-      }
-      return null;
-    }
-    const meses = {
-      'jan': '01', 'janeiro': '01',
-      'fev': '02', 'fevereiro': '02',
-      'mar': '03', 'marco': '03', 'março': '03',
-      'abr': '04', 'abril': '04',
-      'mai': '05', 'maio': '05',
-      'jun': '06', 'junho': '06',
-      'jul': '07', 'julho': '07',
-      'ago': '08', 'agosto': '08',
-      'set': '09', 'setembro': '09',
-      'out': '10', 'outubro': '10',
-      'nov': '11', 'novembro': '11',
-      'dez': '12', 'dezembro': '12'
-    };
-    const lower = str.toLowerCase();
-    for (const [nome, num] of Object.entries(meses)) {
-      if (lower.startsWith(nome)) {
-        const anoMatch = lower.match(/\b((?:19|20)\d{2})\b/);
-        if (anoMatch) return `${anoMatch[1]}-${num}`;
-      }
-    }
-    return null;
-  }
-  for (const [formId, endpoint] of [['hospital-form','hospital'], ['production-form','producao']]) find(formId).addEventListener('submit', async event => {
-    event.preventDefault();
-    const form = event.currentTarget, data = new FormData(form);
-    if (!find('hospital').value) { showMessage('error', 'Cadastre e selecione um hospital ativo.'); return; }
-    const rawCompetencia = data.get('competencia');
-    const compNormalizada = normalizarCompetencia(rawCompetencia);
-    if (!compNormalizada) {
-      showMessage('error', 'Formato inválido. Informe a competência no formato AAAA / MM (ex: 2026/01).');
-      const input = form.querySelector('[name=competencia]');
-      if (input) input.focus();
-      return;
-    }
-    data.set('competencia', compNormalizada);
-    data.set('hospitalId', find('hospital').value);
-    if (!data.get('empresaId')) data.delete('empresaId');
-    try {
-      await perform(async () => {
-        showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
-        const result = await request(`/api/base-hospitalar/${endpoint}`, {method:'POST', body:data});
-        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} procedimentos atualizados mantendo o ID; ${result.divergencias} divergências para análise.`;
-        const nodes = [element('span', `${text} `)];
-        const porMes = Object.entries(result.competenciasExames || {});
-        if (porMes.length > 1 || (porMes.length === 1 && porMes[0][0] !== compNormalizada)) {
-          nodes.push(element('div', `Exames por competência do procedimento: ${porMes.map(([comp, total]) => `${mesAno(comp)}: ${total}`).join(' · ')}. Cada exame concilia com a produção da sua competência.`));
-        }
-        const reconciliadas = result.reconciliadas || [];
-        if (reconciliadas.length) {
-          const lista = element('ul'); lista.className = 'reconciliadas';
-          for (const r of reconciliadas) {
-            const li = element('li', `${r.nome} (${mesAno(r.competencia)}${r.medico ? ' · ' + r.medico : ''}): `);
-            if (r.erro) li.append(element('strong', `não atualizada — ${r.erro}. Use Atualizar conciliação manualmente.`));
-            else { li.append(element('span', r.liberada ? 'nova versão criada; já estava liberada ao médico — confira e libere novamente. ' : 'conciliação atualizada. ')); li.append(link('Abrir', `/conciliacao.html?relatorio=${r.relatorioNovo}`)); }
-            lista.append(li);
-          }
-          nodes.push(element('div', `Produções atualizadas automaticamente (${reconciliadas.filter(r => !r.erro).length} de ${reconciliadas.length}):`), lista);
-        } else if (endpoint === 'hospital' && !result.repetido) nodes.push(element('div', 'Nenhuma produção importada tem atendimentos desta planilha ainda; os exames aguardam a produção da sua competência.'));
-        if (result.relatorioId) nodes.push(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
-        showMessage(result.repetido || result.divergencias > 0 || reconciliadas.some(r => r.erro || r.liberada) ? 'warning' : 'success', ...nodes);
-        form.querySelector('[type=file]').value = '';
-        await load();
-      });
-    } catch (error) { showMessage('error', error.message); }
-  });
-  // Producao individual: somente as empresas do medico (preenchida quando ha uma so).
-  // Producao coletiva: qualquer empresa ativa, ou nenhuma.
-  function updateCompany() {
-    const select = find('empresa'), previous = select.value;
-    const individual = find('production-mode').value === 'UNICO';
-    const doctor = doctors.find(item => String(item.id) === find('medico').value);
-    const options = individual ? companies.filter(item => item.ativo && (doctor?.empresas || []).includes(item.id)) : companies.filter(item => item.ativo);
-    const first = individual && options.length > 1 ? new Option('Selecione a empresa', '') : new Option('Sem empresa', '');
-    select.replaceChildren(...(individual && options.length === 1 ? [] : [first]), ...options.map(item => new Option(item.nome, item.id)));
-    if ([...select.options].some(option => option.value === previous)) select.value = previous;
-    select.required = individual && options.length > 1;
-    select.disabled = individual && options.length <= 1;
-    // Desabilitado nao vai no FormData; a API resolve a empresa unica do medico.
-    find('production-company-label').hidden = !companies.some(item => item.ativo);
-  }
-  function updateProduction() {
-    const individual = find('production-mode').value === 'UNICO';
-    find('production-doctor-label').hidden = !individual;
-    find('medico').required = individual;
-    find('medico').disabled = !individual;
-    updateCompany();
-    find('production-help').textContent = individual
-      ? 'Na produção individual, selecione o médico e envie Atendimento e Dt.'
-      : 'Na produção coletiva, envie Atendimento e Dt. Médico é opcional: quando vazio, o sistema identifica pelo hospital somente se houver uma correspondência única e um cadastro médico ativo identificado com segurança. Vários registros ou nomes desconhecidos exigem revisão.';
+    finally { busy = false; document.querySelectorAll('button, input, select, textarea').forEach(control => { control.disabled = false; }); updateDecision(); }
   }
   // Opcoes de medico e empresa vem das proprias linhas do acompanhamento, preservando a selecao.
   function fillFlowOptions() {
@@ -366,8 +253,6 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     }); } catch (error) { find('decision-message').textContent = error.message; }
   });
   find('decision-action').addEventListener('change', updateDecision);
-  find('production-mode').addEventListener('change', updateProduction);
-  find('medico').addEventListener('change', updateCompany);
   document.querySelectorAll('.base-tabs [data-tab]').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.base-tabs [data-tab]').forEach(item => { item.setAttribute('aria-selected', String(item === tab)); find(item.dataset.tab).hidden = item !== tab; });
   }));
@@ -381,13 +266,11 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   find('hospital').addEventListener('change', () => { find('competencia-filter').value = ''; load().catch(error => showMessage('error', error.message)); });
   find('reload').addEventListener('click', () => load().catch(error => showMessage('error', error.message)));
   async function initialize() {
-    let hospitals;
-    [hospitals, doctors, companies] = await Promise.all([request('/api/hospitais'), request('/api/medicos'), request('/api/empresas-clientes')]);
+    const hospitals = await request("/api/hospitais");
     find('hospital').replaceChildren(new Option('Selecione um hospital', ''), ...hospitals.filter(item => item.ativo).map(item => new Option(item.nome, item.id)));
-    find('medico').replaceChildren(new Option('Selecione o médico', ''), ...doctors.filter(item => item.ativo).map(item => new Option(`${item.nome} · CRM ${item.crm||"a preencher"}/${item.uf||"--"}`, item.id)));
     const params = new URLSearchParams(location.search);
     if (hospitals.some(item => item.ativo && String(item.id) === params.get('hospitalId'))) find('hospital').value = params.get('hospitalId');
-    await load(); updateDecision(); updateProduction();
+    await load(); updateDecision();
   }
   initialize().catch(error => showMessage('error', error.message));
 })();

@@ -24,6 +24,7 @@
 <button type="submit">Importar hospital e conciliar</button></form></section>
 </div>
 <section class="base-resumo"><div id="comp-cards" class="comp-cards"><p class="muted">Selecione um hospital.</p></div></section>
+<p id="aviso-hospital" class="aviso-relatorio" hidden></p>
 <nav class="base-tabs" role="tablist"><button type="button" role="tab" data-tab="tab-visitas" aria-selected="true">Visitas da produção</button><button type="button" role="tab" data-tab="tab-relatorios" aria-selected="false">Relatórios ao médico</button><button type="button" role="tab" data-tab="tab-sem-producao" aria-selected="false">Hospital sem produção</button></nav>
 <section id="tab-visitas" class="base-tab-panel">
 <div class="conciliation-filters"><label>Competência<select id="competencia-filter"><option value="">Todas</option></select></label><label>Situação<select id="status"><option value="">Todas</option><option value="PAGA">Pagas</option><option value="PENDENTE">Aguardando hospital</option><option value="DIVERGENTE">Divergentes</option><option value="EM_ANALISE">Em análise</option><option value="DUPLICADA">Duplicadas</option></select></label><label>Médico<select id="medico-filter"><option value="">Todos</option></select></label><label>Atendimento<input id="search" type="search"></label><span id="count"></span></div>
@@ -36,7 +37,8 @@
 <p class="muted">Registros do hospital que ainda não atendem nenhuma visita da produção. Podem aguardar a produção do médico.</p>
 <div class="conciliation-table"><table><thead><tr><th>ID</th><th>Atendimento</th><th>Data</th><th>Competência do exame</th><th>Médico hospitalar</th><th>Procedimento</th></tr></thead><tbody id="orphans"></tbody></table></div></section>
 <dialog id="competencia-dialog"><form id="competencia-form" class="stack-form"><h2>Corrigir competência</h2><p id="competencia-resumo"></p>
-<p class="muted">A competência da visita vem da data do atendimento. Corrija apenas quando o faturamento deve ocorrer em outro mês. A correção fica no histórico e não vale para visitas que já estão em um relatório.</p>
+<p class="muted">A competência da visita vem da data do atendimento. Corrija apenas quando o faturamento deve ocorrer em outro mês. A correção fica no histórico.</p>
+<p id="competencia-relatorio" class="aviso-relatorio" hidden></p>
 <label>Nova competência <small>(AAAA/MM; em branco restaura a da data)</small><input name="competencia" type="text" placeholder="ex: 2026/10" pattern="\d{4}(/|-)(0?[1-9]|1[0-2])" title="Use AAAA/MM, por exemplo 2026/10"></label>
 <label>Justificativa<textarea name="justificativa" minlength="5" maxlength="2000" required rows="3"></textarea></label>
 <p id="competencia-mensagem" role="status"></p><button type="submit">Salvar correção</button><button type="button" id="competencia-fechar">Cancelar</button></form></dialog>
@@ -46,4 +48,4 @@
 <label>Justificativa<textarea name="justificativa" minlength="5" maxlength="2000" required rows="3"></textarea></label>
 <p id="repeticao-mensagem" role="status"></p><button type="submit">Salvar decisão</button><button type="button" id="repeticao-fechar">Cancelar</button></form></dialog>
 <dialog id="historico-dialog"><h2>Histórico da visita</h2><ol id="historico-lista"></ol><button type="button" id="historico-fechar">Fechar</button></dialog>
-</main><script src="sidebar.js?v=20261124-audio"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="conciliacao-unica.js?v=20261125-7"></script></body></html>
+</main><script src="sidebar.js?v=20261124-audio"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="conciliacao-unica.js?v=20261125-9"></script></body></html>

@@ -15,5 +15,6 @@
 #historico-dialog { max-width: 700px; }
 #competencia-mensagem:empty, #repeticao-mensagem:empty { display: none; }
 #competencia-mensagem:not(:empty), #repeticao-mensagem:not(:empty) { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--danger-line); background: var(--danger-bg); color: var(--danger-fg); font-weight: 600; }
+.aviso-relatorio { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--warning-line); border-left: 6px solid var(--amber); background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
 td.acoes button { margin: 3px 0; display: block; }
 .conciliation-table td.motivo { min-width: 260px; font-size: .85rem; color: var(--muted); }

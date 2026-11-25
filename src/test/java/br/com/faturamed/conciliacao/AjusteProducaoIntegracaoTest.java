@@ -87,10 +87,33 @@ class AjusteProducaoIntegracaoTest {
         assertThatThrownBy(()->ajustes.corrigirCompetencia(id,"2026-09","Mesma competencia da data",usuario)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("ja esta");
         assertThatThrownBy(()->ajustes.corrigirCompetencia(id,"setembro","Formato invalido de competencia",usuario)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(()->ajustes.corrigirCompetencia(-1,"2026-10","Visita inexistente no sistema",usuario)).isInstanceOf(br.com.faturamed.shared.RecursoNaoEncontradoException.class);
-        unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-30"),usuario);
-        relatorios.gerar(hospital,ana,"2026-09",null,usuario);
-        assertThatThrownBy(()->ajustes.corrigirCompetencia(id,"2026-10","Ja esta em um relatorio gerado",usuario)).isInstanceOf(ConflitoRevisaoException.class);
         assertThat(ajustes.historico(id)).isEmpty();
+    }
+
+    @Test void competenciaDeVisitaEmRelatorioMudaORelatorioInteiroComHistoricoPorVisita() throws Exception {
+        producao.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Obs"),List.of("123","2026-09-30","a"),List.of("124","2026-09-25","b"))),usuario);
+        unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-30"),usuario);
+        var gerado=relatorios.gerar(hospital,ana,"2026-09",null,usuario);
+        assertThat(gerado.visitas()).isEqualTo(2);
+        long id=visitaId("2026-09");
+        assertThatThrownBy(()->ajustes.corrigirCompetencia(id,"2026-10","curt",usuario)).isInstanceOf(IllegalArgumentException.class);
+        ajustes.corrigirCompetencia(id,"2026/10","Faturamento ocorre na competencia seguinte",usuario);
+        // O relatorio inteiro (as duas visitas) e a competencia do arquivo mudaram.
+        assertThat(jdbc.queryForObject("select competencia from arquivo_base_hospitalar where id=?",String.class,gerado.arquivoId())).isEqualTo("2026-10");
+        assertThat(producao.visitas(hospital,"2026-10")).hasSize(2).allSatisfy(v->assertThat(v.get("competencia_derivada")).isEqualTo("2026-09"));
+        assertThat(producao.visitas(hospital,"2026-10").getFirst().get("visitas_no_relatorio")).isEqualTo(2L);
+        assertThat(producao.visitas(hospital,"2026-09")).isEmpty();
+        assertThat(relatorios.grupos(hospital)).singleElement().satisfies(g->{
+            assertThat(g.get("competencia")).isEqualTo("2026-10"); assertThat(g.get("em_relatorio")).isEqualTo(2L); });
+        // Um registro de historico por visita.
+        producao.visitas(hospital,"2026-10").forEach(v->assertThat(ajustes.historico(((Number)v.get("id")).longValue()))
+                .singleElement().satisfies(h->assertThat(h).containsEntry("antes","2026-09").containsEntry("depois","2026-10")));
+        assertThatThrownBy(()->ajustes.corrigirCompetencia(id,"2026-10","Mesma competencia do relatorio",usuario)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("ja esta");
+        // Restaurar volta para a competencia derivada da data, igual em todas as visitas.
+        ajustes.corrigirCompetencia(id,"","Voltando para a data do atendimento",usuario);
+        assertThat(jdbc.queryForObject("select competencia from arquivo_base_hospitalar where id=?",String.class,gerado.arquivoId())).isEqualTo("2026-09");
+        assertThat(visita(id).get("competencia_manual")).isNull();
+        assertThat(producao.visitas(hospital,"2026-09")).hasSize(2);
     }
 
     @Test void repeticaoConfirmadaComoVisitaDistintaVoltaAConciliar() throws Exception {
