@@ -1,0 +1,13 @@
+.comp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 24px; }
+.comp-card { text-align: left; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: 14px 16px; cursor: pointer; color: var(--text); }
+.comp-card:hover { border-color: var(--primary); }
+.comp-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.comp-card[aria-pressed="true"] { border-color: var(--primary); border-width: 2px; box-shadow: var(--shadow); }
+.comp-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.comp-card .total { color: var(--muted); font-size: .85rem; margin-bottom: 8px; display: block; }
+.comp-card .linha { display: flex; justify-content: space-between; font-size: .9rem; padding: 2px 0; }
+.chip.chip-pendente { background: var(--info-bg); color: var(--info-fg); }
+.chip.chip-divergente { background: var(--danger-bg); color: var(--danger-fg); font-weight: 700; }
+.chip.chip-analise { background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
+.chip.chip-inferido { margin-left: 6px; background: var(--surface-soft); color: var(--muted); }
+.conciliation-table td.motivo { min-width: 260px; font-size: .85rem; color: var(--muted); }
