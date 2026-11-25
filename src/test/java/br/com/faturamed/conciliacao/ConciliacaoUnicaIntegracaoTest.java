@@ -20,6 +20,10 @@ class ConciliacaoUnicaIntegracaoTest {
     @Autowired ProducaoPrimeiroService producao;
     @Autowired ConciliacaoUnicaService unica;
     @Autowired VinculoBaseHospitalar vinculos;
+    @Autowired RelatorioUnicoService relatorios;
+    @Autowired RevisaoVisitasService revisoes;
+    @Autowired RecebimentoService recebimentos;
+    @Autowired br.com.faturamed.seguranca.LiberacaoRelatorioService liberacoes;
     @Autowired JdbcTemplate jdbc;
     long hospital, ana;
     String nomeAna;
@@ -109,6 +113,64 @@ class ConciliacaoUnicaIntegracaoTest {
         assertThat(visita.get("situacao")).isEqualTo("PAGA");
         assertThat(visita.get("medico_id")).isEqualTo(ana);
         assertThat(visita.get("medico_inferido")).isEqualTo(true);
+    }
+
+    @Test void relatorioDaCompetenciaNasceDaBaseNovaECarregaOMesmoCaminhoDoFluxoAtual() throws Exception {
+        producao.importar(hospital,ana,producaoArquivo("123","2026-09-01","124","2026-10-02"),usuario);
+        unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-01","124","2026-10-02"),usuario);
+        var grupos=relatorios.grupos(hospital);
+        assertThat(grupos).hasSize(2).allSatisfy(g->assertThat(g.get("disponiveis")).isEqualTo(1L));
+        var resultado=relatorios.gerar(hospital,ana,"2026-09",null,usuario);
+        assertThat(resultado.visitas()).isEqualTo(1);
+        var estado=revisoes.carregar(resultado.relatorioId());
+        assertThat(estado.atual().visitas()).hasSize(1);
+        assertThat(estado.atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        assertThat(estado.atual().visitas().getFirst().atendimento()).isEqualTo("123");
+        // A visita aponta para o relatorio e a competencia de outubro continua disponivel.
+        var visita=producao.visitas(hospital,"2026-09").getFirst();
+        assertThat(((Number)visita.get("relatorio_id")).longValue()).isEqualTo(resultado.relatorioId());
+        assertThat(visita.get("linha_relatorio")).isEqualTo(2);
+        var depois=relatorios.grupos(hospital);
+        assertThat(depois).filteredOn(g->"2026-09".equals(g.get("competencia"))).singleElement()
+                .satisfies(g->{ assertThat(g.get("disponiveis")).isEqualTo(0L); assertThat(g.get("em_relatorio")).isEqualTo(1L); });
+        assertThat(depois).filteredOn(g->"2026-10".equals(g.get("competencia"))).singleElement().satisfies(g->assertThat(g.get("disponiveis")).isEqualTo(1L));
+        // Sem visitas novas, nao gera outro relatorio.
+        assertThatThrownBy(()->relatorios.gerar(hospital,ana,"2026-09",null,usuario)).isInstanceOf(IllegalArgumentException.class);
+        // O registro hospitalar agora pertence ao relatorio e nao volta como "sem producao".
+        assertThat(unica.hospitalSemProducao(hospital,"2026-09")).isEmpty();
+    }
+
+    @Test void relatorioGeradoSegueParaLiberacaoERecebimento() throws Exception {
+        producao.importar(hospital,ana,producaoArquivo("123","2026-09-01"),usuario);
+        unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-01"),usuario);
+        long relatorio=relatorios.gerar(hospital,ana,"2026-09",null,usuario).relatorioId();
+        liberacoes.liberar(relatorio,new br.com.faturamed.seguranca.LiberacaoRelatorioService.Dados(0L,"Publicacao",true),usuario);
+        recebimentos.registrar(relatorio,2,new RecebimentoService.Dados(new java.math.BigDecimal("40"),java.time.LocalDate.of(2026,9,2),"Parcial",0L),usuario);
+        var visita=recebimentos.listar(relatorio).visitas().getFirst();
+        assertThat(visita.faturado()).isEqualByComparingTo("100");
+        assertThat(visita.recebido()).isEqualByComparingTo("40");
+        assertThat(visita.saldo()).isEqualByComparingTo("60");
+    }
+
+    @Test void arquivoDoHospitalQueChegaDepoisAtualizaORelatorioJaGerado() throws Exception {
+        producao.importar(hospital,ana,producaoArquivo("123","2026-09-01","125","2026-09-03"),usuario);
+        unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-01"),usuario);
+        long relatorio=relatorios.gerar(hospital,ana,"2026-09",null,usuario).relatorioId();
+        assertThat(revisoes.carregar(relatorio).atual().visitas()).extracting(ConciliadorVisitas.Visita::status)
+                .containsExactly(ConciliadorVisitas.Status.PAGA,ConciliadorVisitas.Status.PENDENTE);
+        var resposta=unica.importarHospital(hospital,"2026-11","NOVO",null,hospital("125","2026-09-03"),usuario);
+        @SuppressWarnings("unchecked") var atualizados=(List<ReconciliacaoAutomaticaService.Reconciliada>)resposta.get("relatoriosAtualizados");
+        assertThat(atualizados).hasSize(1);
+        assertThat(atualizados.getFirst().erro()).isNull();
+        long novo=atualizados.getFirst().relatorioNovo();
+        assertThat(novo).isNotEqualTo(relatorio);
+        assertThat(revisoes.carregar(novo).atual().visitas()).extracting(ConciliadorVisitas.Visita::status)
+                .containsOnly(ConciliadorVisitas.Status.PAGA);
+        // A visita continua ligada ao mesmo arquivo; o relatorio atual dele avancou de versao.
+        assertThat(producao.visitas(hospital,"2026-09")).extracting(v->((Number)v.get("relatorio_id")).longValue()).containsOnly(novo);
+        // Nada sobra para a conciliacao unica reprocessar nem aparece como hospital sem producao.
+        assertThat(unica.conciliar(hospital).vinculadas()).isZero();
+        assertThat(unica.hospitalSemProducao(hospital,null)).isEmpty();
     }
 
     @Test void vinculoExistenteNaoEDesfeitoENaoHaDuplaAssociacao() throws Exception {

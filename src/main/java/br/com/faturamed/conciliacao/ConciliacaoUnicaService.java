@@ -27,15 +27,20 @@ public class ConciliacaoUnicaService {
     private final RepasseProcedimentoService repasses;
     private final VinculoBaseHospitalar vinculos;
     private final BaseHospitalarService base;
+    private final ReconciliacaoAutomaticaService relatorios;
 
     public ConciliacaoUnicaService(JdbcTemplate jdbc, ObjectMapper json, HospitalCadastroService hospitais, MedicoCadastroService medicos,
-            IdentificacaoProducaoService identificacao, RepasseProcedimentoService repasses, VinculoBaseHospitalar vinculos, BaseHospitalarService base) {
+            IdentificacaoProducaoService identificacao, RepasseProcedimentoService repasses, VinculoBaseHospitalar vinculos, BaseHospitalarService base,
+            ReconciliacaoAutomaticaService relatorios) {
         this.jdbc=jdbc; this.json=json; this.hospitais=hospitais; this.medicos=medicos; this.identificacao=identificacao;
-        this.repasses=repasses; this.vinculos=vinculos; this.base=base;
+        this.repasses=repasses; this.vinculos=vinculos; this.base=base; this.relatorios=relatorios;
     }
 
-    /** Importa o arquivo do hospital e concilia na mesma transacao. A competencia e a do faturamento (NF). */
-    @Transactional(rollbackFor=Exception.class)
+    /**
+     * Importa o arquivo do hospital, atualiza os relatorios ja gerados e concilia o restante. A competencia e a do
+     * faturamento (NF). Cada etapa tem a propria transacao: um relatorio que nao atualiza nao desfaz a importacao
+     * (o erro vem na resposta) e a conciliacao pode ser repetida em POST /conciliar.
+     */
     public Map<String,Object> importarHospital(long hospitalId,String competencia,String modoHospital,String tipoProcedimento,
             MultipartFile arquivo,UsuarioAutenticado usuario) throws Exception {
         var resultado=base.importarHospital(hospitalId,competencia,modoHospital,arquivo,usuario);
@@ -45,6 +50,8 @@ public class ConciliacaoUnicaService {
         resposta.put("atualizadas",resultado.atualizadas()); resposta.put("foraDaCompetencia",resultado.foraDaCompetencia());
         if(!resultado.repetido()) {
             base.definirTipoArquivo(resultado.arquivoId(),tipoProcedimento);
+            // Relatorios ja gerados tem prioridade sobre o hospital novo; so depois concilia o que ainda nao virou relatorio.
+            resposta.put("relatoriosAtualizados",relatorios.reconciliarAfetadas(hospitalId,resultado.arquivoId()));
             resposta.put("conciliacao",conciliar(hospitalId));
         }
         return resposta;
@@ -57,7 +64,7 @@ public class ConciliacaoUnicaService {
         var cadastros=medicos.listar();
         var abertas=jdbc.queryForList("""
                 select id,atendimento,data_visita,medico_id,campos::text as campos from producao_visita
-                where hospital_id=? and decisao='ORIGINAL' and hospital_visita_id is null order by id
+                where hospital_id=? and decisao='ORIGINAL' and hospital_visita_id is null and arquivo_relatorio_id is null order by id
                 """,hospitalId);
         if(abertas.isEmpty()) return new Resumo(0,0,0,0);
         Set<Integer> indisponiveis=vinculos.indisponiveis(hospitalId);

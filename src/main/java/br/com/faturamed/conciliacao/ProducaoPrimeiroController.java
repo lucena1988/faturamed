@@ -13,8 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProducaoPrimeiroController {
     private final ProducaoPrimeiroService service;
     private final ConciliacaoUnicaService conciliacao;
-    public ProducaoPrimeiroController(ProducaoPrimeiroService service,ConciliacaoUnicaService conciliacao) {
-        this.service=service; this.conciliacao=conciliacao;
+    private final RelatorioUnicoService relatorioUnico;
+    public ProducaoPrimeiroController(ProducaoPrimeiroService service,ConciliacaoUnicaService conciliacao,RelatorioUnicoService relatorioUnico) {
+        this.service=service; this.conciliacao=conciliacao; this.relatorioUnico=relatorioUnico;
     }
 
     /** Arquivo do hospital na mesma tela, antes ou depois da producao. competencia e a do faturamento (NF). */
@@ -24,6 +25,19 @@ public class ProducaoPrimeiroController {
             @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
         TipoProcedimento.de(tipoProcedimento);
         return conciliacao.importarHospital(hospitalId,competencia,modoHospital,tipoProcedimento,arquivo,usuario);
+    }
+    /** Repete a conciliacao das visitas ainda sem relatorio (idempotente). */
+    @PostMapping("/conciliar")
+    public ConciliacaoUnicaService.Resumo conciliar(@RequestParam long hospitalId) throws Exception { return conciliacao.conciliar(hospitalId); }
+
+    /** Medico x competencia: o que ja pode virar relatorio ao medico e o que ja virou. */
+    @GetMapping("/relatorios")
+    public List<Map<String,Object>> grupos(@RequestParam long hospitalId) { return relatorioUnico.grupos(hospitalId); }
+
+    public record GerarRelatorio(long hospitalId,long medicoId,String competencia,Long empresaId) {}
+    @PostMapping("/relatorios")
+    public RelatorioUnicoService.Resultado gerar(@RequestBody GerarRelatorio dados,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
+        return relatorioUnico.gerar(dados.hospitalId(),dados.medicoId(),dados.competencia(),dados.empresaId(),usuario);
     }
     @GetMapping("/hospital-sem-producao")
     public List<Map<String,Object>> hospitalSemProducao(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) {
