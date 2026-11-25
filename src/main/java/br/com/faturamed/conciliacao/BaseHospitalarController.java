@@ -16,11 +16,13 @@ public class BaseHospitalarController {
     private final ExclusaoArquivoHospitalService exclusoes;
     private final ExportadorAcompanhamento exportador;
     private final HospitalCadastroService hospitais;
+    private final ReconciliacaoAutomaticaService reconciliacao;
     private final br.com.faturamed.seguranca.UsuarioService usuarios;
     private final org.springframework.security.crypto.password.PasswordEncoder encoder;
     public BaseHospitalarController(BaseHospitalarService service,AcompanhamentoBaseHospitalarService acompanhamento,ExclusaoArquivoHospitalService exclusoes,
             br.com.faturamed.seguranca.UsuarioService usuarios,org.springframework.security.crypto.password.PasswordEncoder encoder,
-            ExportadorAcompanhamento exportador,HospitalCadastroService hospitais) {
+            ExportadorAcompanhamento exportador,HospitalCadastroService hospitais,ReconciliacaoAutomaticaService reconciliacao) {
+        this.reconciliacao=reconciliacao;
         this.exportador=exportador; this.hospitais=hospitais;
         this.service=service; this.acompanhamento=acompanhamento; this.exclusoes=exclusoes; this.usuarios=usuarios; this.encoder=encoder;
     }
@@ -54,13 +56,23 @@ public class BaseHospitalarController {
     public AcompanhamentoBaseHospitalarService.Resultado acompanhamento(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) throws Exception { return acompanhamento.consultar(hospitalId,competencia); }
 
     @PostMapping(value="/hospital",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
-    public BaseHospitalarService.Resultado hospital(@RequestParam long hospitalId,@RequestParam String competencia,
+    public Map<String,Object> hospital(@RequestParam long hospitalId,@RequestParam String competencia,
             @RequestParam(defaultValue="NOVO") String modoHospital,@RequestParam(required=false) String tipoProcedimento,
             @RequestParam MultipartFile arquivo,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
         TipoProcedimento.de(tipoProcedimento);
         var resultado=service.importarHospital(hospitalId,competencia,modoHospital,arquivo,usuario);
-        if(!resultado.repetido()) service.definirTipoArquivo(resultado.arquivoId(),tipoProcedimento);
-        return resultado;
+        Map<String,Object> resposta=new LinkedHashMap<>();
+        resposta.put("arquivoId",resultado.arquivoId()); resposta.put("relatorioId",resultado.relatorioId());
+        resposta.put("visitas",resultado.visitas()); resposta.put("divergencias",resultado.divergencias());
+        resposta.put("repetido",resultado.repetido()); resposta.put("atualizadas",resultado.atualizadas());
+        resposta.put("foraDaCompetencia",resultado.foraDaCompetencia());
+        if(!resultado.repetido()) {
+            service.definirTipoArquivo(resultado.arquivoId(),tipoProcedimento);
+            // Cada exame concilia com a producao da sua competencia: atualiza as producoes que tem atendimentos nesta planilha.
+            resposta.put("competenciasExames",reconciliacao.competenciasDosExames(resultado.arquivoId()));
+            resposta.put("reconciliadas",reconciliacao.reconciliarAfetadas(hospitalId,resultado.arquivoId()));
+        }
+        return resposta;
     }
     @PostMapping(value="/producao",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseHospitalarService.Resultado producao(@RequestParam long hospitalId,@RequestParam(required=false) Long medicoId,

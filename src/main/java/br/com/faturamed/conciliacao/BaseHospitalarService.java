@@ -330,14 +330,14 @@ public class BaseHospitalarService {
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> arquivos(long hospitalId) {
-        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,a.tipo_procedimento,m.nome as medico,(select string_agg(c.competencia||':'||c.total,',' order by c.competencia) from (select h.competencia,count(*) as total from vinculo_base_hospitalar b join visita_base_hospitalar v on v.id=b.visita_id join arquivo_base_hospitalar h on h.id=v.arquivo_id where a.relatorio_id is not null and b.relatorio_id=a.relatorio_id group by h.competencia) c) as competencias_faturadas,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
+        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,a.tipo_procedimento,m.nome as medico,(select string_agg(x.mes||':'||x.total,',' order by x.mes) from (select to_char(v.data_visita,'YYYY-MM') as mes,count(*) as total from visita_base_hospitalar v where a.tipo='HOSPITAL' and v.arquivo_atual_id=a.id group by 1) x) as competencias_exames,(select string_agg(c.competencia||':'||c.total,',' order by c.competencia) from (select h.competencia,count(*) as total from vinculo_base_hospitalar b join visita_base_hospitalar v on v.id=b.visita_id join arquivo_base_hospitalar h on h.id=v.arquivo_id where a.relatorio_id is not null and b.relatorio_id=a.relatorio_id group by h.competencia) c) as competencias_faturadas,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
     }
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> visitas(long hospitalId) {
         return jdbc.queryForList("""
                 select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,v.arquivo_atual_id,v.linha_atual,
-                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento,v.campos->>'paciente' as paciente,v.campos->>'operadora' as convenio,v.tipo_procedimento,
+                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento,v.campos->>'paciente' as paciente,v.campos->>'operadora' as convenio,to_char(v.data_visita,'YYYY-MM') as competencia_exame,v.tipo_procedimento,
                 case when v.decisao='EM_ANALISE' then 'DIVERGENTE'
                      when v.decisao in ('DUPLICADO_PAGO_OUTRO_MES','DUPLICADO_MESMA_COMPETENCIA') then v.decisao
                      when b.visita_id is not null and coalesce(

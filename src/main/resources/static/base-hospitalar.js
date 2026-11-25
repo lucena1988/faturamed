@@ -17,11 +17,14 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   function button(text, action) { const item = element('button', text); item.type = 'button'; item.addEventListener('click', () => action().catch(error => showMessage('error', error.message))); return item; }
   function renderVisits() {
     const comp = find('competencia-filter').value;
-    const filtered = visits.filter(visit => (!comp || visit.competencia === comp) && (!find('status').value || visit.situacao === find('status').value) && (!find('tipo-filter').value || (visit.tipo_procedimento || 'VISITA') === find('tipo-filter').value) && visit.atendimento.includes(find('search').value.trim()));
+    const filtered = visits.filter(visit => (!comp || (visit.competencia_exame || visit.competencia) === comp) && (!find('status').value || visit.situacao === find('status').value) && (!find('tipo-filter').value || (visit.tipo_procedimento || 'VISITA') === find('tipo-filter').value) && visit.atendimento.includes(find('search').value.trim()));
     find('visits').replaceChildren();
     for (const visit of filtered) {
       const row = element('tr');
-      for (const value of [visit.id, visit.competencia, visit.atendimento, visit.data_visita, TIPOS_PROCEDIMENTO[visit.tipo_procedimento] || 'Visita', visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado']) row.append(element('td', value));
+      row.append(element('td', visit.id));
+      const compCell = element('td'); compCell.append(element('div', mesAno(visit.competencia_exame || visit.competencia)));
+      const fatSub = element('div', `Fat. ${mesAno(visit.competencia)}`); fatSub.className = 'muted'; compCell.append(fatSub); row.append(compCell);
+      for (const value of [visit.atendimento, visit.data_visita, TIPOS_PROCEDIMENTO[visit.tipo_procedimento] || 'Visita', visit.medico_nome || 'Não identificado', visit.procedimento || 'Não informado']) row.append(element('td', value));
       const etapa = flow?.visitas.find(item => item.visitaId === visit.id)?.etapa;
       row.append(visit.situacao === 'CONCILIADA' ? statusCell(etapa, visit.competencia, labels[visit.situacao]) : element('td', labels[visit.situacao]));
       row.append(element('td', visit.anterior_id || '—'));
@@ -55,6 +58,14 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
   }
   const mesAno = comp => comp ? comp.split('-').reverse().join('/') : '—';
   function parseFaturadas(file) { return String(file.competencias_faturadas || '').split(',').filter(Boolean).map(item => { const [comp, total] = item.split(':'); return {comp, total: Number(total)}; }); }
+  function chipsCompetencias(titulo, texto, competenciaArquivo) {
+    const box = element('div'); box.className = 'faturadas'; box.append(element('span', `${titulo} `));
+    for (const item of String(texto).split(',').filter(Boolean)) {
+      const [comp, total] = item.split(':'); const chip = element('span', `${mesAno(comp)} · ${total}`);
+      chip.className = 'chip' + (comp !== competenciaArquivo ? ' chip-outra' : ''); box.append(chip);
+    }
+    return box;
+  }
   function competenciasFaturadas(file) {
     const box = element('div'); box.className = 'faturadas';
     const lista = parseFaturadas(file);
@@ -78,6 +89,7 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     const medico = file.tipo === 'PRODUCAO' ? (file.medico || (file.modo_producao === 'VARIOS' ? 'Vários médicos' : '—')) : '—';
     const nome = element('td'); nome.className = 'file-name'; nome.append(element('div', file.nome));
     if (file.tipo === 'PRODUCAO') nome.append(competenciasFaturadas(file));
+    if (file.tipo === 'HOSPITAL' && file.competencias_exames) nome.append(chipsCompetencias('Exames de:', file.competencias_exames, file.competencia));
     row.append(nome);
     for (const value of [origem, tipo, medico, file.quantidade_registros ?? '—', String(file.criado_em || '').slice(0, 10).split('-').reverse().join('/')]) row.append(element('td', value));
     const actions = element('td'); actions.append(link('Baixar', `/api/base-hospitalar/arquivos/${file.id}/original`));
@@ -130,11 +142,13 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
     if (!hospital) { visits = []; flow = null; renderFlow(); renderVisits(); renderCompetencias([]); return; }
     let [data, files, tracking] = await Promise.all([request(`/api/base-hospitalar/visitas?hospitalId=${hospital}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospital}`), request(`/api/base-hospitalar/acompanhamento?hospitalId=${hospital}${find('competencia-filter').value ? `&competencia=${find('competencia-filter').value}` : ''}`)]);
     if (token !== generation) return;
-    const filter = find('competencia-filter'), atual = filter.value, comps = [...new Set(files.map(f => f.competencia))].sort().reverse();
+    const filter = find('competencia-filter'), atual = filter.value;
+    // Competencias das planilhas e tambem dos exames que elas trazem (uma NF de 09 pode ter exames de 07 e 08).
+    const comps = [...new Set([...files.map(f => f.competencia), ...files.flatMap(f => String(f.competencias_exames || '').split(',').filter(Boolean).map(item => item.split(':')[0]))])].sort().reverse();
     filter.replaceChildren(new Option('Todas as competências', ''), ...comps.map(c => new Option(c.replace('-', '/'), c)));
     filter.value = comps.includes(atual) ? atual : '';
     arquivosCarregados = files;
-    files = files.filter(f => !filter.value || f.competencia === filter.value);
+    files = files.filter(f => !filter.value || f.competencia === filter.value || String(f.competencias_exames || '').split(',').some(item => item.startsWith(filter.value + ':')));
     visits = data; flow = tracking; renderFlow(); renderVisits(); renderCompetencias(files);
   }
   async function perform(action) {
@@ -208,10 +222,25 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
       await perform(async () => {
         showMessage('info', 'Processando arquivo. Aguarde a confirmação.');
         const result = await request(`/api/base-hospitalar/${endpoint}`, {method:'POST', body:data});
-        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} procedimentos atualizadas mantendo o ID; ${result.divergencias} divergências para análise.` + (result.foraDaCompetencia > 0 ? ` Atenção: ${result.foraDaCompetencia} procedimentos têm data fora da competência informada.` : '');
+        const text = result.repetido ? 'Arquivo já importado nesta competência. A importação anterior foi mantida.' : `${result.visitas} registros processados; ${result.atualizadas || 0} procedimentos atualizados mantendo o ID; ${result.divergencias} divergências para análise.`;
         const nodes = [element('span', `${text} `)];
+        const porMes = Object.entries(result.competenciasExames || {});
+        if (porMes.length > 1 || (porMes.length === 1 && porMes[0][0] !== compNormalizada)) {
+          nodes.push(element('div', `Exames por competência do procedimento: ${porMes.map(([comp, total]) => `${mesAno(comp)}: ${total}`).join(' · ')}. Cada exame concilia com a produção da sua competência.`));
+        }
+        const reconciliadas = result.reconciliadas || [];
+        if (reconciliadas.length) {
+          const lista = element('ul'); lista.className = 'reconciliadas';
+          for (const r of reconciliadas) {
+            const li = element('li', `${r.nome} (${mesAno(r.competencia)}${r.medico ? ' · ' + r.medico : ''}): `);
+            if (r.erro) li.append(element('strong', `não atualizada — ${r.erro}. Use Atualizar conciliação manualmente.`));
+            else { li.append(element('span', r.liberada ? 'nova versão criada; já estava liberada ao médico — confira e libere novamente. ' : 'conciliação atualizada. ')); li.append(link('Abrir', `/conciliacao.html?relatorio=${r.relatorioNovo}`)); }
+            lista.append(li);
+          }
+          nodes.push(element('div', `Produções atualizadas automaticamente (${reconciliadas.filter(r => !r.erro).length} de ${reconciliadas.length}):`), lista);
+        } else if (endpoint === 'hospital' && !result.repetido) nodes.push(element('div', 'Nenhuma produção importada tem atendimentos desta planilha ainda; os exames aguardam a produção da sua competência.'));
         if (result.relatorioId) nodes.push(link('Abrir conciliação e revisar', `/conciliacao.html?relatorio=${result.relatorioId}`));
-        showMessage(result.repetido || result.divergencias > 0 ? 'warning' : 'success', ...nodes);
+        showMessage(result.repetido || result.divergencias > 0 || reconciliadas.some(r => r.erro || r.liberada) ? 'warning' : 'success', ...nodes);
         form.querySelector('[type=file]').value = '';
         await load();
       });
@@ -293,8 +322,9 @@ const TIPOS_PROCEDIMENTO = { VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consul
       row.append(proc);
       row.append(celula(visit.medico || 'Não identificado', visit.empresa || null, 'col-medico'));
       const comp = element('td'); comp.className = 'col-comp';
-      const outra = visit.competenciaProducao && visit.competencia !== visit.competenciaProducao;
-      for (const [rotulo, valor, destaque] of [['Prod.', mesAno(visit.competenciaProducao), false], ['Fat.', mesAno(visit.competencia), outra]]) {
+      const referencia = visit.competenciaProducao || visit.competenciaExame;
+      const outra = referencia && visit.competencia !== referencia;
+      for (const [rotulo, valor, destaque] of [['Exame', mesAno(visit.competenciaExame), false], ['Prod.', mesAno(visit.competenciaProducao), false], ['Fat.', mesAno(visit.competencia), outra]]) {
         const linha = element('div'); linha.append(element('span', `${rotulo} `)); linha.firstChild.className = 'sub';
         const v = element('strong', valor); if (destaque) { v.className = 'comp-outra'; v.title = 'Faturado pelo hospital em competência diferente da produção'; }
         linha.append(v); comp.append(linha);

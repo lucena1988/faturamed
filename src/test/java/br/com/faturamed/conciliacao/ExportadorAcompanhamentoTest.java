@@ -14,7 +14,7 @@ class ExportadorAcompanhamentoTest {
     private AcompanhamentoBaseHospitalarService.Item item(int id,String medico,Long empresaId,String empresa,AcompanhamentoBaseHospitalarService.Etapa etapa,String valor) {
         BigDecimal v=valor==null?null:new BigDecimal(valor);
         return new AcompanhamentoBaseHospitalarService.Item(id,"A"+id,LocalDate.of(2026,8,1),medico,etapa,empresaId==null?null:10L,empresaId==null?null:2,
-                v,v==null?null:BigDecimal.ZERO,v,"2026-08",empresaId==null?null:"2026-07",empresaId,empresa,"40901106","Ecodoppler","Paciente "+id,"Sul America");
+                v,v==null?null:BigDecimal.ZERO,v,"2026-08",empresaId==null?null:"2026-07",empresaId,empresa,"40901106","Ecodoppler","Paciente "+id,"Sul America","2026-08");
     }
     private final List<AcompanhamentoBaseHospitalarService.Item> itens=List.of(
             item(1,"Ana",5L,"Clinica X",FATURADO,"100"),item(2,"Bruno",6L,"Clinica Y",FATURADO,"50"),item(3,"Ana",null,null,AGUARDANDO,null));
@@ -39,9 +39,9 @@ class ExportadorAcompanhamentoTest {
             assertThat(sheet.getLastRowNum()).isEqualTo(2);
             assertThat(sheet.getRow(0).getCell(9).getStringCellValue()).isEqualTo("Empresa");
             assertThat(sheet.getRow(1).getCell(9).getStringCellValue()).isEqualTo("Clinica X");
-            assertThat(sheet.getRow(1).getCell(12).getStringCellValue()).isEqualTo("PAGO 08/2026");
-            assertThat(sheet.getRow(1).getCell(14).getNumericCellValue()).isEqualTo(100.0);
-            assertThat(sheet.getRow(2).getCell(14).getStringCellValue()).isEqualTo("Nao confirmado");
+            assertThat(sheet.getRow(1).getCell(13).getStringCellValue()).isEqualTo("PAGO 08/2026");
+            assertThat(sheet.getRow(1).getCell(15).getNumericCellValue()).isEqualTo(100.0);
+            assertThat(sheet.getRow(2).getCell(15).getStringCellValue()).isEqualTo("Nao confirmado");
             assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).isEqualTo("Hospital H");
             assertThat(sheet.getRow(1).getCell(4).getStringCellValue()).isEqualTo("Paciente 1");
             assertThat(sheet.getRow(1).getCell(5).getStringCellValue()).isEqualTo("Sul America");
