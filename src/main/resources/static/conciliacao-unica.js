@@ -263,7 +263,10 @@
     aviso.hidden = !repeticoes;
     if (!repeticoes) return;
     aviso.replaceChildren(element('span', `${repeticoes} ${repeticoes === 1 ? 'registro do hospital repetido aguarda' : 'registros do hospital repetidos aguardam'} análise e ${repeticoes === 1 ? 'não entra' : 'não entram'} na conciliação até a decisão. `));
-    const abrir = element('a', 'Analisar no acompanhamento da base'); abrir.href = `base-hospitalar.html?hospitalId=${find('hospital').value}`;
+    // O ID do hospital vem de um seletor (texto do DOM): vira numero e e codificado antes de entrar no link.
+    const hospitalId = Number.parseInt(find('hospital').value, 10);
+    const abrir = element('a', 'Analisar no acompanhamento da base');
+    abrir.href = `base-hospitalar.html?hospitalId=${encodeURIComponent(Number.isSafeInteger(hospitalId) ? hospitalId : '')}`;
     aviso.append(abrir, element('span', '. Depois, use Atualizar aqui para conciliar de novo.'));
   }
   async function load() {
