@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ProducaoPrimeiroService {
     public record Resultado(long arquivoId, boolean repetido, int visitas, int emAnalise, int semMedico,
-            SortedMap<String,Integer> competencias) {}
+            SortedMap<String,Integer> competencias, ConciliacaoUnicaService.Resumo conciliacao) {}
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
@@ -25,10 +25,13 @@ public class ProducaoPrimeiroService {
     private final HospitalCadastroService hospitais;
     private final MedicoCadastroService medicos;
     private final VinculoBaseHospitalar vinculos;
+    private final ConciliacaoUnicaService conciliacao;
 
     public ProducaoPrimeiroService(JdbcTemplate jdbc, ObjectMapper json, LeitorPlanilhaVisitas leitor,
-            HospitalCadastroService hospitais, MedicoCadastroService medicos, VinculoBaseHospitalar vinculos) {
+            HospitalCadastroService hospitais, MedicoCadastroService medicos, VinculoBaseHospitalar vinculos,
+            ConciliacaoUnicaService conciliacao) {
         this.jdbc=jdbc; this.json=json; this.leitor=leitor; this.hospitais=hospitais; this.medicos=medicos; this.vinculos=vinculos;
+        this.conciliacao=conciliacao;
     }
 
     /** Competencia AAAA-MM derivada da data da visita. */
@@ -49,7 +52,7 @@ public class ProducaoPrimeiroService {
         }
         String hash=HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(arquivo.getBytes()));
         var repetidos=jdbc.queryForList("select id from producao_arquivo where hospital_id=? and medico_id is not distinct from ? and hash=?",hospitalId,medicoId,hash);
-        if(!repetidos.isEmpty()) return new Resultado(((Number)repetidos.getFirst().get("id")).longValue(),true,0,0,0,new TreeMap<>());
+        if(!repetidos.isEmpty()) return new Resultado(((Number)repetidos.getFirst().get("id")).longValue(),true,0,0,0,new TreeMap<>(),null);
 
         String nome=Objects.toString(arquivo.getOriginalFilename(),"planilha.xlsx").replace('\\','/');
         nome=nome.substring(nome.lastIndexOf('/')+1);
@@ -81,12 +84,14 @@ public class ProducaoPrimeiroService {
             String competencia=competenciaDe(data);
             competencias.merge(competencia,1,Integer::sum);
             jdbc.update("""
-                    insert into producao_visita(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_id,medico_nome,campos,competencia,anterior_id,decisao)
-                    values(?,?,?,?,?,?,?,?::jsonb,?,?,?)
+                    insert into producao_visita(arquivo_id,hospital_id,linha,atendimento,data_visita,medico_id,medico_nome,campos,competencia,anterior_id,decisao,situacao,motivo)
+                    values(?,?,?,?,?,?,?,?::jsonb,?,?,?,?,?)
                     """,arquivoId,hospitalId,linha.numero(),atendimento,data,medico,medicoNome,json.writeValueAsString(linha.campos()),
-                    competencia,anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE");
+                    competencia,anteriorId,anteriorId==null?"ORIGINAL":"EM_ANALISE",anteriorId==null?"PENDENTE":"EM_ANALISE",
+                    anteriorId==null?"Aguardando registro do hospital":"Repeticao de visita ja importada em outro arquivo; aguarda decisao");
         }
-        return new Resultado(arquivoId,false,linhas.size(),emAnalise,semMedico,competencias);
+        // Se o hospital ja foi importado, a producao ja nasce conciliada; senao fica aguardando.
+        return new Resultado(arquivoId,false,linhas.size(),emAnalise,semMedico,competencias,conciliacao.conciliar(hospitalId));
     }
 
     /** Visitas da producao do hospital, com a competencia efetiva (a manual, se houver). */
@@ -94,7 +99,7 @@ public class ProducaoPrimeiroService {
         return jdbc.queryForList("""
                 select v.id,v.arquivo_id,v.linha,v.atendimento,v.data_visita,v.medico_id,v.medico_nome,
                        coalesce(v.competencia_manual,v.competencia) as competencia,v.competencia as competencia_derivada,
-                       v.decisao,v.anterior_id,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento
+                       v.decisao,v.anterior_id,v.situacao,v.motivo,v.hospital_visita_id,v.medico_inferido,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento
                 from producao_visita v where v.hospital_id=? and (?::text is null or coalesce(v.competencia_manual,v.competencia)=?)
                 order by v.data_visita,v.id
                 """,hospitalId,competencia,competencia);
