@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conciliação única | FaturaMed</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Importar e conciliar | FaturaMed</title>
 <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="conciliacao.css?v=20261103-tema"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261103-tema"><link rel="stylesheet" href="tema.css?v=20261103-sino"><link rel="stylesheet" href="base-hospitalar.css?v=20261125-compexame"><link rel="stylesheet" href="conciliacao-unica.css?v=20261125-2"><script src="tema.js"></script></head>
 <body><main class="conciliation-workspace">
-<header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação única</h1></div><a href="base-hospitalar.html">Base hospitalar (fluxo anterior)</a><a href="conciliacao.html">Relatórios e revisões</a><a href="/#hospitais">Hospitais</a><a href="/#medicos">Médicos</a><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></header>
+<header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Importar e conciliar</h1></div><a href="base-hospitalar.html">Base hospitalar (fluxo anterior)</a><a href="conciliacao.html">Relatórios e revisões</a><a href="/#hospitais">Hospitais</a><a href="/#medicos">Médicos</a><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></header>
 <p class="base-intro">Importe a produção médica e a planilha do hospital em qualquer ordem. A competência de cada visita vem da data do atendimento e a conciliação acontece sozinha a cada importação.</p>
 <div class="conciliation-filters base-toolbar"><label>Hospital<select id="hospital" required></select></label><button id="reload" type="button">Atualizar</button></div>
 <p id="message" role="status" aria-live="polite"></p>
@@ -48,4 +48,4 @@
 <label>Justificativa<textarea name="justificativa" minlength="5" maxlength="2000" required rows="3"></textarea></label>
 <p id="repeticao-mensagem" role="status"></p><button type="submit">Salvar decisão</button><button type="button" id="repeticao-fechar">Cancelar</button></form></dialog>
 <dialog id="historico-dialog"><h2>Histórico da visita</h2><ol id="historico-lista"></ol><button type="button" id="historico-fechar">Fechar</button></dialog>
-</main><script src="sidebar.js?v=20261124-audio"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="conciliacao-unica.js?v=20261125-9"></script></body></html>
+</main><script src="sidebar.js?v=20261125-menu"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="conciliacao-unica.js?v=20261125-9"></script></body></html>
