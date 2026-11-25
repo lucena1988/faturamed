@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conciliação | Fechamento Faturado | Faturamed</title>
+  <title>Relatórios e revisões | Fechamento Faturado | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
   <link rel="stylesheet" href="conciliacao.css?v=20261116-duplicidade">
   <link rel="stylesheet" href="identidade.css?v=20261103-tema">
@@ -11,9 +11,9 @@
 <link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
-    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação · Fechamento Faturado</h1></div>
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Relatórios e revisões · Fechamento Faturado</h1></div>
       <a href="/#medicos">Cadastro de médicos</a><a href="solicitacoes-medicos.html">Solicitações dos médicos</a><a id="download" hidden>Baixar relatório geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
-    <p><a href="base-hospitalar.html">Importar hospital e produção médica</a> · Importe primeiro a base hospitalar e depois a produção individual ou coletiva. Os relatórios e históricos continuam disponíveis abaixo.</p>
+    <p><a href="conciliacao-unica.html">Importar produção médica e hospital</a> · Importe os dois arquivos em qualquer ordem e gere o relatório de cada médico por competência. Os relatórios e históricos continuam disponíveis abaixo.</p>
     <p id="message" role="status" aria-live="polite"></p>
     <a id="charge-link" href="cobrancas.html">Fila de cobrança ao hospital</a>
     <section id="results" hidden>
@@ -95,7 +95,7 @@
       <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="sidebar.js?v=20261124-audio"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
+  <script src="sidebar.js?v=20261125-menu"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
   <script src="liberacao.js?v=20261103-empresas"></script>
   <script src="conciliacao.js?v=20261125-codigoproducao"></script>
 </body>

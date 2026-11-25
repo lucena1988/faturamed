@@ -2,8 +2,10 @@
   const find = id => document.getElementById(id);
   const request = window.FaturamedAuth.request;
   const SITUACOES = {PAGA: 'Paga', PENDENTE: 'Aguardando hospital', DIVERGENTE: 'Divergente', EM_ANALISE: 'Em análise'};
-  const CLASSES = {PAGA: 'chip-pago', PENDENTE: 'chip-pendente', DIVERGENTE: 'chip-divergente', EM_ANALISE: 'chip-analise'};
-  let visitas = [], semProducao = [], grupos = [], medicos = [], empresas = [], busy = false, geracao = 0;
+  const ROTULOS = {...SITUACOES, DUPLICADA: 'Duplicada'};
+  const CLASSES = {PAGA: 'chip-pago', PENDENTE: 'chip-pendente', DIVERGENTE: 'chip-divergente', EM_ANALISE: 'chip-analise', DUPLICADA: 'chip-duplicada'};
+  let visitaAtual = null;
+  let visitas = [], semProducao = [], grupos = [], arquivosProducao = [], arquivosHospital = [], medicos = [], empresas = [], busy = false, geracao = 0;
 
   const element = (tag, text) => { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; };
   const mesAno = comp => comp ? comp.split('-').reverse().join('/') : '—';
@@ -21,13 +23,32 @@
     try { await action(); }
     finally { busy = false; document.querySelectorAll('button, input, select').forEach(control => { control.disabled = false; }); }
   }
+  const TIPOS = {VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro'};
+  // O sistema chama tudo de "visita" por heranca; o texto segue o tipo: exames, consultas, visitas, ou
+  // "procedimentos" quando o conjunto e misto, sem tipo ou de outro tipo.
+  const SUBSTANTIVOS = {VISITA: ['visita', 'visitas'], EXAME: ['exame', 'exames'], CONSULTA: ['consulta', 'consultas']};
+  function quantidade(n, tipos) {
+    n = Number(n);
+    const unicos = [...new Set((tipos || []).filter(Boolean))];
+    const par = unicos.length === 1 && SUBSTANTIVOS[unicos[0]] ? SUBSTANTIVOS[unicos[0]] : ['procedimento', 'procedimentos'];
+    return `${n} ${n === 1 ? par[0] : par[1]}`;
+  }
+  // Codigo do exame em destaque discreto e o nome embaixo, como vieram na planilha.
+  function celulaExame(codigo, nome) {
+    const td = element('td');
+    if (!codigo && !nome) { td.textContent = 'Não informado'; return td; }
+    if (codigo) { const c = element('div', codigo); c.className = 'muted'; td.append(c); }
+    td.append(element('div', nome || '—'));
+    return td;
+  }
   const nomeMedico = visita => medicos.find(m => m.id === visita.medico_id)?.nome || visita.medico_nome || '';
 
   function renderCards() {
     const porComp = new Map();
     for (const v of visitas) {
-      const item = porComp.get(v.competencia) || {total: 0, PAGA: 0, PENDENTE: 0, DIVERGENTE: 0, EM_ANALISE: 0};
-      item.total++; item[v.situacao]++; porComp.set(v.competencia, item);
+      if (v.situacao === 'DUPLICADA') continue; // duplicadas ficam fora dos totais
+      const item = porComp.get(v.competencia) || {total: 0, PAGA: 0, PENDENTE: 0, DIVERGENTE: 0, EM_ANALISE: 0, tipos: new Set()};
+      item.total++; item[v.situacao]++; item.tipos.add(v.tipo_procedimento || 'SEM'); porComp.set(v.competencia, item);
     }
     const atual = find('competencia-filter').value;
     find('comp-cards').replaceChildren();
@@ -39,7 +60,7 @@
       const dados = porComp.get(comp);
       // div com role=button: o estilo global de button sobrescreve cores de cartoes.
       const card = element('div'); card.className = 'comp-card'; card.setAttribute('role', 'button'); card.tabIndex = 0; card.setAttribute('aria-pressed', String(atual === comp));
-      card.append(element('h3', mesAno(comp)), element('span', `${dados.total} ${dados.total === 1 ? 'visita' : 'visitas'}`));
+      card.append(element('h3', mesAno(comp)), element('span', quantidade(dados.total, [...dados.tipos])));
       card.lastChild.className = 'total';
       for (const chave of Object.keys(SITUACOES)) {
         const linha = element('div'); linha.className = 'linha'; linha.append(element('span', SITUACOES[chave]), element('strong', dados[chave])); card.append(linha);
@@ -61,8 +82,8 @@
     selMed.value = [...selMed.options].some(o => o.value === medAtual) ? medAtual : '';
   }
   function renderVisits() {
-    const comp = find('competencia-filter').value, status = find('status').value, med = find('medico-filter').value, busca = find('search').value.trim();
-    const filtradas = visitas.filter(v => (!comp || v.competencia === comp) && (!status || v.situacao === status)
+    const comp = find('competencia-filter').value, status = find('status').value, med = find('medico-filter').value, busca = find('search').value.trim(), tipo = find('tipo-filter').value;
+    const filtradas = visitas.filter(v => (!comp || v.competencia === comp) && (!status || v.situacao === status) && (!tipo || v.tipo_procedimento === tipo)
       && (!med || (med === '__SEM__' ? !nomeMedico(v) : nomeMedico(v) === med)) && v.atendimento.includes(busca));
     find('visits').replaceChildren();
     for (const v of filtradas) {
@@ -75,23 +96,77 @@
       const cell = element('td', mesAno(v.competencia));
       if (v.competencia !== v.competencia_derivada) { const tag = element('div', `Original ${mesAno(v.competencia_derivada)}`); tag.className = 'muted'; cell.append(tag); }
       row.append(cell);
-      row.append(element('td', v.procedimento || 'Não informado'));
-      const situacao = element('td'); const chip = element('span', SITUACOES[v.situacao] || v.situacao); chip.className = `chip ${CLASSES[v.situacao] || ''}`; situacao.append(chip); row.append(situacao);
+      row.append(celulaExame(v.codigo_procedimento, v.procedimento));
+      row.append(element('td', TIPOS[v.tipo_procedimento] || '—'));
+      const situacao = element('td'); const chip = element('span', ROTULOS[v.situacao] || v.situacao); chip.className = `chip ${CLASSES[v.situacao] || ''}`; situacao.append(chip); row.append(situacao);
       const motivo = element('td', v.motivo); motivo.className = 'motivo';
       if (v.relatorio_id) {
         const abrir = element('a', 'Abrir no relatório'); abrir.href = `/conciliacao.html?relatorio=${v.relatorio_id}&linha=${v.linha_relatorio}`;
         const bloco = element('div'); bloco.append(abrir); motivo.prepend(bloco);
       }
       row.append(motivo);
+      const acoes = element('td'); acoes.className = 'acoes';
+      const botao = (texto, acao) => { const b = element('button', texto); b.type = 'button'; b.addEventListener('click', () => acao(v)); acoes.append(b); };
+      if (v.decisao === 'EM_ANALISE') botao('Analisar repetição', abrirRepeticao);
+      if (v.decisao !== 'DUPLICADA') botao('Corrigir competência', abrirCompetencia);
+      botao('Histórico', abrirHistorico);
+      row.append(acoes);
       find('visits').append(row);
     }
-    find('count').textContent = `${filtradas.length} ${filtradas.length === 1 ? 'visita' : 'visitas'}`;
+    find('count').textContent = quantidade(filtradas.length, filtradas.map(v => v.tipo_procedimento || 'SEM'));
   }
+  const resumoVisita = v => `ID ${v.id} · atendimento ${v.atendimento || 'sem número'} · ${dataBr(v.data_visita)} · ${nomeMedico(v) || 'médico não identificado'}`;
+  function abrirCompetencia(v) {
+    visitaAtual = v; find('competencia-form').reset(); find('competencia-mensagem').textContent = '';
+    find('competencia-resumo').textContent = `${resumoVisita(v)}. Competência atual: ${mesAno(v.competencia)}${v.competencia !== v.competencia_derivada ? ` (pela data: ${mesAno(v.competencia_derivada)})` : ''}.`;
+    // A competencia de um relatorio e uma so: a correcao vale para todas as visitas dele.
+    const aviso = find('competencia-relatorio');
+    aviso.hidden = !v.relatorio_id;
+    if (v.relatorio_id) aviso.textContent = `Esta visita está no relatório ${v.relatorio_id}, com ${v.visitas_no_relatorio} ${Number(v.visitas_no_relatorio) === 1 ? 'visita' : 'visitas'}. A competência é do relatório inteiro: a correção vale para todas elas. Liberação ao médico e recebimentos não mudam.`;
+    find('competencia-dialog').showModal();
+  }
+  function abrirRepeticao(v) {
+    visitaAtual = v; find('repeticao-form').reset(); find('repeticao-mensagem').textContent = '';
+    find('repeticao-resumo').textContent = `${resumoVisita(v)}. Possível original: ID ${v.anterior_id || 'não informado'}.`;
+    find('repeticao-dialog').showModal();
+  }
+  async function abrirHistorico(v) {
+    try {
+      const itens = await request(`/api/conciliacao-unica/visitas/${v.id}/historico`);
+      find('historico-lista').replaceChildren(...itens.map(i => element('li', `${i.acao} · ${i.antes} → ${i.depois} · ${i.responsavel} · ${String(i.criado_em).slice(0, 16).replace('T', ' ')} · ${i.justificativa}`)));
+      if (!itens.length) find('historico-lista').append(element('li', 'Nenhum ajuste manual registrado.'));
+      find('historico-dialog').showModal();
+    } catch (error) { showMessage('error', error.message); }
+  }
+  async function enviarAjuste(dialogo, mensagem, caminho, corpo, sucesso) {
+    try {
+      await perform(async () => {
+        await request(`/api/conciliacao-unica/visitas/${visitaAtual.id}/${caminho}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(corpo)});
+        find(dialogo).close(); showMessage('success', sucesso); await load();
+      });
+    } catch (error) { find(mensagem).textContent = error.message; }
+  }
+  find('competencia-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const dados = Object.fromEntries(new FormData(event.currentTarget));
+    const noRelatorio = Boolean(visitaAtual.relatorio_id);
+    enviarAjuste('competencia-dialog', 'competencia-mensagem', 'competencia', {competencia: dados.competencia.trim() || null, justificativa: dados.justificativa},
+      (dados.competencia.trim() ? 'Competência corrigida' : 'Competência restaurada pela data do atendimento') + (noRelatorio ? ' em todo o relatório.' : '.') + ' O ajuste ficou no histórico.');
+  });
+  find('repeticao-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const dados = Object.fromEntries(new FormData(event.currentTarget));
+    enviarAjuste('repeticao-dialog', 'repeticao-mensagem', 'repeticao', {acao: dados.acao, justificativa: dados.justificativa},
+      dados.acao === 'DUPLICADA' ? 'Repetição marcada como duplicada e retirada da conciliação.' : 'Visita confirmada como distinta; ela volta a conciliar com o hospital.');
+  });
+  for (const [botao, dialogo] of [['competencia-fechar', 'competencia-dialog'], ['repeticao-fechar', 'repeticao-dialog'], ['historico-fechar', 'historico-dialog']])
+    find(botao).addEventListener('click', () => find(dialogo).close());
   function renderOrphans() {
     find('orphans').replaceChildren();
     for (const h of semProducao) {
       const row = element('tr');
-      for (const value of [h.id, h.atendimento, dataBr(h.data_visita), mesAno(h.competencia_exame), h.medico_nome || 'Não identificado', h.procedimento || 'Não informado']) row.append(element('td', value));
+      for (const value of [h.id, h.atendimento, dataBr(h.data_visita), mesAno(h.competencia_exame), h.medico_nome || 'Não identificado']) row.append(element('td', value));
+      row.append(celulaExame(h.codigo_procedimento, h.procedimento));
       find('orphans').append(row);
     }
     const aba = document.querySelector('[data-tab="tab-sem-producao"]');
@@ -144,14 +219,67 @@
     const aGerar = grupos.filter(g => g.medico_id && g.disponiveis > 0).length;
     aba.textContent = `Relatórios ao médico${aGerar ? ` (${aGerar} a gerar)` : ''}`;
   }
+  // Arquivos importados: producao desta tela e planilhas do hospital. Relatorios gerados se excluem em Relatorios e revisoes.
+  function renderFiles() {
+    find('files').replaceChildren();
+    const itens = [
+      ...arquivosProducao.map(a => ({tipo: 'Produção', producao: true, id: a.id, nome: a.nome, criado: a.criado_em,
+        detalhe: `${quantidade(a.visitas, String(a.tipos || '').split(',').filter(Boolean).map(p => p.split(':')[0]))}${a.medico ? ` · ${a.medico}` : ' · vários médicos'} · competências ${String(a.competencias || '—').split(',').map(mesAno).join(', ')}${Number(a.em_relatorio) ? ` · ${a.em_relatorio} em relatório` : ''}`})),
+      ...arquivosHospital.map(a => ({tipo: 'Hospital', producao: false, id: a.id, nome: a.nome, criado: a.criado_em,
+        detalhe: `${a.quantidade_registros ?? '—'} registros · faturamento ${mesAno(a.competencia)}${a.modo_hospital === 'ATUALIZAR' ? ' · atualização' : ''}`}))
+    ].sort((x, y) => String(y.criado).localeCompare(String(x.criado)));
+    if (!itens.length) { const linha = element('tr'); const cel = element('td', 'Nenhum arquivo importado.'); cel.colSpan = 5; linha.append(cel); find('files').append(linha); }
+    for (const item of itens) {
+      const row = element('tr');
+      for (const valor of [item.tipo, item.nome, item.detalhe, String(item.criado).slice(0, 16).replace('T', ' ')]) row.append(element('td', valor));
+      const acoes = element('td'); acoes.className = 'acoes';
+      const excluir = element('button', 'Excluir'); excluir.type = 'button'; excluir.className = 'danger-link';
+      excluir.addEventListener('click', () => excluirArquivo(item));
+      acoes.append(excluir); row.append(acoes); find('files').append(row);
+    }
+    document.querySelector('[data-tab="tab-arquivos"]').textContent = `Arquivos importados (${itens.length})`;
+  }
+  async function excluirArquivo(item) {
+    if (busy) return;
+    const texto = item.producao
+      ? `A importação de produção "${item.nome}" e todas as suas visitas serão excluídas definitivamente. Registros do hospital que estavam conciliados com elas voltam a ficar disponíveis. Repetições que dependiam dela passam a ser a visita original.`
+      : `A planilha do hospital "${item.nome}" e os procedimentos que ela criou serão excluídos definitivamente. Só é permitido se nenhum deles estiver conciliado. Depois você pode importá-la de novo.`;
+    const resposta = await window.fmUi.perguntar({titulo: 'Excluir arquivo importado', texto, campos: [{nome: 'senha', rotulo: 'Confirme com sua senha', tipo: 'password', obrigatorio: true}], confirmar: 'Excluir definitivamente', perigo: true});
+    if (!resposta?.senha) return;
+    try {
+      await perform(async () => {
+        const url = item.producao ? `/api/conciliacao-unica/arquivos/${item.id}/exclusao` : `/api/base-hospitalar/arquivos/${item.id}/exclusao`;
+        const r = await request(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({senha: resposta.senha})});
+        showMessage('success', item.producao
+          ? `Importação excluída (${quantidade(r.visitas, [])}${r.repeticoesPromovidas ? `; ${r.repeticoesPromovidas} repetição(ões) passaram a ser a original` : ''}). Você pode importar a planilha de novo.`
+          : 'Planilha do hospital excluída. Importe-a novamente na competência correta.');
+        await load();
+      });
+    } catch (error) { showMessage('error', error.message); }
+  }
+  // Repeticoes do hospital em analise se decidem na tela de acompanhamento (mesma decisao e historico de sempre).
+  function renderAvisoHospital(repeticoes) {
+    const aviso = find('aviso-hospital');
+    aviso.hidden = !repeticoes;
+    if (!repeticoes) return;
+    aviso.replaceChildren(element('span', `${repeticoes} ${repeticoes === 1 ? 'registro do hospital repetido aguarda' : 'registros do hospital repetidos aguardam'} análise e ${repeticoes === 1 ? 'não entra' : 'não entram'} na conciliação até a decisão. `));
+    // O ID do hospital vem de um seletor (texto do DOM): vira numero e e codificado antes de entrar no link.
+    const hospitalId = Number.parseInt(find('hospital').value, 10);
+    const abrir = element('a', 'Analisar no acompanhamento da base');
+    abrir.href = `base-hospitalar.html?hospitalId=${encodeURIComponent(Number.isSafeInteger(hospitalId) ? hospitalId : '')}`;
+    aviso.append(abrir, element('span', '. Depois, use Atualizar aqui para conciliar de novo.'));
+  }
   async function load() {
     const id = ++geracao, hospitalId = find('hospital').value;
-    if (!hospitalId) { visitas = []; semProducao = []; grupos = []; } else {
-      const [lista, orfaos, porGrupo] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`)]);
+    let repeticoes = 0;
+    if (!hospitalId) { visitas = []; semProducao = []; grupos = []; arquivosProducao = []; arquivosHospital = []; } else {
+      const [lista, orfaos, porGrupo, hospitalVisitas, arquivosProd, arquivosTodos] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/arquivos?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospitalId}`)]);
       if (id !== geracao) return;
-      visitas = lista; semProducao = orfaos; grupos = porGrupo;
+      visitas = lista; semProducao = orfaos; grupos = porGrupo; arquivosProducao = arquivosProd;
+      arquivosHospital = arquivosTodos.filter(item => item.tipo === 'HOSPITAL');
+      repeticoes = hospitalVisitas.filter(item => item.decisao === 'EM_ANALISE').length;
     }
-    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports();
+    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports(); renderFiles(); renderAvisoHospital(repeticoes);
   }
   function resumoConciliacao(c) {
     if (!c) return '';
@@ -163,6 +291,8 @@
     const form = event.currentTarget, data = new FormData(form);
     if (!find('hospital').value) { showMessage('error', 'Selecione um hospital ativo.'); return; }
     if (!data.get('medicoId')) data.delete('medicoId');
+    if (!data.get('tipoProcedimento')) data.delete('tipoProcedimento');
+    const tipoImportado = data.get('tipoProcedimento');
     data.set('hospitalId', find('hospital').value);
     try {
       await perform(async () => {
@@ -172,7 +302,7 @@
         else {
           const meses = Object.entries(r.competencias || {}).map(([comp, total]) => `${mesAno(comp)}: ${total}`).join(' · ');
           const aviso = [r.emAnalise ? `${r.emAnalise} repetidas em análise.` : '', r.semMedico ? `${r.semMedico} sem médico identificado.` : ''].filter(Boolean).join(' ');
-          showMessage(r.emAnalise || r.semMedico ? 'warning' : 'success', `${r.visitas} visitas importadas — competências: ${meses}. ${aviso}${resumoConciliacao(r.conciliacao)}`);
+          showMessage(r.emAnalise || r.semMedico ? 'warning' : 'success', `Importação concluída: ${quantidade(r.visitas, tipoImportado ? [tipoImportado] : [])} — competências: ${meses}. ${aviso}${resumoConciliacao(r.conciliacao)}`);
         }
         form.querySelector('[type=file]').value = '';
         await load();
@@ -204,7 +334,7 @@
   document.querySelectorAll('.base-tabs [data-tab]').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.base-tabs [data-tab]').forEach(item => { item.setAttribute('aria-selected', String(item === tab)); find(item.dataset.tab).hidden = item !== tab; });
   }));
-  for (const id of ['competencia-filter', 'status', 'medico-filter', 'search']) find(id).addEventListener('input', () => { renderCards(); renderVisits(); });
+  for (const id of ['competencia-filter', 'status', 'medico-filter', 'tipo-filter', 'search']) find(id).addEventListener('input', () => { renderCards(); renderVisits(); });
   find('hospital').addEventListener('change', () => load().catch(error => showMessage('error', error.message)));
   // Atualizar repete a conciliacao (idempotente), util se uma importacao foi interrompida.
   find('reload').addEventListener('click', async () => {
