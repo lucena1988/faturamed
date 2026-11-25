@@ -13,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExclusaoRelatorioService {
     public record Resultado(long relatorioRaizId,List<Long> relatorios,String hospital,int publicacoes,int solicitacoes,int recebimentos) {}
     private final JdbcTemplate jdbc;
-    public ExclusaoRelatorioService(JdbcTemplate jdbc) { this.jdbc=jdbc; }
+    private final ConciliacaoUnicaService conciliacaoUnica;
+    public ExclusaoRelatorioService(JdbcTemplate jdbc,ConciliacaoUnicaService conciliacaoUnica) { this.jdbc=jdbc; this.conciliacaoUnica=conciliacaoUnica; }
 
     @Transactional
     public Resultado excluir(long id,UsuarioAutenticado usuario) {
@@ -32,6 +33,8 @@ public class ExclusaoRelatorioService {
         String ids=cadeia.stream().map(String::valueOf).collect(Collectors.joining(","));
         // Bloqueia a cadeia inteira para que nenhuma gravacao concorrente sobreviva a exclusao.
         jdbc.queryForList("select id from conciliacao_visitas where id = any(?::bigint[]) for update","{"+ids+"}");
+        // Visitas da conciliacao unica que estavam neste relatorio voltam para a base; guarda o hospital para reconciliar.
+        Long hospitalId=jdbc.queryForList("select hospital_id from arquivo_base_hospitalar where relatorio_id = any(?::bigint[]) limit 1",Long.class,"{"+ids+"}").stream().findFirst().orElse(null);
         var dados=jdbc.queryForMap("select relatorio->>'hospital' as hospital,relatorio->>'arquivoMedico' as arquivo,medico_producao_id,empresa_id from conciliacao_visitas where id=?",cadeia.getLast());
         Object[] cadeiaArg={"{"+ids+"}"};
         String naCadeia="any(?::bigint[])";
@@ -65,6 +68,11 @@ public class ExclusaoRelatorioService {
             values(?,?,?,?,?,?,?,?,?,?,?)
             """,raiz,ids,hospital,dados.get("arquivo"),dados.get("medico_producao_id"),dados.get("empresa_id"),publicacoes,solicitacoes,recebimentos,
             usuario.id(),usuario.nome()+" ("+usuario.email()+")");
+        if(hospitalId!=null) {
+            try { conciliacaoUnica.conciliar(hospitalId); }
+            // Qualquer falha desfaz a exclusao inteira: nada fica pela metade.
+            catch(Exception erro) { throw new IllegalStateException("Nao foi possivel excluir: a conciliacao unica nao pode ser atualizada ("+erro.getMessage()+")",erro); }
+        }
         return new Resultado(raiz,cadeia,hospital,publicacoes,solicitacoes,recebimentos);
     }
 }

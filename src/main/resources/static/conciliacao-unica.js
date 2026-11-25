@@ -5,7 +5,7 @@
   const ROTULOS = {...SITUACOES, DUPLICADA: 'Duplicada'};
   const CLASSES = {PAGA: 'chip-pago', PENDENTE: 'chip-pendente', DIVERGENTE: 'chip-divergente', EM_ANALISE: 'chip-analise', DUPLICADA: 'chip-duplicada'};
   let visitaAtual = null;
-  let visitas = [], semProducao = [], grupos = [], medicos = [], empresas = [], busy = false, geracao = 0;
+  let visitas = [], semProducao = [], grupos = [], arquivosProducao = [], arquivosHospital = [], medicos = [], empresas = [], busy = false, geracao = 0;
 
   const element = (tag, text) => { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; };
   const mesAno = comp => comp ? comp.split('-').reverse().join('/') : '—';
@@ -199,6 +199,44 @@
     const aGerar = grupos.filter(g => g.medico_id && g.disponiveis > 0).length;
     aba.textContent = `Relatórios ao médico${aGerar ? ` (${aGerar} a gerar)` : ''}`;
   }
+  // Arquivos importados: producao desta tela e planilhas do hospital. Relatorios gerados se excluem em Relatorios e revisoes.
+  function renderFiles() {
+    find('files').replaceChildren();
+    const itens = [
+      ...arquivosProducao.map(a => ({tipo: 'Produção', producao: true, id: a.id, nome: a.nome, criado: a.criado_em,
+        detalhe: `${a.visitas} ${Number(a.visitas) === 1 ? 'visita' : 'visitas'}${a.medico ? ` · ${a.medico}` : ' · vários médicos'} · competências ${String(a.competencias || '—').split(',').map(mesAno).join(', ')}${Number(a.em_relatorio) ? ` · ${a.em_relatorio} em relatório` : ''}`})),
+      ...arquivosHospital.map(a => ({tipo: 'Hospital', producao: false, id: a.id, nome: a.nome, criado: a.criado_em,
+        detalhe: `${a.quantidade_registros ?? '—'} registros · faturamento ${mesAno(a.competencia)}${a.modo_hospital === 'ATUALIZAR' ? ' · atualização' : ''}`}))
+    ].sort((x, y) => String(y.criado).localeCompare(String(x.criado)));
+    if (!itens.length) { const linha = element('tr'); const cel = element('td', 'Nenhum arquivo importado.'); cel.colSpan = 5; linha.append(cel); find('files').append(linha); }
+    for (const item of itens) {
+      const row = element('tr');
+      for (const valor of [item.tipo, item.nome, item.detalhe, String(item.criado).slice(0, 16).replace('T', ' ')]) row.append(element('td', valor));
+      const acoes = element('td'); acoes.className = 'acoes';
+      const excluir = element('button', 'Excluir'); excluir.type = 'button'; excluir.className = 'danger-link';
+      excluir.addEventListener('click', () => excluirArquivo(item));
+      acoes.append(excluir); row.append(acoes); find('files').append(row);
+    }
+    document.querySelector('[data-tab="tab-arquivos"]').textContent = `Arquivos importados (${itens.length})`;
+  }
+  async function excluirArquivo(item) {
+    if (busy) return;
+    const texto = item.producao
+      ? `A importação de produção "${item.nome}" e todas as suas visitas serão excluídas definitivamente. Registros do hospital que estavam conciliados com elas voltam a ficar disponíveis. Repetições que dependiam dela passam a ser a visita original.`
+      : `A planilha do hospital "${item.nome}" e os procedimentos que ela criou serão excluídos definitivamente. Só é permitido se nenhum deles estiver conciliado. Depois você pode importá-la de novo.`;
+    const resposta = await window.fmUi.perguntar({titulo: 'Excluir arquivo importado', texto, campos: [{nome: 'senha', rotulo: 'Confirme com sua senha', tipo: 'password', obrigatorio: true}], confirmar: 'Excluir definitivamente', perigo: true});
+    if (!resposta?.senha) return;
+    try {
+      await perform(async () => {
+        const url = item.producao ? `/api/conciliacao-unica/arquivos/${item.id}/exclusao` : `/api/base-hospitalar/arquivos/${item.id}/exclusao`;
+        const r = await request(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({senha: resposta.senha})});
+        showMessage('success', item.producao
+          ? `Importação excluída (${r.visitas} ${r.visitas === 1 ? 'visita' : 'visitas'}${r.repeticoesPromovidas ? `; ${r.repeticoesPromovidas} repetição(ões) passaram a ser a original` : ''}). Você pode importar a planilha de novo.`
+          : 'Planilha do hospital excluída. Importe-a novamente na competência correta.');
+        await load();
+      });
+    } catch (error) { showMessage('error', error.message); }
+  }
   // Repeticoes do hospital em analise se decidem na tela de acompanhamento (mesma decisao e historico de sempre).
   function renderAvisoHospital(repeticoes) {
     const aviso = find('aviso-hospital');
@@ -211,13 +249,14 @@
   async function load() {
     const id = ++geracao, hospitalId = find('hospital').value;
     let repeticoes = 0;
-    if (!hospitalId) { visitas = []; semProducao = []; grupos = []; } else {
-      const [lista, orfaos, porGrupo, hospitalVisitas] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/visitas?hospitalId=${hospitalId}`)]);
+    if (!hospitalId) { visitas = []; semProducao = []; grupos = []; arquivosProducao = []; arquivosHospital = []; } else {
+      const [lista, orfaos, porGrupo, hospitalVisitas, arquivosProd, arquivosTodos] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/arquivos?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospitalId}`)]);
       if (id !== geracao) return;
-      visitas = lista; semProducao = orfaos; grupos = porGrupo;
+      visitas = lista; semProducao = orfaos; grupos = porGrupo; arquivosProducao = arquivosProd;
+      arquivosHospital = arquivosTodos.filter(item => item.tipo === 'HOSPITAL');
       repeticoes = hospitalVisitas.filter(item => item.decisao === 'EM_ANALISE').length;
     }
-    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports(); renderAvisoHospital(repeticoes);
+    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports(); renderFiles(); renderAvisoHospital(repeticoes);
   }
   function resumoConciliacao(c) {
     if (!c) return '';

@@ -32,6 +32,8 @@ public class ExclusaoArquivoHospitalService {
                 "procedimentos desta planilha ja estao conciliados com uma producao. Exclua antes o relatorio de conciliacao");
         bloquearSe("select count(*) from reserva_base_hospitalar where visita_id in "+daPlanilha,arquivoId,
                 "procedimentos desta planilha estao reservados por uma producao. Exclua antes o relatorio de conciliacao");
+        bloquearSe("select count(*) from producao_visita where hospital_visita_id in "+daPlanilha,arquivoId,
+                "procedimentos desta planilha estao conciliados na tela Importar e conciliar. Exclua antes a importacao da producao correspondente");
         bloquearSe("select count(*) from visita_base_hospitalar where arquivo_id=? and arquivo_atual_id<>arquivo_id",arquivoId,
                 "procedimentos desta planilha foram atualizados por outra planilha. Exclua antes a planilha de atualizacao");
         bloquearSe("select count(*) from visita_base_hospitalar where arquivo_id<>? and anterior_id in "+daPlanilha,arquivoId,arquivoId,

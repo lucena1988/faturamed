@@ -16,8 +16,31 @@ public class ProducaoPrimeiroController {
     private final ConciliacaoUnicaService conciliacao;
     private final RelatorioUnicoService relatorioUnico;
     private final AjusteProducaoService ajustes;
-    public ProducaoPrimeiroController(ProducaoPrimeiroService service,ConciliacaoUnicaService conciliacao,RelatorioUnicoService relatorioUnico,AjusteProducaoService ajustes) {
+    private final ExclusaoProducaoService exclusoes;
+    private final br.com.faturamed.seguranca.UsuarioService usuarios;
+    private final org.springframework.security.crypto.password.PasswordEncoder encoder;
+    public ProducaoPrimeiroController(ProducaoPrimeiroService service,ConciliacaoUnicaService conciliacao,RelatorioUnicoService relatorioUnico,AjusteProducaoService ajustes,
+            ExclusaoProducaoService exclusoes,br.com.faturamed.seguranca.UsuarioService usuarios,org.springframework.security.crypto.password.PasswordEncoder encoder) {
         this.service=service; this.conciliacao=conciliacao; this.relatorioUnico=relatorioUnico; this.ajustes=ajustes;
+        this.exclusoes=exclusoes; this.usuarios=usuarios; this.encoder=encoder;
+    }
+
+    /** Importacoes de producao desta tela, com o que ainda pode ser excluido. */
+    @GetMapping("/arquivos")
+    public List<Map<String,Object>> arquivos(@RequestParam long hospitalId) { return exclusoes.listar(hospitalId); }
+
+    public record ConfirmacaoExclusao(String senha) {}
+    // Exclusao definitiva so com a senha de quem esta logado; erro conta como tentativa de login.
+    @PostMapping("/arquivos/{id}/exclusao")
+    public ExclusaoProducaoService.Resultado excluirArquivo(@PathVariable long id,@RequestBody ConfirmacaoExclusao dados,@AuthenticationPrincipal UsuarioAutenticado usuario) throws Exception {
+        var conta=usuarios.loadUserByUsername(usuario.email());
+        if(!conta.isAccountNonLocked()) throw new org.springframework.security.access.AccessDeniedException("Acesso bloqueado temporariamente apos tentativas invalidas. Aguarde 15 minutos");
+        if(dados==null||dados.senha()==null||dados.senha().isBlank()||!encoder.matches(dados.senha(),conta.getPassword())) {
+            usuarios.falha(usuario.email());
+            throw new IllegalArgumentException("Senha incorreta. A importacao nao foi excluida");
+        }
+        usuarios.sucesso(usuario.id());
+        return exclusoes.excluir(id,usuario);
     }
 
     /** Arquivo do hospital na mesma tela, antes ou depois da producao. competencia e a do faturamento (NF). */
