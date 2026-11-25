@@ -51,6 +51,13 @@ public class ConciliadorVisitas {
                 : hospital != null ? hospital.procedimento() : original.getOrDefault("procedimento/mat-med", ""); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "codigoProcedimento", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public String codigoEfetivo() { return camposRevisados != null ? camposRevisados.codigoProcedimento() : hospital == null ? null : hospital.codigo(); }
+        /** Codigo e nome do exame como vieram na producao; a tela usa quando ainda nao ha registro do hospital. */
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "codigoProducao", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String codigoProducao() { return ConciliadorVisitas.codigoProducao(original); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "procedimentoProducao", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String procedimentoProducao() { return ConciliadorVisitas.nomeProducao(original); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "tipoProducao", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String tipoProducao() { String c = codigoProducao(), n = procedimentoProducao(); return c.isBlank() && n.isBlank() ? null : TipoProcedimento.classificar("", c, n).name(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "valorHospital", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public BigDecimal valorEfetivo() { return camposRevisados != null ? camposRevisados.valorHospital() : hospital == null ? null : hospital.valorTotal(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "repasse", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
@@ -219,6 +226,8 @@ public class ConciliadorVisitas {
         for (String coluna : colunas) { String valor = dados.getOrDefault(coluna, ""); if (valor != null && !valor.isBlank()) return valor.trim(); }
         return "";
     }
+    public static String codigoProducao(Map<String,String> dados) { return dados == null ? "" : LeitorPlanilhaVisitas.identificador(primeiro(dados, COLUNAS_CODIGO)); }
+    public static String nomeProducao(Map<String,String> dados) { return dados == null ? "" : primeiro(dados, COLUNAS_NOME); }
     private static String codigoLimpo(String codigo) { return LeitorPlanilhaVisitas.identificador(codigo == null ? "" : codigo).replaceAll("[^0-9A-Za-z]", ""); }
 
     /**
