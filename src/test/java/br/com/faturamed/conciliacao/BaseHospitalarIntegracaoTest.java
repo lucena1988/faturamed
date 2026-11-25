@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class BaseHospitalarIntegracaoTest {
     @Autowired BaseHospitalarService service;
+    @Autowired ReconciliacaoAutomaticaService reconciliacao;
     @Autowired RevisaoVisitasService revisoes;
     @Autowired RecebimentoService recebimentos;
     @Autowired JdbcTemplate jdbc;
@@ -116,6 +117,36 @@ class BaseHospitalarIntegracaoTest {
         var visitas=revisoes.carregar(relatorio).atual().visitas();
         assertThat(visitas).extracting(ConciliadorVisitas.Visita::status).containsOnly(ConciliadorVisitas.Status.PAGA);
         assertThat(visitas).extracting(ConciliadorVisitas.Visita::codigoEfetivo).containsExactly("40901360","40901106");
+    }
+    @Test void planilhaDoHospitalComExamesDeVariosMesesReconciliaCadaProducaoNaSuaCompetencia() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        // Base inicial (exigida para importar producao), sem relacao com os exames abaixo.
+        service.importarHospital(hospital,"2026-06",planilha(List.of(cabecalho,List.of("100","2026-06-02",nome(ana),"40901106","Ecodoppler","200","0.5","100","Faturado"))),usuario);
+        var producaoJulho=service.importarProducao(hospital,ana,"2026-07",planilha(List.of(List.of("Atendimento","Dt."),List.of("700","2026-07-10"))),usuario);
+        var producaoAgosto=service.importarProducao(hospital,ana,"2026-08",planilha(List.of(List.of("Atendimento","Dt."),List.of("800","2026-08-20"))),usuario);
+        var producaoSemRelacao=service.importarProducao(hospital,ana,"2026-05",planilha(List.of(List.of("Atendimento","Dt."),List.of("500","2026-05-05"))),usuario);
+        assertThat(revisoes.carregar(producaoJulho.relatorioId()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PENDENTE);
+        // NF de setembro com exames de julho, agosto e setembro.
+        var nf=service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,
+                List.of("700","2026-07-10",nome(ana),"40901106","Ecodoppler","200","0.5","100","Faturado"),
+                List.of("800","2026-08-20",nome(ana),"40901106","Ecodoppler","200","0.5","100","Faturado"),
+                List.of("900","2026-09-15",nome(ana),"40901106","Ecodoppler","200","0.5","100","Faturado"))),usuario);
+        assertThat(reconciliacao.competenciasDosExames(nf.arquivoId())).containsExactly(Map.entry("2026-07",1L),Map.entry("2026-08",1L),Map.entry("2026-09",1L));
+        var reconciliadas=reconciliacao.reconciliarAfetadas(hospital,nf.arquivoId());
+        assertThat(reconciliadas).extracting(ReconciliacaoAutomaticaService.Reconciliada::competencia).containsExactly("2026-07","2026-08");
+        assertThat(reconciliadas).allSatisfy(r->{
+            assertThat(r.erro()).isNull();
+            assertThat(revisoes.carregar(r.relatorioNovo()).atual().visitas().getFirst().status()).isEqualTo(ConciliadorVisitas.Status.PAGA);
+        });
+        // A producao sem atendimentos na planilha nao ganha nova versao.
+        assertThat(jdbc.queryForObject("select count(*) from conciliacao_visitas where anterior_id=?",Long.class,producaoSemRelacao.relatorioId())).isZero();
+        // No acompanhamento, cada exame aparece na competencia do procedimento, faturado em 09.
+        var julho=acompanhamento.consultar(hospital,"2026-07").visitas();
+        assertThat(julho).singleElement().satisfies(item->{
+            assertThat(item.competenciaExame()).isEqualTo("2026-07");
+            assertThat(item.competencia()).isEqualTo("2026-09");
+            assertThat(item.etapa()).isEqualTo(AcompanhamentoBaseHospitalarService.Etapa.PAGO);
+        });
     }
     @Test void mesmoExameRepetidoNoMesmoAtendimentoContinuaEmAnalise() throws Exception {
         var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
@@ -257,8 +288,9 @@ class BaseHospitalarIntegracaoTest {
         assertThat(hospitalares).extracting(a->((Number)a.get("quantidade_registros")).intValue()).containsExactly(3,2);
         assertThat(hospitalares).allSatisfy(a->assertThat(a.get("nome")).isNotNull());
         assertThat(acompanhamento.consultar(hospital).visitasDistintas()).isEqualTo(5);
-        assertThat(acompanhamento.consultar(hospital,"2026/01").visitasDistintas()).isEqualTo(2);
-        assertThat(acompanhamento.consultar(hospital,"2026-02").visitasDistintas()).isEqualTo(3);
+        // O exame de 30/01 veio na planilha de 02, mas pertence a competencia do procedimento (01).
+        assertThat(acompanhamento.consultar(hospital,"2026/01").visitasDistintas()).isEqualTo(3);
+        assertThat(acompanhamento.consultar(hospital,"2026-02").visitasDistintas()).isEqualTo(2);
     }
 
     @Test void mesmoAtendimentoDataComDoisMedicosGeraVinculosDiferentes() throws Exception {

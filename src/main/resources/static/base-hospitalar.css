@@ -99,3 +99,4 @@ td a, td button { margin: 4px; }
 .flow-table .col-comp .comp-outra { padding: 0 4px; border-radius: 4px; }
 .flow-table .col-valores .sub { display: inline-block; min-width: 62px; }
 .flow-table .col-acoes a { display: block; margin: 0 0 4px; }
+#message ul.reconciliadas { margin: 6px 0 0; padding-left: 20px; font-weight: 500; } #message ul.reconciliadas a { margin-left: 4px; padding: 0 6px; }

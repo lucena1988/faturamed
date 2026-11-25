@@ -59,16 +59,16 @@ public class ExportadorAcompanhamento {
             resumo.setColumnWidth(0,30*256); resumo.setColumnWidth(1,50*256);
 
             Sheet sheet=wb.createSheet("Acompanhamento");
-            String[] cab={"Hospital","ID fixo","Atendimento","Data","Paciente","Convenio","Cod. procedimento","Procedimento","Medico","Empresa","Comp. producao","Comp. faturada (hospital)","Status","Etapa","Faturado (R$)","Recebido (R$)"};
+            String[] cab={"Hospital","ID fixo","Atendimento","Data","Paciente","Convenio","Cod. procedimento","Procedimento","Medico","Empresa","Comp. exame","Comp. producao","Comp. faturada (hospital)","Status","Etapa","Faturado (R$)","Recebido (R$)"};
             Row h=sheet.createRow(0);
             for(int i=0;i<cab.length;i++){ Cell c=h.createCell(i); c.setCellValue(cab[i]); c.setCellStyle(titulo); }
             for(var i:itens) {
                 String status=PAGAS.contains(i.etapa())?"PAGO "+mesAno(i.competencia()):ETAPAS.get(i.etapa());
                 preencher(sheet.createRow(sheet.getLastRowNum()+1),new Object[]{hospital,i.visitaId(),i.atendimento(),i.data(),texto(i.paciente()),texto(i.convenio()),texto(i.codigoProcedimento()),texto(i.procedimento()),i.medico(),
-                        Objects.toString(i.empresa(),"—"),mesAno(i.competenciaProducao()),mesAno(i.competencia()),status,ETAPAS.get(i.etapa()),
+                        Objects.toString(i.empresa(),"—"),mesAno(i.competenciaExame()),mesAno(i.competenciaProducao()),mesAno(i.competencia()),status,ETAPAS.get(i.etapa()),
                         valor(i.faturado()),valor(i.recebido())},moeda,data);
             }
-            int[] larguras={30,10,14,12,32,22,14,40,32,30,14,18,22,24,14,14};
+            int[] larguras={30,10,14,12,32,22,14,40,32,30,12,14,18,22,24,14,14};
             for(int i=0;i<larguras.length;i++) sheet.setColumnWidth(i,larguras[i]*256);
             sheet.createFreezePane(0,1); sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0,Math.max(0,sheet.getLastRowNum()),0,cab.length-1));
             wb.write(out); return out.toByteArray();

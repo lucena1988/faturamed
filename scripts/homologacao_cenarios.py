@@ -206,10 +206,12 @@ def executar(env, admin, alfa, beta):
 
     def complemento():
         params = contexto['cobranca_params']
-        admin.call('POST', '/api/base-hospitalar/hospital', params, files=fixture('complemento-cobranca.xlsx', [HEADERS, hospital_row('66000001', alfa['nome'], 85)]))
+        importado = admin.call('POST', '/api/base-hospitalar/hospital', params, files=fixture('complemento-cobranca.xlsx', [HEADERS, hospital_row('66000001', alfa['nome'], 85)]))
         report = contexto['cobranca_report']
-        version = admin.call('GET', f'/api/conciliacoes/visitas/{report}/acompanhamento')['versao']
-        updated = admin.call('POST', f'/api/base-hospitalar/relatorios/{report}/atualizar?versao={version}')['id']
+        # A importacao ja reconcilia a producao que tem atendimentos na planilha (nova versao do relatorio).
+        reconciliada = next(r for r in importado['reconciliadas'] if r['relatorioAnterior'] == report)
+        assert reconciliada['erro'] is None
+        updated = reconciliada['relatorioNovo']
         newurl = f'/api/conciliacoes/visitas/{updated}/cobranca'
         assert [v['linha'] for v in admin.call('GET', newurl)['visitas']] == [3, 4]
         history = admin.call('GET', newurl + '/visitas/2')
