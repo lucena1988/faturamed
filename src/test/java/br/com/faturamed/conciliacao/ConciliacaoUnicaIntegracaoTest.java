@@ -72,6 +72,9 @@ class ConciliacaoUnicaIntegracaoTest {
         var resposta=unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-01"),usuario);
         assertThat(((ConciliacaoUnicaService.Resumo)resposta.get("conciliacao")).vinculadas()).isEqualTo(1);
         assertThat(situacoes()).containsEntry("123","PAGA").containsEntry("124","PENDENTE");
+        // Producao sem coluna de procedimento mostra o do hospital quando ha vinculo.
+        assertThat(producao.visitas(hospital,"2026-09").getFirst().get("procedimento")).isEqualTo("Visita");
+        assertThat(producao.visitas(hospital,"2026-10").getFirst().get("procedimento")).isNull();
         // A competencia continua sendo a da data do atendimento, nao a da NF.
         assertThat(producao.visitas(hospital,"2026-09")).extracting(v->v.get("atendimento")).containsExactly("123");
     }

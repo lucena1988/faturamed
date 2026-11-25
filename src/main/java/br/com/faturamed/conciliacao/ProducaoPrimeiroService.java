@@ -99,8 +99,10 @@ public class ProducaoPrimeiroService {
         return jdbc.queryForList("""
                 select v.id,v.arquivo_id,v.linha,v.atendimento,v.data_visita,v.medico_id,v.medico_nome,
                        coalesce(v.competencia_manual,v.competencia) as competencia,v.competencia as competencia_derivada,
-                       v.decisao,v.anterior_id,v.situacao,v.motivo,v.hospital_visita_id,v.medico_inferido,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento
-                from producao_visita v where v.hospital_id=? and (?::text is null or coalesce(v.competencia_manual,v.competencia)=?)
+                       v.decisao,v.anterior_id,v.situacao,v.motivo,v.hospital_visita_id,v.medico_inferido,
+                       coalesce(nullif(v.campos->>'produto',''),h.campos->>'produto') as procedimento,
+                       coalesce(nullif(v.campos->>'cod produto',''),h.campos->>'cod produto') as codigo_procedimento
+                from producao_visita v left join visita_base_hospitalar h on h.id=v.hospital_visita_id where v.hospital_id=? and (?::text is null or coalesce(v.competencia_manual,v.competencia)=?)
                 order by v.data_visita,v.id
                 """,hospitalId,competencia,competencia);
     }
