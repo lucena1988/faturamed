@@ -21,4 +21,13 @@ class MesmoExameProducaoTest {
         assertThat(ConciliadorVisitas.mesmoExame(Map.of("procedimento","DOPPLER"),hospital("","Doppler"))).isTrue();
         assertThat(ConciliadorVisitas.mesmoExame(Map.of(),hospital("40901360","Doppler"))).isTrue();
     }
+
+    @Test void visitaSemHospitalExpoeCodigoNomeETipoDaProducao() {
+        var visita=new ConciliadorVisitas.Visita(2,"57480263",java.time.LocalDate.of(2026,9,18),ConciliadorVisitas.Status.PENDENTE,"Sem correspondente",
+                Map.of("atendimento","57480263","codigo procedimento","40901106","procedimento","Ecodopplercardiograma Transtoracico"),null,java.util.List.of());
+        assertThat(visita.codigoProducao()).isEqualTo("40901106");
+        assertThat(visita.procedimentoProducao()).isEqualTo("Ecodopplercardiograma Transtoracico");
+        assertThat(visita.tipoProducao()).isEqualTo("EXAME");
+        assertThat(visita.codigoEfetivo()).isNull();
+    }
 }

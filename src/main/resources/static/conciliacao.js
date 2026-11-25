@@ -147,9 +147,11 @@ function renderRows() {
     const total = visit.camposRevisados ? visit.valorHospital : visit.valorHospital ?? h?.valorTotal;
     const repasse = visit.camposRevisados ? visit.repasse : visit.repasse ?? h?.repasse;
     const values = [visit.linhaMedico, visit.data ? visit.data.split('-').reverse().join('/') : 'Não informada', visit.atendimento,
-      visit.medico ?? h?.medico ?? visit.original.medico ?? '', visit.procedimento ?? h?.procedimento ?? visit.original['procedimento/mat-med'] ?? '',
-      ({ VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro' })[h?.tipo] || (h ? 'Visita' : '—'),
-      (visit.camposRevisados ? visit.codigoProcedimento : visit.codigoProcedimento ?? h?.codigo) || 'Não informado',
+      visit.medico ?? h?.medico ?? visit.original.medico ?? '',
+      // Sem registro do hospital, mostra o codigo e o nome do exame como vieram na producao.
+      (visit.procedimento ?? h?.procedimento ?? visit.original['procedimento/mat-med']) || visit.procedimentoProducao || '',
+      ({ VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro' })[h?.tipo || visit.tipoProducao] || (h ? 'Visita' : '—'),
+      (visit.camposRevisados ? visit.codigoProcedimento : visit.codigoProcedimento ?? h?.codigo) || visit.codigoProducao || 'Não informado',
       total == null ? '' : money.format(total), repasse == null ? '' : money.format(repasse) + (!visit.camposRevisados && h?.origemRepasse === 'CADASTRO' ? ' (cadastro)' : ''), visit.status, visit.motivo,
       categoryLabels[progress.get(visit.linhaMedico)?.categoria] || 'Carregando...', originLabels[progress.get(visit.linhaMedico)?.origem] || 'Carregando...'];
     const row = document.createElement('tr');
@@ -341,7 +343,7 @@ async function openReview(line) {
     for (const [label, value] of [['Data', original.data ? original.data.split('-').reverse().join('/') : 'Não informada'],
       ['Status automatico', original.status], ['Status atual', detail.atual.status],
       ['Medico na producao', original.original.medico || 'Não informado'],
-      ['Procedimento na producao', original.original['procedimento/mat-med'] || 'Não informado'],
+      ['Procedimento na producao', [original.codigoProducao, original.original['procedimento/mat-med'] || original.procedimentoProducao].filter(Boolean).join(' - ') || 'Não informado'],
       ['Valor na producao', original.original['valor orig'] || 'Não informado']]) {
       const item = node('div'); item.append(node('dt', label), node('dd', value)); summary.append(item);
     }

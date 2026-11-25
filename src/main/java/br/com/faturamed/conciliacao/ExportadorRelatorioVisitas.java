@@ -98,11 +98,11 @@ public class ExportadorRelatorioVisitas {
                         visita.linhaMedico(), visita.data(), visita.atendimento(),
                         originalOuHospital(visita, "convenio", h == null ? null : h.convenio()),
                         originalOuHospital(visita, "nome", h == null ? null : h.paciente()),
-                        visita.procedimentoEfetivo(), visita.medicoEfetivo(),
+                        visita.procedimentoEfetivo().isBlank() ? visita.procedimentoProducao() : visita.procedimentoEfetivo(), visita.medicoEfetivo(),
                         visita.camposRevisados() != null ? visita.valorEfetivo() : visita.original().getOrDefault("valor orig", "").isBlank()
                                 || new BigDecimal(visita.original().get("valor orig")).signum() == 0
                                 ? (h == null ? null : h.valorTotal()) : visita.original().get("valor orig"), visita.status().name(),
-                        visita.codigoEfetivo(), h == null ? null : h.conta(), visita.valorEfetivo(),
+                        visita.codigoEfetivo() == null || visita.codigoEfetivo().isBlank() ? visita.codigoProducao() : visita.codigoEfetivo(), h == null ? null : h.conta(), visita.valorEfetivo(),
                         h == null ? null : h.regra(), visita.repasseEfetivo(), h == null ? null : h.linha(),
                         medico == null ? visita.candidatos().size() : null, visita.motivo(), origem(ultimas.get(visita.linhaMedico()))}, moeda, data);
             }
