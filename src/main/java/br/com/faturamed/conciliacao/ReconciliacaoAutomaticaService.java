@@ -31,7 +31,10 @@ public class ReconciliacaoAutomaticaService {
         return resultado;
     }
 
-    /** Producoes do hospital com algum atendimento (ou, sem atendimento, alguma data) presente na planilha importada. */
+    /**
+     * Producoes do hospital com algum atendimento (ou, sem atendimento, alguma data) presente na planilha importada.
+     * Repeticoes em analise nao disparam: aguardam a decisao manual, para nao alterar producoes ja quitadas.
+     */
     public List<Reconciliada> reconciliarAfetadas(long hospitalId,long arquivoHospitalId) {
         var afetadas=jdbc.queryForList("""
                 select a.id,a.nome,a.competencia,a.relatorio_id,coalesce(m.nome,case when a.medico_id is null then 'Varios medicos' end) as medico
@@ -39,8 +42,8 @@ public class ReconciliacaoAutomaticaService {
                 where a.hospital_id=? and a.tipo='PRODUCAO' and a.relatorio_id is not null
                   and exists(select 1 from conciliacao_visitas c, jsonb_array_elements(c.relatorio->'visitas') item
                              where c.id=a.relatorio_id
-                               and (item->>'atendimento' in (select atendimento from visita_base_hospitalar where arquivo_atual_id=?)
-                                    or (coalesce(item->>'atendimento','')='' and item->>'data' in (select data_visita::text from visita_base_hospitalar where arquivo_atual_id=?))))
+                               and (item->>'atendimento' in (select atendimento from visita_base_hospitalar where arquivo_atual_id=? and decisao in ('ORIGINAL','VISITA_DISTINTA'))
+                                    or (coalesce(item->>'atendimento','')='' and item->>'data' in (select data_visita::text from visita_base_hospitalar where arquivo_atual_id=? and decisao in ('ORIGINAL','VISITA_DISTINTA')))))
                 order by a.competencia,a.id
                 """,hospitalId,arquivoHospitalId,arquivoHospitalId);
         List<Reconciliada> resultado=new ArrayList<>();

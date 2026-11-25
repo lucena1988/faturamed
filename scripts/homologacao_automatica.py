@@ -199,8 +199,10 @@ def run():
         result = admin.call('POST', '/api/base-hospitalar/hospital', {**params, 'modoHospital': 'ATUALIZAR'}, files=updated)
         latest = admin.call('GET', f'/api/base-hospitalar/visitas?hospitalId={hospital}')
         assert [item['id'] for item in latest] == initial_ids
-        version = admin.call('GET', f'/api/conciliacoes/visitas/{report}/acompanhamento')['versao']
-        newer = admin.call('POST', f'/api/base-hospitalar/relatorios/{report}/atualizar?versao={version}')['id']
+        # A importacao reconcilia sozinha as producoes com atendimentos na planilha (nova versao do relatorio).
+        reconciliada = next(r for r in result['reconciliadas'] if r['relatorioAnterior'] == report)
+        assert reconciliada['erro'] is None and reconciliada['relatorioNovo']
+        newer = reconciliada['relatorioNovo']
         visit = admin.call('GET', f'/api/conciliacoes/visitas/{newer}/recebimentos')['visitas'][0]
         assert (visit['faturado'], visit['recebido'], visit['saldo']) == (150, 40, 110)
         assert admin.call('GET', f'/api/base-hospitalar/visitas/{initial_ids[-1]}/historico') is not None
