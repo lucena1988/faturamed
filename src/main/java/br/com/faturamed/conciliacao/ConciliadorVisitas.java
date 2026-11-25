@@ -205,25 +205,40 @@ public class ConciliadorVisitas {
 
     private boolean conflita(LeitorPlanilhaVisitas.Linha linha, RegistroHospital hospital) {
         String medico = linha.campo("Medico");
-        String procedimento = linha.campo("Procedimento/Mat-Med");
         BigDecimal valor = numero(linha.campo("Valor Orig"), linha.numero());
-        String codigo = LeitorPlanilhaVisitas.identificador(linha.campo("Cod Produto"));
-        return (!codigo.isBlank() && !codigo.equals(hospital.codigo()))
+        return !mesmoExame(linha.campos(), hospital)
                 || (!medico.isBlank() && !LeitorPlanilhaVisitas.normalizar(medico).equals(LeitorPlanilhaVisitas.normalizar(hospital.medico())))
-                || (!procedimento.isBlank() && !procedimento.equals(hospital.codigo())
-                    && !LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(hospital.procedimento())))
                 || (valor != null && valor.signum() != 0 && valor.compareTo(hospital.valorTotal()) != 0);
+    }
+
+    // Colunas da producao que trazem o codigo e o nome do exame, conforme o layout exportado.
+    private static final List<String> COLUNAS_CODIGO = List.of("cod produto", "codigo procedimento", "cd procedimento", "codigo do procedimento");
+    private static final List<String> COLUNAS_NOME = List.of("procedimento/mat-med", "procedimento", "ds procedimento", "descricao procedimento");
+
+    private static String primeiro(Map<String,String> dados, List<String> colunas) {
+        for (String coluna : colunas) { String valor = dados.getOrDefault(coluna, ""); if (valor != null && !valor.isBlank()) return valor.trim(); }
+        return "";
+    }
+    private static String codigoLimpo(String codigo) { return LeitorPlanilhaVisitas.identificador(codigo == null ? "" : codigo).replaceAll("[^0-9A-Za-z]", ""); }
+
+    /**
+     * Mesmo exame entre a linha da producao e o registro do hospital. Com codigo dos dois lados, decide o codigo
+     * (o nome costuma vir escrito diferente em cada sistema); sem codigo, decide o nome.
+     */
+    static boolean mesmoExame(Map<String,String> dados, RegistroHospital hospital) {
+        String codigo = codigoLimpo(primeiro(dados, COLUNAS_CODIGO)), codigoHospital = codigoLimpo(hospital.codigo());
+        if (!codigo.isBlank() && !codigoHospital.isBlank()) return codigo.equals(codigoHospital);
+        String nome = primeiro(dados, COLUNAS_NOME);
+        if (nome.isBlank()) return true;
+        return codigoLimpo(nome).equals(codigoHospital)
+                || LeitorPlanilhaVisitas.normalizar(nome).equals(LeitorPlanilhaVisitas.normalizar(hospital.procedimento()));
     }
 
     static List<RegistroHospital> refinar(List<RegistroHospital> candidatos, Map<String,String> dados) {
         if (candidatos.size() < 2) return candidatos;
         String medico = LeitorPlanilhaVisitas.normalizar(dados.getOrDefault("medico", ""));
-        String codigo = LeitorPlanilhaVisitas.identificador(dados.getOrDefault("cod produto", ""));
-        String procedimento = dados.getOrDefault("procedimento/mat-med", "");
         var filtrados = candidatos.stream().filter(h -> (medico.isBlank() || medico.equals(LeitorPlanilhaVisitas.normalizar(h.medico())))
-                && (codigo.isBlank() || codigo.equals(h.codigo()))
-                && (procedimento.isBlank() || procedimento.equals(h.codigo())
-                    || LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(h.procedimento())))).toList();
+                && mesmoExame(dados, h)).toList();
         // Keep mismatching candidates visible for review instead of reporting an absent visit.
         return filtrados.isEmpty() ? candidatos : filtrados;
     }

@@ -103,6 +103,20 @@ class BaseHospitalarIntegracaoTest {
         assertThat(service.historico(exameDistinto)).singleElement().satisfies(e->assertThat(e.get("decisao")).isEqualTo("VISITA_DISTINTA"));
         assertThat(jdbc.queryForObject("select decisao from visita_base_hospitalar where id=?",String.class,repeticaoReal)).isEqualTo("EM_ANALISE");
     }
+    @Test void producaoComCodigoProcedimentoSeparaExamesDoMesmoAtendimentoMesmoComNomeDiferente() throws Exception {
+        var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
+        service.importarHospital(hospital,"2026-09",planilha(List.of(cabecalho,
+                List.of("57480748","2026-09-18",nome(ana),"40901106","Ecodopplercardiograma Transtoracico","266.12","0.5","133.06","Faturado"),
+                List.of("57480748","2026-09-18",nome(ana),"40901360","Doppler Colorido De Vasos Cervicais Arteriais Bilateral","273.95","0.5","136.97","Faturado"))),usuario);
+        // Layout de producao do sistema de laudos: "Codigo procedimento" e nome escrito de outra forma.
+        var producao=planilha(List.of(List.of("Atendimento","Dt.","Codigo procedimento","Procedimento"),
+                List.of("57480748","2026-09-18","40901360","Doppler Colorido Arterias Cervicais"),
+                List.of("57480748","2026-09-18","40901106","Ecodopplercardiograma Transtoracico")));
+        long relatorio=service.importarProducao(hospital,ana,"2026-09",producao,usuario).relatorioId();
+        var visitas=revisoes.carregar(relatorio).atual().visitas();
+        assertThat(visitas).extracting(ConciliadorVisitas.Visita::status).containsOnly(ConciliadorVisitas.Status.PAGA);
+        assertThat(visitas).extracting(ConciliadorVisitas.Visita::codigoEfetivo).containsExactly("40901360","40901106");
+    }
     @Test void mesmoExameRepetidoNoMesmoAtendimentoContinuaEmAnalise() throws Exception {
         var cabecalho=List.of("Atendimento","Data Consumo","Medico","Cod Produto","Produto","Valor Tot","Regra","Vl. A Repassar","Setor");
         var linha=List.of("57480748","2026-09-18",nome(ana),"40901106","Ecodopplercardiograma Transtoracico","266.12","0.5","133.06","Faturado");
