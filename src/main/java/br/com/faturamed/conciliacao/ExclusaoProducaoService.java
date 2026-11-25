@@ -29,7 +29,9 @@ public class ExclusaoProducaoService {
         return jdbc.queryForList("""
                 select a.id,a.nome,a.criado_em,m.nome as medico,count(v.id) as visitas,
                        count(v.id) filter (where v.arquivo_relatorio_id is not null) as em_relatorio,
-                       string_agg(distinct coalesce(v.competencia_manual,v.competencia),',' order by coalesce(v.competencia_manual,v.competencia)) as competencias
+                       string_agg(distinct coalesce(v.competencia_manual,v.competencia),',' order by coalesce(v.competencia_manual,v.competencia)) as competencias,
+                       (select string_agg(coalesce(x.tipo_procedimento,'SEM')||':'||x.total,',' order by x.tipo_procedimento)
+                          from (select tipo_procedimento,count(*) as total from producao_visita where arquivo_id=a.id group by 1) x) as tipos
                 from producao_arquivo a
                 left join medico_cadastro m on m.id=a.medico_id
                 left join producao_visita v on v.arquivo_id=a.id

@@ -65,7 +65,14 @@ class ExclusaoUnicaIntegracaoTest {
     @Test void importacaoDaProducaoPodeSerExcluidaComAuditoria() throws Exception {
         long arquivo=producao.importar(hospital,ana,producaoArquivo("a","1","2026-09-01","2","2026-09-02"),usuario).arquivoId();
         assertThat(exclusaoProducao.listar(hospital)).singleElement().satisfies(a->{
-            assertThat(a.get("visitas")).isEqualTo(2L); assertThat(a.get("em_relatorio")).isEqualTo(0L); assertThat(a.get("competencias")).isEqualTo("2026-09"); });
+            assertThat(a.get("visitas")).isEqualTo(2L); assertThat(a.get("em_relatorio")).isEqualTo(0L); assertThat(a.get("competencias")).isEqualTo("2026-09");
+            // Sem codigo nem nome de procedimento e sem tipo informado, o tipo fica indefinido.
+            assertThat(a.get("tipos")).isEqualTo("SEM:2"); });
+        // Com tipo informado na importacao, a lista informa o tipo do arquivo.
+        long exames=producao.importar(hospital,ana,TipoProcedimento.EXAME,producaoArquivo("b","3","2026-09-03"),usuario).arquivoId();
+        assertThat(exclusaoProducao.listar(hospital)).filteredOn(a->((Number)a.get("id")).longValue()==exames).singleElement()
+                .satisfies(a->assertThat(a.get("tipos")).isEqualTo("EXAME:1"));
+        exclusaoProducao.excluir(exames,usuario);
         var resultado=exclusaoProducao.excluir(arquivo,usuario);
         assertThat(resultado.visitas()).isEqualTo(2);
         assertThat(exclusaoProducao.listar(hospital)).isEmpty();

@@ -24,6 +24,15 @@
     finally { busy = false; document.querySelectorAll('button, input, select').forEach(control => { control.disabled = false; }); }
   }
   const TIPOS = {VISITA: 'Visita', EXAME: 'Exame', CONSULTA: 'Consulta', OUTRO: 'Outro'};
+  // O sistema chama tudo de "visita" por heranca; o texto segue o tipo: exames, consultas, visitas, ou
+  // "procedimentos" quando o conjunto e misto, sem tipo ou de outro tipo.
+  const SUBSTANTIVOS = {VISITA: ['visita', 'visitas'], EXAME: ['exame', 'exames'], CONSULTA: ['consulta', 'consultas']};
+  function quantidade(n, tipos) {
+    n = Number(n);
+    const unicos = [...new Set((tipos || []).filter(Boolean))];
+    const par = unicos.length === 1 && SUBSTANTIVOS[unicos[0]] ? SUBSTANTIVOS[unicos[0]] : ['procedimento', 'procedimentos'];
+    return `${n} ${n === 1 ? par[0] : par[1]}`;
+  }
   // Codigo do exame em destaque discreto e o nome embaixo, como vieram na planilha.
   function celulaExame(codigo, nome) {
     const td = element('td');
@@ -38,8 +47,8 @@
     const porComp = new Map();
     for (const v of visitas) {
       if (v.situacao === 'DUPLICADA') continue; // duplicadas ficam fora dos totais
-      const item = porComp.get(v.competencia) || {total: 0, PAGA: 0, PENDENTE: 0, DIVERGENTE: 0, EM_ANALISE: 0};
-      item.total++; item[v.situacao]++; porComp.set(v.competencia, item);
+      const item = porComp.get(v.competencia) || {total: 0, PAGA: 0, PENDENTE: 0, DIVERGENTE: 0, EM_ANALISE: 0, tipos: new Set()};
+      item.total++; item[v.situacao]++; item.tipos.add(v.tipo_procedimento || 'SEM'); porComp.set(v.competencia, item);
     }
     const atual = find('competencia-filter').value;
     find('comp-cards').replaceChildren();
@@ -51,7 +60,7 @@
       const dados = porComp.get(comp);
       // div com role=button: o estilo global de button sobrescreve cores de cartoes.
       const card = element('div'); card.className = 'comp-card'; card.setAttribute('role', 'button'); card.tabIndex = 0; card.setAttribute('aria-pressed', String(atual === comp));
-      card.append(element('h3', mesAno(comp)), element('span', `${dados.total} ${dados.total === 1 ? 'visita' : 'visitas'}`));
+      card.append(element('h3', mesAno(comp)), element('span', quantidade(dados.total, [...dados.tipos])));
       card.lastChild.className = 'total';
       for (const chave of Object.keys(SITUACOES)) {
         const linha = element('div'); linha.className = 'linha'; linha.append(element('span', SITUACOES[chave]), element('strong', dados[chave])); card.append(linha);
@@ -104,7 +113,7 @@
       row.append(acoes);
       find('visits').append(row);
     }
-    find('count').textContent = `${filtradas.length} ${filtradas.length === 1 ? 'visita' : 'visitas'}`;
+    find('count').textContent = quantidade(filtradas.length, filtradas.map(v => v.tipo_procedimento || 'SEM'));
   }
   const resumoVisita = v => `ID ${v.id} · atendimento ${v.atendimento || 'sem número'} · ${dataBr(v.data_visita)} · ${nomeMedico(v) || 'médico não identificado'}`;
   function abrirCompetencia(v) {
@@ -215,7 +224,7 @@
     find('files').replaceChildren();
     const itens = [
       ...arquivosProducao.map(a => ({tipo: 'Produção', producao: true, id: a.id, nome: a.nome, criado: a.criado_em,
-        detalhe: `${a.visitas} ${Number(a.visitas) === 1 ? 'visita' : 'visitas'}${a.medico ? ` · ${a.medico}` : ' · vários médicos'} · competências ${String(a.competencias || '—').split(',').map(mesAno).join(', ')}${Number(a.em_relatorio) ? ` · ${a.em_relatorio} em relatório` : ''}`})),
+        detalhe: `${quantidade(a.visitas, String(a.tipos || '').split(',').filter(Boolean).map(p => p.split(':')[0]))}${a.medico ? ` · ${a.medico}` : ' · vários médicos'} · competências ${String(a.competencias || '—').split(',').map(mesAno).join(', ')}${Number(a.em_relatorio) ? ` · ${a.em_relatorio} em relatório` : ''}`})),
       ...arquivosHospital.map(a => ({tipo: 'Hospital', producao: false, id: a.id, nome: a.nome, criado: a.criado_em,
         detalhe: `${a.quantidade_registros ?? '—'} registros · faturamento ${mesAno(a.competencia)}${a.modo_hospital === 'ATUALIZAR' ? ' · atualização' : ''}`}))
     ].sort((x, y) => String(y.criado).localeCompare(String(x.criado)));
@@ -242,7 +251,7 @@
         const url = item.producao ? `/api/conciliacao-unica/arquivos/${item.id}/exclusao` : `/api/base-hospitalar/arquivos/${item.id}/exclusao`;
         const r = await request(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({senha: resposta.senha})});
         showMessage('success', item.producao
-          ? `Importação excluída (${r.visitas} ${r.visitas === 1 ? 'visita' : 'visitas'}${r.repeticoesPromovidas ? `; ${r.repeticoesPromovidas} repetição(ões) passaram a ser a original` : ''}). Você pode importar a planilha de novo.`
+          ? `Importação excluída (${quantidade(r.visitas, [])}${r.repeticoesPromovidas ? `; ${r.repeticoesPromovidas} repetição(ões) passaram a ser a original` : ''}). Você pode importar a planilha de novo.`
           : 'Planilha do hospital excluída. Importe-a novamente na competência correta.');
         await load();
       });
@@ -280,6 +289,7 @@
     if (!find('hospital').value) { showMessage('error', 'Selecione um hospital ativo.'); return; }
     if (!data.get('medicoId')) data.delete('medicoId');
     if (!data.get('tipoProcedimento')) data.delete('tipoProcedimento');
+    const tipoImportado = data.get('tipoProcedimento');
     data.set('hospitalId', find('hospital').value);
     try {
       await perform(async () => {
@@ -289,7 +299,7 @@
         else {
           const meses = Object.entries(r.competencias || {}).map(([comp, total]) => `${mesAno(comp)}: ${total}`).join(' · ');
           const aviso = [r.emAnalise ? `${r.emAnalise} repetidas em análise.` : '', r.semMedico ? `${r.semMedico} sem médico identificado.` : ''].filter(Boolean).join(' ');
-          showMessage(r.emAnalise || r.semMedico ? 'warning' : 'success', `${r.visitas} ${r.visitas === 1 ? 'visita importada' : 'visitas importadas'} — competências: ${meses}. ${aviso}${resumoConciliacao(r.conciliacao)}`);
+          showMessage(r.emAnalise || r.semMedico ? 'warning' : 'success', `Importação concluída: ${quantidade(r.visitas, tipoImportado ? [tipoImportado] : [])} — competências: ${meses}. ${aviso}${resumoConciliacao(r.conciliacao)}`);
         }
         form.querySelector('[type=file]').value = '';
         await load();
