@@ -1,6 +1,7 @@
 package br.com.faturamed.seguranca;
 
 import br.com.faturamed.conciliacao.ConciliadorVisitas;
+import br.com.faturamed.conciliacao.TipoProcedimento;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,7 +41,8 @@ public class ExportadorPreviaLiberacao {
             Font negrito=workbook.createFont();negrito.setBold(true);
             CellStyle titulo=workbook.createCellStyle();titulo.setFont(negrito);titulo.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
             titulo.setFillPattern(FillPatternType.SOLID_FOREGROUND);titulo.setWrapText(true);
-            CellStyle destaque=workbook.createCellStyle();destaque.setFont(negrito);destaque.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());destaque.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font fonteTitulo=workbook.createFont();fonteTitulo.setBold(true);fonteTitulo.setFontHeightInPoints((short)16);
+            CellStyle estiloTitulo=workbook.createCellStyle();estiloTitulo.setFont(fonteTitulo);
             CellStyle rotulo=workbook.createCellStyle();rotulo.setFont(negrito);
             CellStyle totalMoeda=workbook.createCellStyle();totalMoeda.cloneStyleFrom(moeda);totalMoeda.setFont(negrito);
             var estilos=new Estilos(moeda,data,titulo,rotulo,totalMoeda);
@@ -54,22 +56,23 @@ public class ExportadorPreviaLiberacao {
             Sheet resumo=workbook.createSheet("Resumo");
             var geradaEm=LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
             int linha=0;
-            Row aviso=resumo.createRow(linha++);aviso.createCell(0).setCellValue("PREVIA - conferencia interna. Nada foi enviado ao medico.");aviso.getCell(0).setCellStyle(destaque);
+            Row cabecalhoRelatorio=resumo.createRow(linha++);cabecalhoRelatorio.createCell(0).setCellValue(TITULO);cabecalhoRelatorio.getCell(0).setCellStyle(estiloTitulo);
+            var sub=substantivo(previa);
             String situacao="LIBERADO".equals(previa.situacao())?"Liberado ao medico (esta revisao ja foi publicada)":"Em revisao (ainda nao liberado)";
             long noPortal=previa.medicos().stream().mapToLong(m->m.visitas().size()).sum();
             long outrosQtd=previa.outrosExames().values().stream().mapToLong(List::size).sum();
             String medicosTexto=previa.medicos().isEmpty()?"-":previa.medicos().stream().map(LiberacaoRelatorioService.PreviaMedico::nome).collect(Collectors.joining(", "));
             Object[][] itens={{"Hospital",previa.hospital()},{"Medico(s)",medicosTexto},{"Competencia da producao",competencia.isEmpty()?"-":competencia},
                     {"Competencia faturada pelo hospital",faturamento},{"Relatorio",previa.relatorio()},{"Revisao",previa.versao()},{"Situacao atual",situacao},{"Gerada em",geradaEm},
-                    {"Visitas no relatorio (sem excluidas)",previa.visitas()},{"Visitas que os medicos passam a ver no portal",noPortal},
-                    {"Exames do mesmo faturamento fora deste relatorio (incluidos nas abas dos medicos)",outrosQtd},
-                    {"Exames do mesmo faturamento de outros medicos ou sem medico cadastrado (nao incluidos)",previa.deOutrosMedicos()},
-                    {"Repasse desses exames de outros medicos (R$)",previa.repasseDeOutrosMedicos()},
-                    {"Visitas sem medico cadastrado (nao aparecem no portal)",previa.semMedico().size()},{"Linhas excluidas por duplicidade (nao vao ao medico)",previa.excluidas()}};
+                    {cap(sub.plural())+" no relatorio (sem excluidos)",previa.visitas()},{cap(sub.plural())+" que os medicos passam a ver no portal",noPortal},
+                    {cap(sub.plural())+" do mesmo faturamento fora deste relatorio (incluidos nas abas dos medicos)",outrosQtd},
+                    {cap(sub.plural())+" do mesmo faturamento de outros medicos ou sem medico cadastrado (nao incluidos)",previa.deOutrosMedicos()},
+                    {"Repasse desses "+sub.plural()+" de outros medicos (R$)",previa.repasseDeOutrosMedicos()},
+                    {cap(sub.plural())+" sem medico cadastrado (nao aparecem no portal)",previa.semMedico().size()},{"Linhas excluidas por duplicidade (nao vao ao medico)",previa.excluidas()}};
             for(Object[] item:itens){Row row=resumo.createRow(linha++);Cell nome=row.createCell(0);nome.setCellValue(item[0].toString());nome.setCellStyle(rotulo);preencher(row.createCell(1),item[1],moeda);}
             linha++;
             Row cab=resumo.createRow(linha++);int c=0;
-            for(String texto:new String[]{"Medico","Visitas","Pagas","Pendentes","Divergentes","Repasse das pagas neste relatorio (R$)","Outros exames do faturamento","Repasse dos outros exames (R$)","Total faturado pelo hospital (R$)"}){Cell cell=cab.createCell(c++);cell.setCellValue(texto);cell.setCellStyle(titulo);}
+            for(String texto:new String[]{"Medico",cap(sub.plural()),"Pagas","Pendentes","Divergentes","Repasse das pagas neste relatorio (R$)","Outros "+sub.plural()+" do faturamento","Repasse dos outros "+sub.plural()+" (R$)","Total faturado pelo hospital (R$)"}){Cell cell=cab.createCell(c++);cell.setCellValue(texto);cell.setCellStyle(titulo);}
             BigDecimal repasseGeral=BigDecimal.ZERO,outrosGeral=BigDecimal.ZERO;
             for(var medico:previa.medicos()) {
                 var outros=previa.outrosExames().getOrDefault(medico.id(),List.of());
@@ -88,7 +91,7 @@ public class ExportadorPreviaLiberacao {
             resumo.setColumnWidth(0,80*256);resumo.setColumnWidth(1,40*256);for(int i=2;i<=4;i++)resumo.setColumnWidth(i,14*256);for(int i=5;i<=8;i++)resumo.setColumnWidth(i,26*256);
 
             Set<String> nomes=new HashSet<>(List.of("resumo","fora da liberacao"));
-            for(var medico:previa.medicos()) abaDoMedico(workbook,nomeUnico(medico.nome(),nomes),medico,previa,competencia,estilos);
+            for(var medico:previa.medicos()) abaDoMedico(workbook,nomeUnico(medico.nome(),nomes),medico,previa,competencia,sub,estilos);
             if(!previa.semMedico().isEmpty()) abaForaDaLiberacao(workbook,previa,estilos);
             workbook.write(saida);return saida.toByteArray();
         }
@@ -96,13 +99,52 @@ public class ExportadorPreviaLiberacao {
 
     private record Estilos(CellStyle moeda,CellStyle data,CellStyle titulo,CellStyle rotulo,CellStyle totalMoeda) {}
 
+    public static final String TITULO="Relatório Conciliado mensal";
+
+    /** Como chamar o que o relatorio lista: o rotulo segue o tipo real (exames, visitas, consultas) e, se for misto ou sem tipo, "procedimentos". */
+    record Substantivo(String singular,String plural) {}
+
+    static Substantivo substantivo(LiberacaoRelatorioService.Previa previa) {
+        Set<TipoProcedimento> tipos=EnumSet.noneOf(TipoProcedimento.class);
+        boolean semTipo=false;
+        for(var medico:previa.medicos()) for(var v:medico.visitas()) {
+            var tipo=tipoDe(v.codigoProcedimento(),v.procedimento());
+            if(tipo==null) semTipo=true; else tipos.add(tipo);
+        }
+        for(var lista:previa.outrosExames().values()) for(var o:lista) {
+            var tipo=tipoDe(o.codigo(),o.procedimento());
+            if(tipo==null) semTipo=true; else tipos.add(tipo);
+        }
+        if(!semTipo && tipos.size()==1) {
+            switch(tipos.iterator().next()) {
+                case VISITA: return new Substantivo("visita","visitas");
+                case EXAME: return new Substantivo("exame","exames");
+                case CONSULTA: return new Substantivo("consulta","consultas");
+                default: break;
+            }
+        }
+        return new Substantivo("procedimento","procedimentos");
+    }
+    /** Sem codigo nem nome do procedimento nao ha o que classificar. */
+    private static TipoProcedimento tipoDe(String codigo,String nome) {
+        if((codigo==null || codigo.isBlank()) && (nome==null || nome.isBlank())) return null;
+        return TipoProcedimento.classificar("",codigo,nome);
+    }
+    private static String cap(String texto) { return texto.isEmpty()?texto:Character.toUpperCase(texto.charAt(0))+texto.substring(1); }
+
+    /** Nome do arquivo baixado: "Relatório Conciliado mensal - 09-2026.xlsx" (a competencia da producao, sem a barra que o sistema de arquivos nao aceita). */
+    public static String nomeDoArquivo(List<String> competenciasProducao) {
+        String meses=competenciasProducao.stream().map(c->mesAno(c).replace('/','-')).collect(Collectors.joining("_"));
+        return TITULO+(meses.isBlank()?"":" - "+meses)+".xlsx";
+    }
+
     /** Linha de uma aba de medico: visita do relatorio ou exame do mesmo faturamento que ficou fora dele. */
     record LinhaMedico(int grupo,long ordem,String atendimento,LocalDate data,String paciente,String convenio,String codigo,String procedimento,
             String compProducao,String compFaturada,String origem,String status,BigDecimal repasse,String observacao) {}
 
-    private void abaDoMedico(Workbook workbook,String nomeAba,LiberacaoRelatorioService.PreviaMedico medico,LiberacaoRelatorioService.Previa previa,String competencia,Estilos e) {
+    private void abaDoMedico(Workbook workbook,String nomeAba,LiberacaoRelatorioService.PreviaMedico medico,LiberacaoRelatorioService.Previa previa,String competencia,Substantivo sub,Estilos e) {
         Sheet aba=workbook.createSheet(nomeAba);
-        var linhas=linhasDoMedico(medico,previa,competencia);
+        var linhas=linhasDoMedico(medico,previa,competencia,sub);
         var outros=previa.outrosExames().getOrDefault(medico.id(),List.of());
         BigDecimal noRelatorio=repasseDasPagas(medico.visitas()),foraDoRelatorio=somaOutros(outros);
         Set<String> faturadas=new TreeSet<>();
@@ -110,7 +152,7 @@ public class ExportadorPreviaLiberacao {
         String faturamento=faturadas.isEmpty()?"-":faturadas.stream().map(ExportadorPreviaLiberacao::mesAno).collect(Collectors.joining(", "));
         // Cabecalho do relatorio (fora do filtro): medico, hospital, competencias e totais que fecham com a tela do relatorio.
         Object[][] topo={{"Medico",medico.nome()},{"Hospital",previa.hospital()},{"Competencia da producao",competencia.isEmpty()?"-":competencia},{"Competencia faturada pelo hospital",faturamento},
-                {"Repasse das pagas neste relatorio (R$)",noRelatorio},{"Repasse de exames do mesmo faturamento fora deste relatorio (R$)",foraDoRelatorio},{"Total faturado pelo hospital para este medico (R$)",noRelatorio.add(foraDoRelatorio)}};
+                {"Repasse das pagas neste relatorio (R$)",noRelatorio},{"Repasse de "+sub.plural()+" do mesmo faturamento fora deste relatorio (R$)",foraDoRelatorio},{"Total faturado pelo hospital para este medico (R$)",noRelatorio.add(foraDoRelatorio)}};
         for(int i=0;i<topo.length;i++) {
             Row row=aba.createRow(i);Cell nome=row.createCell(0);nome.setCellValue(topo[i][0].toString());nome.setCellStyle(e.rotulo());
             Cell valor=row.createCell(1);
@@ -143,7 +185,7 @@ public class ExportadorPreviaLiberacao {
      * Linhas da aba: visitas do relatorio e exames do mesmo faturamento fora dele. Faturadas primeiro (as do relatorio, depois as
      * de outros meses ou sem producao), depois divergentes e pendentes, que ficam com 0,00. Dentro de cada grupo, a ordem natural.
      */
-    static List<LinhaMedico> linhasDoMedico(LiberacaoRelatorioService.PreviaMedico medico,LiberacaoRelatorioService.Previa previa,String competencia) {
+    static List<LinhaMedico> linhasDoMedico(LiberacaoRelatorioService.PreviaMedico medico,LiberacaoRelatorioService.Previa previa,String competencia,Substantivo sub) {
         List<LinhaMedico> linhas=new ArrayList<>();
         for(var v:medico.visitas()) {
             var extra=previa.extras().get(v.linhaMedico());
@@ -154,7 +196,7 @@ public class ExportadorPreviaLiberacao {
         }
         for(var o:previa.outrosExames().getOrDefault(medico.id(),List.of())) {
             String mes=o.data()==null?"":mesAnoDaData(o.data());
-            String obs="Faturado pelo hospital em "+mesAno(o.compFaturada())+(mes.isEmpty()?"":" (exame de "+mes+")")+"; "
+            String obs="Faturado pelo hospital em "+mesAno(o.compFaturada())+(mes.isEmpty()?"":" ("+sub.singular()+" de "+mes+")")+"; "
                     +(o.comProducao()?"a producao dele esta em outro relatorio.":"ainda sem producao importada neste relatorio.");
             linhas.add(new LinhaMedico(1,o.visitaId(),o.atendimento(),o.data(),o.paciente(),o.convenio(),o.codigo(),o.procedimento(),
                     o.comProducao()?"Outro relatorio":"Sem producao",o.compFaturada(),o.comProducao()?ORIGEM_OUTRO_RELATORIO:ORIGEM_SEM_PRODUCAO,
