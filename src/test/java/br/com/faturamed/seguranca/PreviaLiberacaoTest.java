@@ -180,7 +180,7 @@ class PreviaLiberacaoTest {
         configurar();
         try(var workbook=new XSSFWorkbook(new ByteArrayInputStream(exportador.exportar(service.previa(1))))) {
             var resumo=workbook.getSheet("Resumo");
-            assertThat(resumo.getRow(0).getCell(0).getStringCellValue()).contains("PREVIA").contains("Nada foi enviado");
+            assertThat(resumo.getRow(0).getCell(0).getStringCellValue()).isEqualTo("Relatório Conciliado mensal").doesNotContain("PREVIA");
             var t=texto(resumo);
             assertThat(t).contains("Hospital Demo","Medico(s)","Ana","Competencia da producao","09/2026","Competencia faturada pelo hospital","08/2026","Em revisao");
             assertThat(t).contains("Exames do mesmo faturamento fora deste relatorio","Exames do mesmo faturamento de outros medicos","Total faturado pelo hospital (R$)");
@@ -197,6 +197,63 @@ class PreviaLiberacaoTest {
             assertThat(fora.getRow(1).getCell(3).getStringCellValue()).isEqualTo("Unimed");
             assertThat(fora.getRow(1).getCell(8).getStringCellValue()).isEqualTo("Obs C");
         }
+    }
+
+    /** Previa de um medico so, com as visitas (codigo, nome) dadas, sem exames de outros meses. */
+    private LiberacaoRelatorioService.Previa previaCom(List<PortalMedicoController.Visita> visitas) {
+        return new LiberacaoRelatorioService.Previa(1,0,"EM_REVISAO","H",List.of("2026-09"),visitas.size(),
+                List.of(new LiberacaoRelatorioService.PreviaMedico(10,"Ana",visitas)),Map.of(),Map.of(),0,BigDecimal.ZERO,List.of(),0);
+    }
+    private PortalMedicoController.Visita lista(int linha,String codigo,String nome) {
+        return new PortalMedicoController.Visita(linha,"A"+linha,LocalDate.of(2026,9,1),ConciliadorVisitas.Status.PAGA,"","Ana",10,nome,codigo,BigDecimal.TEN);
+    }
+    private Row linhaDoResumo(Sheet resumo,String primeiraCelula) { for(Row row:resumo) if(row.getCell(0)!=null && primeiraCelula.equals(row.getCell(0).toString())) return row; return null; }
+
+    @Test void oRotuloSegueOTipo_Exames_Visitas_Consultas_EProcedimentosQuandoMistoOuSemTipo() throws Exception {
+        record Caso(List<PortalMedicoController.Visita> visitas,String plural,String singular) {}
+        var casos=List.of(
+                new Caso(List.of(lista(1,"40901106","Ecodoppler"),lista(2,"40901360","Doppler Venoso")),"exames","exame"),
+                new Caso(List.of(lista(1,"10102019","Visita hospitalar")),"visitas","visita"),
+                new Caso(List.of(lista(1,"10101012","Consulta em consultorio")),"consultas","consulta"),
+                new Caso(List.of(lista(1,"40901106","Ecodoppler"),lista(2,"10102019","Visita hospitalar")),"procedimentos","procedimento"),
+                new Caso(List.of(lista(1,"40901106","Ecodoppler"),lista(2,"","")),"procedimentos","procedimento"));
+        for(var caso:casos) {
+            var previa=previaCom(caso.visitas());
+            var sub=ExportadorPreviaLiberacao.substantivo(previa);
+            assertThat(sub.plural()).as(caso.plural()).isEqualTo(caso.plural());
+            assertThat(sub.singular()).isEqualTo(caso.singular());
+            try(var workbook=new XSSFWorkbook(new ByteArrayInputStream(exportador.exportar(previa)))) {
+                var resumo=workbook.getSheet("Resumo");
+                var cabecalho=linhaDoResumo(resumo,"Medico");
+                String esperado=Character.toUpperCase(caso.plural().charAt(0))+caso.plural().substring(1);
+                assertThat(cabecalho.getCell(1).getStringCellValue()).isEqualTo(esperado);
+                var t=texto(resumo);
+                assertThat(t).contains(esperado+" no relatorio","Outros "+caso.plural()+" do faturamento","Repasse dos outros "+caso.plural());
+                if(!caso.plural().equals("visitas")) assertThat(t).doesNotContain("Visitas no relatorio");
+                assertThat(texto(workbook.getSheet("Ana"))).contains("Repasse de "+caso.plural()+" do mesmo faturamento");
+            }
+        }
+    }
+
+    @Test void oTituloSubstituiOAvisoDePreviaEOObservacaoUsaOSubstantivoDoTipo() throws Exception {
+        var exame=lista(1,"40901106","Ecodoppler");
+        var outro=new LiberacaoRelatorioService.PreviaOutroExame(900,"X1",LocalDate.of(2026,7,10),"40901106","Ecodoppler","","","2026-08",BigDecimal.TEN,false);
+        var previa=new LiberacaoRelatorioService.Previa(1,0,"EM_REVISAO","H",List.of("2026-09"),1,List.of(new LiberacaoRelatorioService.PreviaMedico(10,"Ana",List.of(exame))),
+                Map.of(),Map.of(10L,List.of(outro)),0,BigDecimal.ZERO,List.of(),0);
+        try(var workbook=new XSSFWorkbook(new ByteArrayInputStream(exportador.exportar(previa)))) {
+            var a1=workbook.getSheet("Resumo").getRow(0).getCell(0);
+            assertThat(a1.getStringCellValue()).isEqualTo("Relatório Conciliado mensal");
+            assertThat(texto(workbook.getSheet("Resumo"))).doesNotContain("PREVIA","Nada foi enviado");
+            assertThat(workbook.getFontAt(a1.getCellStyle().getFontIndex()).getBold()).isTrue();
+            assertThat(texto(workbook.getSheet("Ana"))).contains("(exame de 07/2026)");
+        }
+    }
+
+    @Test void nomeDoArquivoEORelatorioConciliadoMensalComACompetenciaSemBarras() {
+        assertThat(ExportadorPreviaLiberacao.nomeDoArquivo(List.of("2026-09"))).isEqualTo("Relatório Conciliado mensal - 09-2026.xlsx");
+        assertThat(ExportadorPreviaLiberacao.nomeDoArquivo(List.of("2026-07","2026-08"))).isEqualTo("Relatório Conciliado mensal - 07-2026_08-2026.xlsx");
+        assertThat(ExportadorPreviaLiberacao.nomeDoArquivo(List.of())).isEqualTo("Relatório Conciliado mensal.xlsx");
+        assertThat(ExportadorPreviaLiberacao.nomeDoArquivo(List.of("2026-09"))).doesNotContain("/","\\");
     }
 
     @Test void statusEMesAnoNoFormatoDoModelo() {
