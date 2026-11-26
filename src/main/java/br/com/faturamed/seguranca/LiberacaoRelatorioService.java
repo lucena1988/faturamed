@@ -39,12 +39,18 @@ public class LiberacaoRelatorioService {
         return new Estado(liberado?"LIBERADO":"EM_REVISAO",estado.versao(),!historico(id)&&!liberado,ativas(relatorio).size(),ativas(relatorio).stream().filter(v->v.status()==ConciliadorVisitas.Status.PENDENTE).count(),ativas(relatorio).stream().filter(v->v.status()==ConciliadorVisitas.Status.DIVERGENTE).count(),ativas(relatorio).size()-dados.values().stream().mapToInt(List::size).sum(),publicado,registros);
     }
     public record PreviaMedico(long id,String nome,List<PortalMedicoController.Visita> visitas) {}
-    public record PreviaForaItem(String atendimento,LocalDate data,ConciliadorVisitas.Status status,String motivo,String procedimento,String codigo) {}
-    public record Previa(long relatorio,long versao,String situacao,String hospital,long visitas,List<PreviaMedico> medicos,List<PreviaForaItem> semMedico,long excluidas) {}
+    /** Dados de conferencia interna que o portal do medico nao recebe: paciente, convenio e a competencia faturada pelo hospital. */
+    public record PreviaExtra(String paciente,String convenio,String compFaturada) {}
+    public record PreviaForaItem(int linha,String atendimento,LocalDate data,ConciliadorVisitas.Status status,String motivo,String procedimento,String codigo,String paciente,String convenio,String compFaturada) {}
+    public record Previa(long relatorio,long versao,String situacao,String hospital,List<String> competenciasProducao,long visitas,List<PreviaMedico> medicos,
+            Map<Integer,PreviaExtra> extras,List<PreviaForaItem> semMedico,long excluidas) {}
+
+    private static String primeiro(String... valores) { for(String v:valores) if(v!=null && !v.isBlank()) return v.trim(); return ""; }
 
     /**
      * O que a liberacao publicaria agora, sem publicar: por medico, as mesmas visitas que ele passaria a ver no portal
      * (mesma funcao da liberacao), mais o que ficaria de fora por nao ter medico cadastrado. Serve para conferir antes do ok.
+     * Para a conferencia traz tambem paciente, convenio e a competencia faturada pelo hospital, que o portal nao mostra.
      */
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public Previa previa(long id) throws Exception {
@@ -52,11 +58,30 @@ public class LiberacaoRelatorioService {
         List<PreviaMedico> medicosDaPrevia=new ArrayList<>();
         for(var entrada:dados.entrySet()){var visitas=entrada.getValue();medicosDaPrevia.add(new PreviaMedico(entrada.getKey(),visitas.getFirst().medico(),visitas));}
         medicosDaPrevia.sort(Comparator.comparing(m->m.nome().toLowerCase(Locale.ROOT)));
-        var cadastros=medicos.listar();Set<Long> ativos=new HashSet<>();cadastros.forEach(m->ativos.add(m.id()));
-        List<PreviaForaItem> semMedico=new ArrayList<>();
-        for(var v:ativas(relatorio)){Long medico=medicos.identificar(v,cadastros);if(medico==null||!dados.containsKey(medico))semMedico.add(new PreviaForaItem(v.atendimento(),v.data(),v.status(),v.motivo(),v.procedimentoEfetivo(),v.codigoEfetivo()));}
+        // Competencia faturada pelo hospital de cada visita, pelo arquivo de onde veio o registro vinculado.
+        Map<Integer,String> faturadas=new HashMap<>();
+        for(var linha:jdbc.queryForList("""
+                select b.linha_producao,a.competencia from vinculo_base_hospitalar b
+                join visita_base_hospitalar v on v.id=b.visita_id join arquivo_base_hospitalar a on a.id=v.arquivo_atual_id
+                where b.relatorio_id=?
+                """,id)) faturadas.put(((Number)linha.get("linha_producao")).intValue(),linha.get("competencia").toString());
+        var cadastros=medicos.listar();
+        Map<Integer,PreviaExtra> extras=new HashMap<>();List<PreviaForaItem> semMedico=new ArrayList<>();
+        for(var v:ativas(relatorio)){
+            var hospital=v.hospital();
+            String paciente=primeiro(hospital==null?null:hospital.paciente(),v.original()==null?null:v.original().get("paciente"));
+            String convenio=primeiro(hospital==null?null:hospital.convenio(),v.original()==null?null:v.original().get("convenio"),v.original()==null?null:v.original().get("operadora"));
+            String faturada=faturadas.getOrDefault(v.linhaMedico(),"");
+            extras.put(v.linhaMedico(),new PreviaExtra(paciente,convenio,faturada));
+            Long medico=medicos.identificar(v,cadastros);
+            if(medico==null||!dados.containsKey(medico))
+                semMedico.add(new PreviaForaItem(v.linhaMedico(),v.atendimento(),v.data(),v.status(),v.motivo(),PortalMedicoController.procedimentoDe(v),PortalMedicoController.codigoDe(v),paciente,convenio,faturada));
+        }
+        // Competencia da producao: a do arquivo do relatorio; sem ele (relatorio antigo), os meses das datas das visitas.
+        List<String> competencias=new ArrayList<>(jdbc.queryForList("select competencia from arquivo_base_hospitalar where relatorio_id=?",String.class,id));
+        if(competencias.isEmpty()) ativas(relatorio).stream().map(ConciliadorVisitas.Visita::data).filter(Objects::nonNull).map(d->String.format("%04d-%02d",d.getYear(),d.getMonthValue())).distinct().sorted().forEach(competencias::add);
         long excluidas=relatorio.visitas().size()-ativas(relatorio).size();
-        return new Previa(id,estado.versao(),consultar(id).situacao(),relatorio.hospital(),ativas(relatorio).size(),medicosDaPrevia,semMedico,excluidas);
+        return new Previa(id,estado.versao(),consultar(id).situacao(),relatorio.hospital(),competencias,ativas(relatorio).size(),medicosDaPrevia,extras,semMedico,excluidas);
     }
     @Transactional(rollbackFor=Exception.class)
     public Estado liberar(long id,Dados request,UsuarioAutenticado user) throws Exception {
