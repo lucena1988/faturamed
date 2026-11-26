@@ -234,34 +234,55 @@ class ConciliacaoUnicaIntegracaoTest {
         assertThat(unica.faturamentoDoRelatorio(-1)).isEmpty();
     }
 
-    @Test void previaDaLiberacaoComDadosReaisTrazCompetenciasCodigoENomeDaProducaoEStatusPago() throws Exception {
-        // O faturamento de 08/2026 paga um exame de setembro; a visita 2 ainda nao tem registro do hospital.
-        unica.importarHospital(hospital,"2026-08","NOVO",null,hospital("1","2026-09-01"),usuario);
+    @Test void previaDaLiberacaoTrazTambemOsExamesDoMesmoFaturamentoDeOutrasCompetencias() throws Exception {
+        // O faturamento de 08/2026 paga um exame de setembro (que tem producao) e dois de julho e agosto, sem producao importada.
+        unica.importarHospital(hospital,"2026-08","NOVO",null,hospital("1","2026-09-01","7","2026-07-10","8","2026-08-12"),usuario);
         producao.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento"),
                 List.of("1","2026-09-01","101","Visita"),List.of("2","2026-09-02","99887766","Doppler Venoso"))),usuario);
         long relatorio=relatorios.gerar(hospital,ana,"2026-09",null,usuario).relatorioId();
         var previa=liberacoes.previa(relatorio);
         assertThat(previa.competenciasProducao()).containsExactly("2026-09");
         assertThat(previa.extras().values()).extracting(e->e.compFaturada()).containsExactlyInAnyOrder("2026-08","");
-        var visitas=previa.medicos().getFirst().visitas();
-        var pendente=visitas.stream().filter(v->v.atendimento().equals("2")).findFirst().orElseThrow();
+        var pendente=previa.medicos().getFirst().visitas().stream().filter(v->v.atendimento().equals("2")).findFirst().orElseThrow();
         assertThat(pendente.codigoProcedimento()).isEqualTo("99887766");
         assertThat(pendente.procedimento()).isEqualTo("Doppler Venoso");
+        // Os dois exames de outros meses vem do arquivo do hospital, sao da Ana e nao tem producao.
+        var outros=previa.outrosExames().get(previa.medicos().getFirst().id());
+        assertThat(outros).extracting(o->o.atendimento()).containsExactly("7","8");
+        assertThat(outros).allSatisfy(o->{ assertThat(o.comProducao()).isFalse(); assertThat(o.compFaturada()).isEqualTo("2026-08"); assertThat(o.repasse()).isEqualByComparingTo("100"); });
+        assertThat(previa.deOutrosMedicos()).isZero();
+        // O total bate com o painel do relatorio: 300 no arquivo, 100 neste relatorio e 200 nos outros exames.
+        var painel=unica.faturamentoDoRelatorio(relatorio).getFirst();
+        assertThat(painel.repasse()).isEqualByComparingTo("300.00");
+        assertThat(painel.noRelatorioRepasse()).isEqualByComparingTo("100.00");
         try(var workbook=new XSSFWorkbook(new java.io.ByteArrayInputStream(exportadorPrevia.exportar(previa)))) {
             var aba=workbook.getSheetAt(1);
-            var paga=aba.getRow(6);
+            assertThat(aba.getRow(4).getCell(1).getNumericCellValue()).isEqualTo(100.0);
+            assertThat(aba.getRow(5).getCell(1).getNumericCellValue()).isEqualTo(200.0);
+            assertThat(aba.getRow(6).getCell(1).getNumericCellValue()).isEqualTo(300.0);
+            var paga=aba.getRow(9);
             assertThat(paga.getCell(0).getStringCellValue()).isEqualTo("1");
             assertThat(paga.getCell(6).getStringCellValue()).isEqualTo("09/2026");
-            assertThat(paga.getCell(7).getStringCellValue()).isEqualTo("09/2026");
             assertThat(paga.getCell(8).getStringCellValue()).isEqualTo("08/2026");
-            assertThat(paga.getCell(9).getStringCellValue()).isEqualTo("PAGO 08/2026");
-            assertThat(paga.getCell(10).getNumericCellValue()).isEqualTo(100.0);
-            var pend=aba.getRow(7);
+            assertThat(paga.getCell(9).getStringCellValue()).isEqualTo("Neste relatorio");
+            assertThat(paga.getCell(10).getStringCellValue()).isEqualTo("PAGO 08/2026");
+            assertThat(paga.getCell(11).getNumericCellValue()).isEqualTo(100.0);
+            var julho=aba.getRow(10);
+            assertThat(julho.getCell(0).getStringCellValue()).isEqualTo("7");
+            assertThat(julho.getCell(6).getStringCellValue()).isEqualTo("07/2026");
+            assertThat(julho.getCell(7).getStringCellValue()).isEqualTo("Sem producao");
+            assertThat(julho.getCell(9).getStringCellValue()).isEqualTo(br.com.faturamed.seguranca.ExportadorPreviaLiberacao.ORIGEM_SEM_PRODUCAO);
+            assertThat(julho.getCell(10).getStringCellValue()).isEqualTo("PAGO 08/2026");
+            assertThat(julho.getCell(11).getNumericCellValue()).isEqualTo(100.0);
+            var agosto=aba.getRow(11);
+            assertThat(agosto.getCell(0).getStringCellValue()).isEqualTo("8");
+            assertThat(agosto.getCell(6).getStringCellValue()).isEqualTo("08/2026");
+            var pend=aba.getRow(12);
             assertThat(pend.getCell(0).getStringCellValue()).isEqualTo("2");
             assertThat(pend.getCell(4).getStringCellValue()).isEqualTo("99887766");
             assertThat(pend.getCell(5).getStringCellValue()).isEqualTo("Doppler Venoso");
-            assertThat(pend.getCell(9).getStringCellValue()).isEqualTo("PENDENTE");
-            assertThat(pend.getCell(10).getNumericCellValue()).isZero();
+            assertThat(pend.getCell(10).getStringCellValue()).isEqualTo("PENDENTE");
+            assertThat(pend.getCell(11).getNumericCellValue()).isZero();
         }
     }
 

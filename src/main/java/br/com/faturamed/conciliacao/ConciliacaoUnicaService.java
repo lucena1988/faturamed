@@ -143,7 +143,7 @@ public class ConciliacaoUnicaService {
             List<FaturamentoMes> meses) {}
 
     /** Valor como veio na planilha: 1234.56, 1234,56 ou 1.234,56, com ou sem R$. Vazio ou ilegivel vira null. */
-    static java.math.BigDecimal valorDaPlanilha(String texto) {
+    public static java.math.BigDecimal valorDaPlanilha(String texto) {
         if(texto==null) return null;
         String limpo=texto.replace("R$","").replace(" ","").trim().replace(" ","");
         if(limpo.isEmpty()) return null;
@@ -199,7 +199,7 @@ public class ConciliacaoUnicaService {
     private static java.math.BigDecimal dinheiro(java.math.BigDecimal valor) { return valor.setScale(2,java.math.RoundingMode.HALF_UP); }
 
     /** Vl. A Repassar da linha; sem ele, Valor Tot x Regra (a regra pode vir como 0,5 ou 50). Sem nenhum dos dois, null. */
-    private static java.math.BigDecimal repasseDaLinha(Map<String,Object> linha) {
+    public static java.math.BigDecimal repasseDaLinha(Map<String,Object> linha) {
         var repasse=valorDaPlanilha((String)linha.get("repasse"));
         if(repasse!=null) return repasse;
         var valorTot=valorDaPlanilha((String)linha.get("valor_tot"));
