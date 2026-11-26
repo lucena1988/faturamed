@@ -133,6 +133,77 @@ public class ConciliacaoUnicaService {
         return new Resumo(vinculadas,divergentes,pendentes,inferidos);
     }
 
+    public record FaturamentoMes(String mes,int registros,java.math.BigDecimal repasse,
+            int conciliadoRegistros,java.math.BigDecimal conciliadoRepasse,
+            int semProducaoRegistros,java.math.BigDecimal semProducaoRepasse,
+            int outrosRegistros,java.math.BigDecimal outrosRepasse) {}
+    public record FaturamentoArquivo(long arquivoId,String nome,String competencia,String modo,java.time.LocalDateTime criadoEm,
+            int registros,java.math.BigDecimal repasse,int conciliadoRegistros,java.math.BigDecimal conciliadoRepasse,
+            int semProducaoRegistros,java.math.BigDecimal semProducaoRepasse,int outrosRegistros,java.math.BigDecimal outrosRepasse,
+            List<FaturamentoMes> meses) {}
+
+    /** Valor como veio na planilha: 1234.56, 1234,56 ou 1.234,56, com ou sem R$. Vazio ou ilegivel vira null. */
+    static java.math.BigDecimal valorDaPlanilha(String texto) {
+        if(texto==null) return null;
+        String limpo=texto.replace("R$","").replace(" ","").trim().replace(" ","");
+        if(limpo.isEmpty()) return null;
+        if(limpo.contains(",")) limpo=limpo.replace(".","").replace(",",".");
+        try { return new java.math.BigDecimal(limpo); } catch(NumberFormatException erro) { return null; }
+    }
+
+    /**
+     * Total faturado por competencia de faturamento (cada planilha do hospital) aberto pelo mes do exame, separando o que ja
+     * casou com uma producao do que ainda esta sem producao. O total do arquivo e a soma de Vl. A Repassar de todas as linhas,
+     * como na planilha; sem essa coluna, vale Valor Tot x Regra. Repeticoes em analise e duplicadas entram no total, em "outros".
+     */
+    public List<FaturamentoArquivo> faturamento(long hospitalId) {
+        var arquivos=jdbc.queryForList("select id,nome,competencia,modo_hospital,criado_em from arquivo_base_hospitalar where hospital_id=? and tipo='HOSPITAL' order by competencia desc,id desc",hospitalId);
+        List<FaturamentoArquivo> resultado=new ArrayList<>();
+        for(var arquivo:arquivos) {
+            long arquivoId=((Number)arquivo.get("id")).longValue();
+            var linhas=jdbc.queryForList("""
+                    select to_char(v.data_visita,'YYYY-MM') as mes,
+                           case when v.decisao not in ('ORIGINAL','VISITA_DISTINTA') then 'OUTROS'
+                                when exists(select 1 from producao_visita p where p.hospital_visita_id=v.id)
+                                  or exists(select 1 from reserva_base_hospitalar r where r.visita_id=v.id)
+                                  or exists(select 1 from vinculo_base_hospitalar b where b.visita_id=v.id) then 'CONCILIADO'
+                                else 'SEM_PRODUCAO' end as situacao,
+                           v.campos->>'vl. a repassar' as repasse,v.campos->>'valor tot' as valor_tot,v.campos->>'regra' as regra
+                    from visita_base_hospitalar v where v.arquivo_atual_id=?
+                    """,arquivoId);
+            // mes -> [registros e repasse de cada situacao]
+            SortedMap<String,java.math.BigDecimal[]> valores=new TreeMap<>();
+            SortedMap<String,int[]> contagens=new TreeMap<>();
+            for(var linha:linhas) {
+                var repasse=valorDaPlanilha((String)linha.get("repasse"));
+                if(repasse==null) {
+                    var valorTot=valorDaPlanilha((String)linha.get("valor_tot"));
+                    var regra=valorDaPlanilha((String)linha.get("regra"));
+                    // Regra pode vir como 0,5 ou 50 (percentual).
+                    if(valorTot!=null && regra!=null) repasse=valorTot.multiply(regra.compareTo(java.math.BigDecimal.ONE)>0?regra.movePointLeft(2):regra);
+                }
+                int indice=switch((String)linha.get("situacao")) { case "CONCILIADO"->0; case "SEM_PRODUCAO"->1; default->2; };
+                String mes=(String)linha.get("mes");
+                var soma=valores.computeIfAbsent(mes,k->new java.math.BigDecimal[]{java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO});
+                var conta=contagens.computeIfAbsent(mes,k->new int[3]);
+                conta[indice]++;
+                if(repasse!=null) soma[indice]=soma[indice].add(repasse);
+            }
+            List<FaturamentoMes> meses=new ArrayList<>();
+            int[] totais=new int[3]; var somas=new java.math.BigDecimal[]{java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO};
+            for(var mes:valores.keySet()) {
+                var s=valores.get(mes); var c=contagens.get(mes);
+                for(int i=0;i<3;i++) { totais[i]+=c[i]; somas[i]=somas[i].add(s[i]); }
+                meses.add(new FaturamentoMes(mes,c[0]+c[1]+c[2],dinheiro(s[0].add(s[1]).add(s[2])),c[0],dinheiro(s[0]),c[1],dinheiro(s[1]),c[2],dinheiro(s[2])));
+            }
+            resultado.add(new FaturamentoArquivo(arquivoId,(String)arquivo.get("nome"),(String)arquivo.get("competencia"),(String)arquivo.get("modo_hospital"),
+                    ((java.sql.Timestamp)arquivo.get("criado_em")).toLocalDateTime(),totais[0]+totais[1]+totais[2],dinheiro(somas[0].add(somas[1]).add(somas[2])),
+                    totais[0],dinheiro(somas[0]),totais[1],dinheiro(somas[1]),totais[2],dinheiro(somas[2]),meses));
+        }
+        return resultado;
+    }
+    private static java.math.BigDecimal dinheiro(java.math.BigDecimal valor) { return valor.setScale(2,java.math.RoundingMode.HALF_UP); }
+
     /** Registros do hospital que ainda nao atendem nenhuma visita (nem da producao unica, nem do fluxo antigo). */
     public List<Map<String,Object>> hospitalSemProducao(long hospitalId,String competenciaExame) {
         return jdbc.queryForList("""

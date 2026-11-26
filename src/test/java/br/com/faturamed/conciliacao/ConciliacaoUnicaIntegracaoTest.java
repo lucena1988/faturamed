@@ -175,6 +175,61 @@ class ConciliacaoUnicaIntegracaoTest {
         assertThat(unica.hospitalSemProducao(hospital,null)).isEmpty();
     }
 
+    @Test void totalFaturadoDoArquivoVemAbertoPorMesDoExameComOQueJaCasouComAProducao() throws Exception {
+        // Um faturamento paga exames de varios meses; so os de setembro tem producao importada.
+        unica.importarHospital(hospital,"2026-09","NOVO",null,hospital("1","2026-07-10","2","2026-08-10","3","2026-09-10"),usuario);
+        producao.importar(hospital,ana,producaoArquivo("3","2026-09-10"),usuario);
+        var arquivos=unica.faturamento(hospital);
+        assertThat(arquivos).hasSize(1);
+        var f=arquivos.getFirst();
+        assertThat(f.competencia()).isEqualTo("2026-09");
+        assertThat(f.registros()).isEqualTo(3);
+        assertThat(f.repasse()).isEqualByComparingTo("300.00");
+        assertThat(f.conciliadoRegistros()).isEqualTo(1);
+        assertThat(f.conciliadoRepasse()).isEqualByComparingTo("100.00");
+        assertThat(f.semProducaoRegistros()).isEqualTo(2);
+        assertThat(f.semProducaoRepasse()).isEqualByComparingTo("200.00");
+        assertThat(f.outrosRegistros()).isZero();
+        assertThat(f.meses()).extracting(m->m.mes()).containsExactly("2026-07","2026-08","2026-09");
+        assertThat(f.meses().get(0).semProducaoRegistros()).isEqualTo(1);
+        assertThat(f.meses().get(2).conciliadoRegistros()).isEqualTo(1);
+        // O total do arquivo e a soma das partes.
+        assertThat(f.conciliadoRepasse().add(f.semProducaoRepasse()).add(f.outrosRepasse())).isEqualByComparingTo(f.repasse());
+        assertThat(f.meses().stream().map(m->m.repasse()).reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add)).isEqualByComparingTo(f.repasse());
+        // Gerar o relatorio nao muda o que ja estava conciliado; a producao dos outros meses faz o resto casar.
+        relatorios.gerar(hospital,ana,"2026-09",null,usuario);
+        assertThat(unica.faturamento(hospital).getFirst().conciliadoRegistros()).isEqualTo(1);
+        producao.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Obs"),List.of("1","2026-07-10","jul"),List.of("2","2026-08-10","ago"))),usuario);
+        var depois=unica.faturamento(hospital).getFirst();
+        assertThat(depois.conciliadoRegistros()).isEqualTo(3);
+        assertThat(depois.semProducaoRegistros()).isZero();
+        assertThat(depois.conciliadoRepasse()).isEqualByComparingTo("300.00");
+    }
+
+    @Test void repeticoesEmAnaliseEntramNoTotalDoArquivoComoOutros() throws Exception {
+        unica.importarHospital(hospital,"2026-09","NOVO",null,hospital("3","2026-09-10"),usuario);
+        unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("3","2026-09-10","4","2026-09-11"),usuario);
+        var arquivos=unica.faturamento(hospital);
+        assertThat(arquivos).hasSize(2);
+        var segundo=arquivos.stream().filter(a->"2026-10".equals(a.competencia())).findFirst().orElseThrow();
+        assertThat(segundo.registros()).isEqualTo(2);
+        assertThat(segundo.repasse()).isEqualByComparingTo("200.00");
+        assertThat(segundo.outrosRegistros()).isEqualTo(1);
+        assertThat(segundo.outrosRepasse()).isEqualByComparingTo("100.00");
+        assertThat(segundo.semProducaoRegistros()).isEqualTo(1);
+    }
+
+    @Test void valorDaPlanilhaLeOsFormatosBrasileiroEInternacional() {
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("1234.56")).isEqualByComparingTo("1234.56");
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("1234,56")).isEqualByComparingTo("1234.56");
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("1.234,56")).isEqualByComparingTo("1234.56");
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("R$ 1.234,56")).isEqualByComparingTo("1234.56");
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("157.85")).isEqualByComparingTo("157.85");
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("")).isNull();
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha(null)).isNull();
+        assertThat(ConciliacaoUnicaService.valorDaPlanilha("abc")).isNull();
+    }
+
     @Test void vinculoExistenteNaoEDesfeitoENaoHaDuplaAssociacao() throws Exception {
         producao.importar(hospital,ana,producaoArquivo("123","2026-09-01"),usuario);
         unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("123","2026-09-01"),usuario);

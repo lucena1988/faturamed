@@ -15,6 +15,19 @@
 #historico-dialog { max-width: 700px; }
 #competencia-mensagem:empty, #repeticao-mensagem:empty { display: none; }
 #competencia-mensagem:not(:empty), #repeticao-mensagem:not(:empty) { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--danger-line); background: var(--danger-bg); color: var(--danger-fg); font-weight: 600; }
+.titulo-secao { margin: 0 0 6px; font-size: 1.1rem; }
+.faturamento-lista { display: grid; gap: 16px; margin: 12px 0 8px; }
+.faturamento-card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: 16px 18px; }
+.faturamento-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.faturamento-topo h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.faturamento-total { text-align: right; }
+.faturamento-total strong { display: block; font-size: 1.5rem; color: var(--primary); }
+.faturamento-total span { font-size: .8rem; color: var(--muted); }
+.faturamento-meses { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.faturamento-meses th, .faturamento-meses td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.faturamento-meses th { background: var(--surface-soft); }
+.faturamento-meses td .chip { margin-left: 8px; }
+.faturamento-soma td { font-weight: 700; background: var(--surface-soft); }
 .aviso-relatorio { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--warning-line); border-left: 6px solid var(--amber); background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
 td.acoes button { margin: 3px 0; display: block; }
 .conciliation-table td.motivo { min-width: 260px; font-size: .85rem; color: var(--muted); }
