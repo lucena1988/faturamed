@@ -38,6 +38,26 @@ public class LiberacaoRelatorioService {
         Registro publicado=registros.isEmpty()?null:registros.getFirst();boolean liberado=publicado!=null&&publicado.relatorio()==id&&publicado.versao()==estado.versao();
         return new Estado(liberado?"LIBERADO":"EM_REVISAO",estado.versao(),!historico(id)&&!liberado,ativas(relatorio).size(),ativas(relatorio).stream().filter(v->v.status()==ConciliadorVisitas.Status.PENDENTE).count(),ativas(relatorio).stream().filter(v->v.status()==ConciliadorVisitas.Status.DIVERGENTE).count(),ativas(relatorio).size()-dados.values().stream().mapToInt(List::size).sum(),publicado,registros);
     }
+    public record PreviaMedico(long id,String nome,List<PortalMedicoController.Visita> visitas) {}
+    public record PreviaForaItem(String atendimento,LocalDate data,ConciliadorVisitas.Status status,String motivo,String procedimento,String codigo) {}
+    public record Previa(long relatorio,long versao,String situacao,String hospital,long visitas,List<PreviaMedico> medicos,List<PreviaForaItem> semMedico,long excluidas) {}
+
+    /**
+     * O que a liberacao publicaria agora, sem publicar: por medico, as mesmas visitas que ele passaria a ver no portal
+     * (mesma funcao da liberacao), mais o que ficaria de fora por nao ter medico cadastrado. Serve para conferir antes do ok.
+     */
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    public Previa previa(long id) throws Exception {
+        var estado=revisoes.carregar(id);var relatorio=estado.atual();var dados=preparar(relatorio);
+        List<PreviaMedico> medicosDaPrevia=new ArrayList<>();
+        for(var entrada:dados.entrySet()){var visitas=entrada.getValue();medicosDaPrevia.add(new PreviaMedico(entrada.getKey(),visitas.getFirst().medico(),visitas));}
+        medicosDaPrevia.sort(Comparator.comparing(m->m.nome().toLowerCase(Locale.ROOT)));
+        var cadastros=medicos.listar();Set<Long> ativos=new HashSet<>();cadastros.forEach(m->ativos.add(m.id()));
+        List<PreviaForaItem> semMedico=new ArrayList<>();
+        for(var v:ativas(relatorio)){Long medico=medicos.identificar(v,cadastros);if(medico==null||!dados.containsKey(medico))semMedico.add(new PreviaForaItem(v.atendimento(),v.data(),v.status(),v.motivo(),v.procedimentoEfetivo(),v.codigoEfetivo()));}
+        long excluidas=relatorio.visitas().size()-ativas(relatorio).size();
+        return new Previa(id,estado.versao(),consultar(id).situacao(),relatorio.hospital(),ativas(relatorio).size(),medicosDaPrevia,semMedico,excluidas);
+    }
     @Transactional(rollbackFor=Exception.class)
     public Estado liberar(long id,Dados request,UsuarioAutenticado user) throws Exception {
         if(request.versao()==null||request.versao()<0||request.observacao()==null||request.observacao().length()>2000)throw new IllegalArgumentException("Dados da liberacao invalidos");
