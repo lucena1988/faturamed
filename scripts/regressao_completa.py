@@ -66,8 +66,12 @@ def main():
     try:
         if execute('fixtures', [sys.executable, '-m', 'unittest', 'scripts.test_qa_fixtures']).returncode:
             raise RuntimeError('Falha na geracao das planilhas de teste')
+        # No CI, o cache do Maven (~/.m2, restaurado pelo setup-java) entra no build para nao baixar tudo do Maven Central,
+        # que limita (HTTP 429) os IPs compartilhados dos runners. Fora do CI a variavel nao existe e nada muda.
+        m2 = os.environ.get('QA_M2_CACHE', '')
+        contexto = ['--build-context', f'm2cache={m2}'] if m2 and Path(m2).is_dir() else []
         for tag, extra in [(builder, ['--target', 'build']), (image, [])]:
-            if execute('build-java' if extra else 'build-app', ['docker', 'build', *extra, '-t', tag, '.']).returncode:
+            if execute('build-java' if extra else 'build-app', ['docker', 'build', *extra, *contexto, '-t', tag, '.']).returncode:
                 raise RuntimeError('Build falhou; consulte o resumo e os logs')
         execute('http', [sys.executable, 'scripts/homologacao_automatica.py'],
                 env={**os.environ, 'QA_APP_IMAGE': image, 'QA_OUTPUT_DIR': str(folder)})
