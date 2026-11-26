@@ -64,15 +64,15 @@ public class ExportadorPreviaLiberacao {
             String medicosTexto=previa.medicos().isEmpty()?"-":previa.medicos().stream().map(LiberacaoRelatorioService.PreviaMedico::nome).collect(Collectors.joining(", "));
             Object[][] itens={{"Hospital",previa.hospital()},{"Medico(s)",medicosTexto},{"Competencia da producao",competencia.isEmpty()?"-":competencia},
                     {"Competencia faturada pelo hospital",faturamento},{"Relatorio",previa.relatorio()},{"Revisao",previa.versao()},{"Situacao atual",situacao},{"Gerada em",geradaEm},
-                    {cap(sub.plural())+" no relatorio (sem excluidos)",previa.visitas()},{cap(sub.plural())+" que os medicos passam a ver no portal",noPortal},
-                    {cap(sub.plural())+" do mesmo faturamento fora deste relatorio (incluidos nas abas dos medicos)",outrosQtd},
+                    {ROTULO_QTD_MES_ATUAL,previa.visitas()},{cap(sub.plural())+" que os medicos passam a ver no portal",noPortal},
+                    {ROTULO_QTD_MESES_ANTERIORES,outrosQtd},
                     {cap(sub.plural())+" do mesmo faturamento de outros medicos ou sem medico cadastrado (nao incluidos)",previa.deOutrosMedicos()},
                     {"Repasse desses "+sub.plural()+" de outros medicos (R$)",previa.repasseDeOutrosMedicos()},
                     {cap(sub.plural())+" sem medico cadastrado (nao aparecem no portal)",previa.semMedico().size()},{"Linhas excluidas por duplicidade (nao vao ao medico)",previa.excluidas()}};
             for(Object[] item:itens){Row row=resumo.createRow(linha++);Cell nome=row.createCell(0);nome.setCellValue(item[0].toString());nome.setCellStyle(rotulo);preencher(row.createCell(1),item[1],moeda);}
             linha++;
             Row cab=resumo.createRow(linha++);int c=0;
-            for(String texto:new String[]{"Medico",cap(sub.plural()),"Pagas","Pendentes","Divergentes","Repasse das pagas neste relatorio (R$)","Outros "+sub.plural()+" do faturamento","Repasse dos outros "+sub.plural()+" (R$)","Total faturado pelo hospital (R$)"}){Cell cell=cab.createCell(c++);cell.setCellValue(texto);cell.setCellStyle(titulo);}
+            for(String texto:new String[]{"Medico",cap(sub.plural()),"Pagas","Pendentes","Divergentes",COLUNA_MES_ATUAL,COLUNA_QTD_MESES_ANTERIORES,COLUNA_MESES_ANTERIORES,COLUNA_TOTAL_FATURADO}){Cell cell=cab.createCell(c++);cell.setCellValue(texto);cell.setCellStyle(titulo);}
             BigDecimal repasseGeral=BigDecimal.ZERO,outrosGeral=BigDecimal.ZERO;
             for(var medico:previa.medicos()) {
                 var outros=previa.outrosExames().getOrDefault(medico.id(),List.of());
@@ -100,6 +100,13 @@ public class ExportadorPreviaLiberacao {
     private record Estilos(CellStyle moeda,CellStyle data,CellStyle titulo,CellStyle rotulo,CellStyle totalMoeda) {}
 
     public static final String TITULO="Relatório Conciliado mensal";
+    // Nomes definidos pela empresa para o resumo (linhas do bloco de cima e colunas da tabela por medico).
+    public static final String ROTULO_QTD_MES_ATUAL="QTD PROCEDIMENTOS FATURADOS DO MÊS ATUAL";
+    public static final String ROTULO_QTD_MESES_ANTERIORES="QTD PROCEDIMENTOS FATURADOS DE MESES ANTERIORES";
+    public static final String COLUNA_MES_ATUAL="mês atual";
+    public static final String COLUNA_QTD_MESES_ANTERIORES="qtd meses anteriores";
+    public static final String COLUNA_MESES_ANTERIORES="meses anteriores";
+    public static final String COLUNA_TOTAL_FATURADO="TOTAL FATURADO (R$)";
 
     /** Como chamar o que o relatorio lista: o rotulo segue o tipo real (exames, visitas, consultas) e, se for misto ou sem tipo, "procedimentos". */
     record Substantivo(String singular,String plural) {}
