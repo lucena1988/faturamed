@@ -175,13 +175,7 @@ public class ConciliacaoUnicaService {
             SortedMap<String,java.math.BigDecimal[]> valores=new TreeMap<>();
             SortedMap<String,int[]> contagens=new TreeMap<>();
             for(var linha:linhas) {
-                var repasse=valorDaPlanilha((String)linha.get("repasse"));
-                if(repasse==null) {
-                    var valorTot=valorDaPlanilha((String)linha.get("valor_tot"));
-                    var regra=valorDaPlanilha((String)linha.get("regra"));
-                    // Regra pode vir como 0,5 ou 50 (percentual).
-                    if(valorTot!=null && regra!=null) repasse=valorTot.multiply(regra.compareTo(java.math.BigDecimal.ONE)>0?regra.movePointLeft(2):regra);
-                }
+                var repasse=repasseDaLinha(linha);
                 int indice=switch((String)linha.get("situacao")) { case "CONCILIADO"->0; case "SEM_PRODUCAO"->1; default->2; };
                 String mes=(String)linha.get("mes");
                 var soma=valores.computeIfAbsent(mes,k->new java.math.BigDecimal[]{java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO});
@@ -203,6 +197,63 @@ public class ConciliacaoUnicaService {
         return resultado;
     }
     private static java.math.BigDecimal dinheiro(java.math.BigDecimal valor) { return valor.setScale(2,java.math.RoundingMode.HALF_UP); }
+
+    /** Vl. A Repassar da linha; sem ele, Valor Tot x Regra (a regra pode vir como 0,5 ou 50). Sem nenhum dos dois, null. */
+    private static java.math.BigDecimal repasseDaLinha(Map<String,Object> linha) {
+        var repasse=valorDaPlanilha((String)linha.get("repasse"));
+        if(repasse!=null) return repasse;
+        var valorTot=valorDaPlanilha((String)linha.get("valor_tot"));
+        var regra=valorDaPlanilha((String)linha.get("regra"));
+        if(valorTot==null || regra==null) return null;
+        return valorTot.multiply(regra.compareTo(java.math.BigDecimal.ONE)>0?regra.movePointLeft(2):regra);
+    }
+
+    public record FaturamentoRelatorioMes(String mes,int registros,java.math.BigDecimal repasse,int noRelatorioRegistros,java.math.BigDecimal noRelatorioRepasse) {}
+    public record FaturamentoRelatorio(long arquivoId,String nome,String competencia,int registros,java.math.BigDecimal repasse,
+            int noRelatorioRegistros,java.math.BigDecimal noRelatorioRepasse,List<FaturamentoRelatorioMes> meses) {}
+
+    /**
+     * Para um relatorio: cada planilha do hospital de onde saem os seus registros conciliados, com o total faturado nela
+     * (como na planilha) e quanto desse total esta neste relatorio, por mes do exame. O resto e de exames do mesmo faturamento
+     * que pertencem a outras producoes ou ainda aguardam producao. Relatorio sem vinculo com o hospital devolve lista vazia.
+     */
+    public List<FaturamentoRelatorio> faturamentoDoRelatorio(long relatorioId) {
+        var arquivos=jdbc.queryForList("""
+                select distinct a.id,a.nome,a.competencia from vinculo_base_hospitalar b
+                join visita_base_hospitalar v on v.id=b.visita_id join arquivo_base_hospitalar a on a.id=v.arquivo_atual_id
+                where b.relatorio_id=? order by a.competencia desc,a.id desc
+                """,relatorioId);
+        List<FaturamentoRelatorio> resultado=new ArrayList<>();
+        for(var arquivo:arquivos) {
+            long arquivoId=((Number)arquivo.get("id")).longValue();
+            var linhas=jdbc.queryForList("""
+                    select to_char(v.data_visita,'YYYY-MM') as mes,
+                           exists(select 1 from vinculo_base_hospitalar b where b.visita_id=v.id and b.relatorio_id=?) as no_relatorio,
+                           v.campos->>'vl. a repassar' as repasse,v.campos->>'valor tot' as valor_tot,v.campos->>'regra' as regra
+                    from visita_base_hospitalar v where v.arquivo_atual_id=?
+                    """,relatorioId,arquivoId);
+            SortedMap<String,java.math.BigDecimal[]> valores=new TreeMap<>();
+            SortedMap<String,int[]> contagens=new TreeMap<>();
+            for(var linha:linhas) {
+                var repasse=repasseDaLinha(linha);
+                String mes=(String)linha.get("mes");
+                boolean dentro=Boolean.TRUE.equals(linha.get("no_relatorio"));
+                var soma=valores.computeIfAbsent(mes,k->new java.math.BigDecimal[]{java.math.BigDecimal.ZERO,java.math.BigDecimal.ZERO});
+                var conta=contagens.computeIfAbsent(mes,k->new int[2]);
+                conta[0]++; if(dentro) conta[1]++;
+                if(repasse!=null) { soma[0]=soma[0].add(repasse); if(dentro) soma[1]=soma[1].add(repasse); }
+            }
+            List<FaturamentoRelatorioMes> meses=new ArrayList<>();
+            int registros=0,noRelatorio=0; var total=java.math.BigDecimal.ZERO; var totalRelatorio=java.math.BigDecimal.ZERO;
+            for(var mes:valores.keySet()) {
+                var s=valores.get(mes); var c=contagens.get(mes);
+                registros+=c[0]; noRelatorio+=c[1]; total=total.add(s[0]); totalRelatorio=totalRelatorio.add(s[1]);
+                meses.add(new FaturamentoRelatorioMes(mes,c[0],dinheiro(s[0]),c[1],dinheiro(s[1])));
+            }
+            resultado.add(new FaturamentoRelatorio(arquivoId,(String)arquivo.get("nome"),(String)arquivo.get("competencia"),registros,dinheiro(total),noRelatorio,dinheiro(totalRelatorio),meses));
+        }
+        return resultado;
+    }
 
     /** Registros do hospital que ainda nao atendem nenhuma visita (nem da producao unica, nem do fluxo antigo). */
     public List<Map<String,Object>> hospitalSemProducao(long hospitalId,String competenciaExame) {

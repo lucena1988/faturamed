@@ -84,6 +84,10 @@ public class ProducaoPrimeiroController {
     @GetMapping("/faturamento")
     public List<ConciliacaoUnicaService.FaturamentoArquivo> faturamento(@RequestParam long hospitalId) { return conciliacao.faturamento(hospitalId); }
 
+    /** Faturamento do hospital de onde saem os registros deste relatorio, com a parte que esta nele. */
+    @GetMapping("/relatorios/{id}/faturamento")
+    public List<ConciliacaoUnicaService.FaturamentoRelatorio> faturamentoDoRelatorio(@PathVariable long id) { return conciliacao.faturamentoDoRelatorio(id); }
+
     @GetMapping("/hospital-sem-producao")
     public List<Map<String,Object>> hospitalSemProducao(@RequestParam long hospitalId,@RequestParam(required=false) String competencia) {
         return conciliacao.hospitalSemProducao(hospitalId,competencia);

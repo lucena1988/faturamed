@@ -206,6 +206,33 @@ class ConciliacaoUnicaIntegracaoTest {
         assertThat(depois.conciliadoRepasse()).isEqualByComparingTo("300.00");
     }
 
+    @Test void relatorioMostraOTotalFaturadoDoArquivoDeOndeSaemSeusRegistrosEQuantoDeleEstaNele() throws Exception {
+        unica.importarHospital(hospital,"2026-09","NOVO",null,hospital("1","2026-07-10","2","2026-08-10","3","2026-09-10"),usuario);
+        producao.importar(hospital,ana,producaoArquivo("3","2026-09-10"),usuario);
+        long deSetembro=relatorios.gerar(hospital,ana,"2026-09",null,usuario).relatorioId();
+        var lista=unica.faturamentoDoRelatorio(deSetembro);
+        assertThat(lista).hasSize(1);
+        var f=lista.getFirst();
+        assertThat(f.competencia()).isEqualTo("2026-09");
+        assertThat(f.registros()).isEqualTo(3);
+        assertThat(f.repasse()).isEqualByComparingTo("300.00");
+        assertThat(f.noRelatorioRegistros()).isEqualTo(1);
+        assertThat(f.noRelatorioRepasse()).isEqualByComparingTo("100.00");
+        assertThat(f.meses()).extracting(m->m.mes()).containsExactly("2026-07","2026-08","2026-09");
+        assertThat(f.meses().get(0).noRelatorioRegistros()).isZero();
+        assertThat(f.meses().get(2).noRelatorioRegistros()).isEqualTo(1);
+        // Outra producao do mesmo faturamento, de outro mes, gera outro relatorio com a parte dela no mesmo total.
+        producao.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Obs"),List.of("1","2026-07-10","jul"))),usuario);
+        long deJulho=relatorios.gerar(hospital,ana,"2026-07",null,usuario).relatorioId();
+        var julho=unica.faturamentoDoRelatorio(deJulho).getFirst();
+        assertThat(julho.repasse()).isEqualByComparingTo("300.00");
+        assertThat(julho.noRelatorioRegistros()).isEqualTo(1);
+        assertThat(julho.meses().get(0).noRelatorioRegistros()).isEqualTo(1);
+        assertThat(julho.meses().get(2).noRelatorioRegistros()).isZero();
+        // Relatorio sem vinculo com o hospital nao tem o que mostrar.
+        assertThat(unica.faturamentoDoRelatorio(-1)).isEmpty();
+    }
+
     @Test void repeticoesEmAnaliseEntramNoTotalDoArquivoComoOutros() throws Exception {
         unica.importarHospital(hospital,"2026-09","NOVO",null,hospital("3","2026-09-10"),usuario);
         unica.importarHospital(hospital,"2026-10","NOVO",null,hospital("3","2026-09-10","4","2026-09-11"),usuario);

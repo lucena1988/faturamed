@@ -140,3 +140,7 @@
 #delete-cancel { border: 1px solid var(--line); background: var(--surface-soft); color: var(--text); }
 .delete-confirm { border: 1px solid var(--danger-line); background: var(--danger-fg); color: var(--surface); font-weight: 700; }
 .review-action-hint { grid-column: 1 / -1; margin: 0; padding: 8px 12px; border-left: 3px solid var(--amber, #d97706); background: var(--surface-soft); color: var(--muted); font-size: 13px; }
+.faturamento-relatorio { margin: 4px 0 20px; }
+.faturamento-relatorio h3 { margin: 12px 0 0; font-size: 1rem; }
+.faturamento-relatorio details { margin: 4px 0 8px; }
+.faturamento-relatorio summary { cursor: pointer; font-weight: 600; }
