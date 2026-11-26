@@ -46,6 +46,49 @@ async function request(url, options) {
   }
   return response.status === 204 ? null : response.json();
 }
+// Total faturado pelo hospital no(s) arquivo(s) de onde saem os registros deste relatorio, por mes do exame.
+// Um faturamento paga exames de meses anteriores, e o relatorio so tem a producao de um medico; o restante e de outras
+// producoes ou ainda aguarda producao. Nao bloqueia a tela se a consulta falhar.
+async function carregarFaturamentoDoHospital(id) {
+  const caixa = document.querySelector('#faturamento-relatorio');
+  caixa.replaceChildren(); caixa.hidden = true;
+  let itens;
+  try { itens = await request(`/api/conciliacao-unica/relatorios/${encodeURIComponent(id)}/faturamento`); } catch (erro) { return; }
+  if (String(id) !== String(reportId) || !itens.length) return;
+  const mesAno = comp => comp ? comp.split('-').reverse().join('/') : '—';
+  const celula = (tag, texto) => { const item = document.createElement(tag); item.textContent = texto; return item; };
+  for (const f of itens) {
+    const bloco = document.createElement('div');
+    const titulo = celula('h3', `Faturamento do hospital em ${mesAno(f.competencia)}`);
+    const arquivo = celula('span', ` · ${f.nome}`); arquivo.className = 'muted'; titulo.append(arquivo); bloco.append(titulo);
+    const resumo = document.createElement('div'); resumo.className = 'conciliation-stats';
+    const fora = round2(f.repasse - f.noRelatorioRepasse), foraRegistros = f.registros - f.noRelatorioRegistros;
+    for (const [rotulo, valor] of [['Faturado no arquivo (Vl. A Repassar)', money.format(f.repasse)],
+        [`Neste relatório (${f.noRelatorioRegistros})`, money.format(f.noRelatorioRepasse)],
+        [`Outros exames do mesmo faturamento (${foraRegistros})`, money.format(fora)]]) {
+      const item = celula('div', rotulo); item.append(celula('strong', valor)); resumo.append(item);
+    }
+    bloco.append(resumo);
+    const detalhe = document.createElement('details');
+    detalhe.append(celula('summary', 'Ver por mês do exame'));
+    const rolagem = document.createElement('div'); rolagem.className = 'conciliation-table';
+    const tabela = document.createElement('table');
+    const cab = document.createElement('tr');
+    for (const rotulo of ['Mês do exame', 'No arquivo', 'Neste relatório', 'Fora deste relatório']) cab.append(celula('th', rotulo));
+    const cabeca = document.createElement('thead'); cabeca.append(cab); tabela.append(cabeca);
+    const corpo = document.createElement('tbody');
+    for (const m of f.meses) {
+      const linha = document.createElement('tr');
+      linha.append(celula('td', mesAno(m.mes)), celula('td', `${money.format(m.repasse)} (${m.registros})`),
+        celula('td', `${money.format(m.noRelatorioRepasse)} (${m.noRelatorioRegistros})`),
+        celula('td', `${money.format(round2(m.repasse - m.noRelatorioRepasse))} (${m.registros - m.noRelatorioRegistros})`));
+      corpo.append(linha);
+    }
+    tabela.append(corpo); rolagem.append(tabela); detalhe.append(rolagem); bloco.append(detalhe);
+    caixa.append(bloco);
+  }
+  caixa.hidden = false;
+}
 function showReport(id, data, tracking) {
   if (String(reportId) !== String(id)) { queueOnly = false; queueLastLine = null; }
   reportId = id;
@@ -66,6 +109,7 @@ function showReport(id, data, tracking) {
     });
   }
   document.querySelector('#results').hidden = false;
+  if (!tracking) carregarFaturamentoDoHospital(id);
   const download = document.querySelector('#download');
   download.href = `/api/conciliacoes/visitas/${id}/relatorio.xlsx`;
   download.hidden = false;

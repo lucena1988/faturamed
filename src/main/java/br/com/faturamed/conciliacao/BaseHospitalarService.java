@@ -418,10 +418,13 @@ public class BaseHospitalarService {
             throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
         }
         String limpo = competencia.trim().replace('/', '-');
-        if (limpo.matches("^[0-9]{4}-[0-9]{2}$")) {
+        // AAAA-MM ou AAAA-M (mes com um digito), como a tela aceita.
+        if (limpo.matches("^[0-9]{4}-[0-9]{1,2}$")) {
             try {
-                YearMonth.parse(limpo);
-                return limpo;
+                String[] partes = limpo.split("-");
+                String normalizado = partes[0] + "-" + (partes[1].length() == 1 ? "0" + partes[1] : partes[1]);
+                YearMonth.parse(normalizado);
+                return normalizado;
             } catch (Exception erro) {
                 throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
             }

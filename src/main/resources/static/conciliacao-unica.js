@@ -5,7 +5,7 @@
   const ROTULOS = {...SITUACOES, DUPLICADA: 'Duplicada'};
   const CLASSES = {PAGA: 'chip-pago', PENDENTE: 'chip-pendente', DIVERGENTE: 'chip-divergente', EM_ANALISE: 'chip-analise', DUPLICADA: 'chip-duplicada'};
   let visitaAtual = null;
-  let visitas = [], semProducao = [], grupos = [], arquivosProducao = [], arquivosHospital = [], medicos = [], empresas = [], busy = false, geracao = 0;
+  let visitas = [], semProducao = [], grupos = [], arquivosProducao = [], arquivosHospital = [], faturamento = [], medicos = [], empresas = [], busy = false, geracao = 0;
 
   const element = (tag, text) => { const item = document.createElement(tag); if (text != null) item.textContent = text; return item; };
   const mesAno = comp => comp ? comp.split('-').reverse().join('/') : '—';
@@ -257,6 +257,49 @@
       });
     } catch (error) { showMessage('error', error.message); }
   }
+  const dinheiro = valor => new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(valor ?? 0);
+  // Total de cada planilha do hospital (faturamento) aberto pelo mes do exame.
+  function renderFaturamento() {
+    const caixa = find('faturamento');
+    caixa.replaceChildren();
+    if (!faturamento.length) {
+      const vazio = element('p', find('hospital').value ? 'Nenhuma planilha do hospital importada.' : 'Selecione um hospital.');
+      vazio.className = 'muted'; caixa.append(vazio); return;
+    }
+    const registros = n => `${n} ${n === 1 ? 'registro' : 'registros'}`;
+    for (const f of faturamento) {
+      const card = element('div'); card.className = 'faturamento-card';
+      const topo = element('div'); topo.className = 'faturamento-topo';
+      const titulo = element('div'); titulo.append(element('h3', `Faturamento ${mesAno(f.competencia)}`));
+      const arquivo = element('span', `${f.nome} · ${registros(f.registros)}${f.modo === 'ATUALIZAR' ? ' · atualização' : ''}`); arquivo.className = 'muted'; titulo.append(arquivo);
+      const total = element('div'); total.className = 'faturamento-total';
+      total.append(element('strong', dinheiro(f.repasse)), element('span', 'Vl. A Repassar do arquivo'));
+      topo.append(titulo, total); card.append(topo);
+      const resumo = element('p', `Conciliado com produção: ${dinheiro(f.conciliadoRepasse)} (${registros(f.conciliadoRegistros)}) · Sem produção: ${dinheiro(f.semProducaoRepasse)} (${registros(f.semProducaoRegistros)})${f.outrosRegistros ? ` · Repetidos ou duplicados: ${dinheiro(f.outrosRepasse)} (${registros(f.outrosRegistros)})` : ''}`);
+      resumo.className = 'muted'; card.append(resumo);
+      const tabela = element('table'); tabela.className = 'faturamento-meses';
+      const cab = element('tr');
+      for (const rotulo of ['Mês do exame', 'Registros', 'Vl. A Repassar', 'Conciliado com produção', 'Sem produção', ...(f.outrosRegistros ? ['Repetidos ou duplicados'] : [])]) cab.append(element('th', rotulo));
+      const cabeca = element('thead'); cabeca.append(cab); tabela.append(cabeca);
+      const corpo = element('tbody');
+      for (const m of f.meses) {
+        const linha = element('tr');
+        const mes = element('td', mesAno(m.mes));
+        if (m.mes !== f.competencia) { const marca = element('span', 'mês anterior'); marca.className = 'chip chip-outra'; marca.title = 'Exame de um mês diferente do faturamento'; mes.append(marca); }
+        linha.append(mes, element('td', m.registros), element('td', dinheiro(m.repasse)),
+          element('td', `${dinheiro(m.conciliadoRepasse)} (${m.conciliadoRegistros})`), element('td', `${dinheiro(m.semProducaoRepasse)} (${m.semProducaoRegistros})`));
+        if (f.outrosRegistros) linha.append(element('td', m.outrosRegistros ? `${dinheiro(m.outrosRepasse)} (${m.outrosRegistros})` : '—'));
+        corpo.append(linha);
+      }
+      const rodape = element('tr'); rodape.className = 'faturamento-soma';
+      rodape.append(element('td', 'Total'), element('td', f.registros), element('td', dinheiro(f.repasse)),
+        element('td', `${dinheiro(f.conciliadoRepasse)} (${f.conciliadoRegistros})`), element('td', `${dinheiro(f.semProducaoRepasse)} (${f.semProducaoRegistros})`));
+      if (f.outrosRegistros) rodape.append(element('td', `${dinheiro(f.outrosRepasse)} (${f.outrosRegistros})`));
+      corpo.append(rodape); tabela.append(corpo);
+      const rolagem = element('div'); rolagem.className = 'conciliation-table'; rolagem.append(tabela); card.append(rolagem);
+      caixa.append(card);
+    }
+  }
   // Repeticoes do hospital em analise se decidem na tela de acompanhamento (mesma decisao e historico de sempre).
   function renderAvisoHospital(repeticoes) {
     const aviso = find('aviso-hospital');
@@ -272,14 +315,14 @@
   async function load() {
     const id = ++geracao, hospitalId = find('hospital').value;
     let repeticoes = 0;
-    if (!hospitalId) { visitas = []; semProducao = []; grupos = []; arquivosProducao = []; arquivosHospital = []; } else {
-      const [lista, orfaos, porGrupo, hospitalVisitas, arquivosProd, arquivosTodos] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/arquivos?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospitalId}`)]);
+    if (!hospitalId) { visitas = []; semProducao = []; grupos = []; arquivosProducao = []; arquivosHospital = []; faturamento = []; } else {
+      const [lista, orfaos, porGrupo, hospitalVisitas, arquivosProd, arquivosTodos, totais] = await Promise.all([request(`/api/conciliacao-unica/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/hospital-sem-producao?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/relatorios?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/visitas?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/arquivos?hospitalId=${hospitalId}`), request(`/api/base-hospitalar/arquivos?hospitalId=${hospitalId}`), request(`/api/conciliacao-unica/faturamento?hospitalId=${hospitalId}`)]);
       if (id !== geracao) return;
       visitas = lista; semProducao = orfaos; grupos = porGrupo; arquivosProducao = arquivosProd;
-      arquivosHospital = arquivosTodos.filter(item => item.tipo === 'HOSPITAL');
+      arquivosHospital = arquivosTodos.filter(item => item.tipo === 'HOSPITAL'); faturamento = totais;
       repeticoes = hospitalVisitas.filter(item => item.decisao === 'EM_ANALISE').length;
     }
-    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports(); renderFiles(); renderAvisoHospital(repeticoes);
+    fillFilters(); renderCards(); renderVisits(); renderOrphans(); renderReports(); renderFiles(); renderFaturamento(); renderAvisoHospital(repeticoes);
   }
   function resumoConciliacao(c) {
     if (!c) return '';
