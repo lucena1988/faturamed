@@ -24,6 +24,7 @@ class ConciliacaoUnicaIntegracaoTest {
     @Autowired RevisaoVisitasService revisoes;
     @Autowired RecebimentoService recebimentos;
     @Autowired br.com.faturamed.seguranca.LiberacaoRelatorioService liberacoes;
+    @Autowired br.com.faturamed.seguranca.ExportadorPreviaLiberacao exportadorPrevia;
     @Autowired JdbcTemplate jdbc;
     long hospital, ana;
     String nomeAna;
@@ -231,6 +232,37 @@ class ConciliacaoUnicaIntegracaoTest {
         assertThat(julho.meses().get(2).noRelatorioRegistros()).isZero();
         // Relatorio sem vinculo com o hospital nao tem o que mostrar.
         assertThat(unica.faturamentoDoRelatorio(-1)).isEmpty();
+    }
+
+    @Test void previaDaLiberacaoComDadosReaisTrazCompetenciasCodigoENomeDaProducaoEStatusPago() throws Exception {
+        // O faturamento de 08/2026 paga um exame de setembro; a visita 2 ainda nao tem registro do hospital.
+        unica.importarHospital(hospital,"2026-08","NOVO",null,hospital("1","2026-09-01"),usuario);
+        producao.importar(hospital,ana,planilha(List.of(List.of("Atendimento","Dt.","Codigo Procedimento","Procedimento"),
+                List.of("1","2026-09-01","101","Visita"),List.of("2","2026-09-02","99887766","Doppler Venoso"))),usuario);
+        long relatorio=relatorios.gerar(hospital,ana,"2026-09",null,usuario).relatorioId();
+        var previa=liberacoes.previa(relatorio);
+        assertThat(previa.competenciasProducao()).containsExactly("2026-09");
+        assertThat(previa.extras().values()).extracting(e->e.compFaturada()).containsExactlyInAnyOrder("2026-08","");
+        var visitas=previa.medicos().getFirst().visitas();
+        var pendente=visitas.stream().filter(v->v.atendimento().equals("2")).findFirst().orElseThrow();
+        assertThat(pendente.codigoProcedimento()).isEqualTo("99887766");
+        assertThat(pendente.procedimento()).isEqualTo("Doppler Venoso");
+        try(var workbook=new XSSFWorkbook(new java.io.ByteArrayInputStream(exportadorPrevia.exportar(previa)))) {
+            var aba=workbook.getSheetAt(1);
+            var paga=aba.getRow(6);
+            assertThat(paga.getCell(0).getStringCellValue()).isEqualTo("1");
+            assertThat(paga.getCell(6).getStringCellValue()).isEqualTo("09/2026");
+            assertThat(paga.getCell(7).getStringCellValue()).isEqualTo("09/2026");
+            assertThat(paga.getCell(8).getStringCellValue()).isEqualTo("08/2026");
+            assertThat(paga.getCell(9).getStringCellValue()).isEqualTo("PAGO 08/2026");
+            assertThat(paga.getCell(10).getNumericCellValue()).isEqualTo(100.0);
+            var pend=aba.getRow(7);
+            assertThat(pend.getCell(0).getStringCellValue()).isEqualTo("2");
+            assertThat(pend.getCell(4).getStringCellValue()).isEqualTo("99887766");
+            assertThat(pend.getCell(5).getStringCellValue()).isEqualTo("Doppler Venoso");
+            assertThat(pend.getCell(9).getStringCellValue()).isEqualTo("PENDENTE");
+            assertThat(pend.getCell(10).getNumericCellValue()).isZero();
+        }
     }
 
     @Test void repeticoesEmAnaliseEntramNoTotalDoArquivoComoOutros() throws Exception {
