@@ -18,7 +18,7 @@
 .conciliation-form { display: grid; grid-template-columns: minmax(150px,1fr) minmax(180px,1fr) minmax(180px,1fr) minmax(180px,1fr) auto; gap: 18px; align-items: end; padding: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .conciliation-workspace label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 14px; }
 .conciliation-workspace input, .conciliation-workspace select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--text); background: var(--surface); }
-.conciliation-workspace button:not(.notification-toggle):not(.theme-toggle) { padding: 12px 18px; background: var(--primary-fill); color: var(--on-primary); border: 0; border-radius: var(--radius-sm); }
+.conciliation-workspace button:not(.notification-toggle):not(.theme-toggle):not(:where(.fm-usuario-botao, .fm-busca-botao, .fm-usuario-menu button)) { padding: 12px 18px; background: var(--primary-fill); color: var(--on-primary); border: 0; border-radius: var(--radius-sm); }
 .conciliation-workspace button:disabled { opacity: .6; cursor: default; }
 .conciliation-stats { display: flex; flex-wrap: wrap; gap: 30px; padding: 20px 0; }
 .conciliation-stats strong { display: block; font-size: 23px; margin-top: 8px; }
