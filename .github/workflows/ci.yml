@@ -43,12 +43,26 @@ jobs:
         with:
           persist-credentials: false
 
+      # A chave do cache do Maven considera tambem o Dockerfile: o job de regressao entrega esse mesmo cache ao docker build,
+      # que resolve dependencias com dependency:go-offline. Mudar o Dockerfile recria o cache completo.
       - name: Preparar Java 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
+          cache-dependency-path: |
+            pom.xml
+            Dockerfile
+
+      # Baixa tudo o que a imagem Docker tambem precisa (plugins e dependencias extras) para ficar no cache do Maven.
+      # O Maven Central limita (HTTP 429) os IPs compartilhados dos runners, entao tenta de novo em 429/503.
+      - name: Baixar dependencias do Maven
+        env:
+          MAVEN_ARGS: >-
+            -B -Daether.connector.http.retryHandler.count=8 -Daether.connector.http.retryHandler.interval=10000
+            -Daether.connector.http.retryHandler.serviceUnavailable=429,503 -Daether.connector.basic.threads=2
+        run: mvn dependency:go-offline
 
       - name: Compilar e testar
         run: mvn -B verify
@@ -164,8 +178,20 @@ jobs:
       - name: Verificar Docker
         run: docker info
 
+      # O Maven Central limita (HTTP 429) os IPs compartilhados dos runners, e a regressao constroi a imagem do zero.
+      # Restaura o mesmo cache do Maven que o job Java acabou de usar e o entrega ao docker build (QA_M2_CACHE).
+      - name: Preparar Java 21 (cache do Maven)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: |
+            pom.xml
+            Dockerfile
+
       - name: Executar suite completa
-        run: python test.py
+        run: QA_M2_CACHE="$HOME/.m2" python test.py
 
       - name: Publicar dashboard e evidencias
         if: always()

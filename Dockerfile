@@ -1,5 +1,10 @@
+# Cache opcional do Maven para o CI: docker build --build-context m2cache=$HOME/.m2 .
+# Sem o argumento e um estagio vazio e o build baixa tudo, como sempre.
+FROM scratch AS m2cache
+
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
+COPY --from=m2cache / /root/.m2/
 # O Maven Central limita downloads em rajada (HTTP 429) dos runners compartilhados do CI.
 # O resolver tenta de novo com espera crescente, e o passo inteiro e repetido se ainda falhar.
 ENV MAVEN_ARGS="-B -Daether.connector.http.retryHandler.count=8 -Daether.connector.http.retryHandler.interval=10000 -Daether.connector.http.retryHandler.serviceUnavailable=429,503 -Daether.connector.basic.threads=2"
