@@ -3,27 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conciliação | Fechamento Faturado | Faturamed</title>
+  <title>Relatórios e revisões | Fechamento Faturado | Faturamed</title>
   <link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui">
-  <link rel="stylesheet" href="conciliacao.css?v=20261116-duplicidade">
-  <link rel="stylesheet" href="identidade.css?v=20261103-tema">
+  <link rel="stylesheet" href="conciliacao.css?v=20261127-menu">
+  <link rel="stylesheet" href="identidade.css?v=20261127-menu">
   <link rel="stylesheet" href="login.css?v=20261029-ui">
-<link rel="stylesheet" href="tema.css?v=20261103-sino"><script src="tema.js?v=20261009-1"></script></head>
+<link rel="stylesheet" href="tema.css?v=20261127-menu"><script src="tema.js?v=20261009-1"></script></head>
 <body>
   <main class="conciliation-workspace">
-    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Conciliação · Fechamento Faturado</h1></div>
+    <header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Relatórios e revisões</h1></div>
       <a href="/#medicos">Cadastro de médicos</a><a href="solicitacoes-medicos.html">Solicitações dos médicos</a><a id="download" hidden>Baixar relatório geral XLSX</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
-    <p><a href="base-hospitalar.html">Importar hospital e produção médica</a> · Importe primeiro a base hospitalar e depois a produção individual ou coletiva. Os relatórios e históricos continuam disponíveis abaixo.</p>
+    <p><a href="conciliacao-unica.html">Importar produção médica e hospital</a> · Importe os dois arquivos em qualquer ordem e gere o relatório de cada médico por competência. Os relatórios e históricos continuam disponíveis abaixo.</p>
     <p id="message" role="status" aria-live="polite"></p>
     <a id="charge-link" href="cobrancas.html">Fila de cobrança ao hospital</a>
     <section id="results" hidden>
       <div class="conciliation-stats" id="stats"></div>
+      <div id="faturamento-relatorio" class="faturamento-relatorio" hidden></div>
       <section class="review-progress" aria-labelledby="progress-title">
         <h2 id="progress-title">Acompanhamento da revisao</h2>
         <div id="progress-counts" class="progress-counts"></div>
         <p id="delivery-status" role="status" aria-live="polite">Carregando acompanhamento...</p>
       </section>
-      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e procedimentos sem médico conferidas</label><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
+      <section class="report-release" aria-labelledby="release-title"><h2 id="release-title">Liberação para o médico</h2><form id="company-assign" class="company-assign"><label>Empresa da produção<select id="company-assign-select" disabled><option value="">Sem empresa</option></select></label><button type="submit" id="company-assign-save" disabled>Salvar empresa</button><span id="company-assign-status" role="status"></span></form><p id="release-status" role="status" aria-live="polite"></p><p id="release-summary"></p><form id="release-form"><fieldset id="release-fields" disabled><label>Observação da liberação<textarea name="observacao" maxlength="2000" rows="2"></textarea></label><label id="release-ack" class="release-ack"><input name="confirmaPendencias" type="checkbox">Pendências, divergências e procedimentos sem médico conferidas</label><div class="release-preview-box"><a id="release-preview" class="release-preview" href="#" download>Baixar Relatório Conciliado mensal (Excel)</a><small>Confira antes de liberar. Traz também, só para conferência, paciente, convênio e os exames do mesmo faturamento de outras competências.</small></div><button id="release-save" type="submit" disabled>Liberar para o médico</button></fieldset></form><button id="release-refresh" type="button">Atualizar liberação</button><h3>Histórico de liberações</h3><ol id="release-history"></ol></section>
       <section class="review-queue" aria-labelledby="queue-title">
         <div class="review-queue-heading"><h2 id="queue-title">Fila de revisao</h2><button type="button" id="queue-start" disabled>Revisar proxima visita</button></div>
         <div id="queue-categories" class="queue-categories" role="group" aria-label="Tipo de problema"></div>
@@ -95,8 +96,8 @@
       <section class="review-history"><h3>Histórico da visita</h3><ol id="review-history"></ol></section>
     </form>
   </dialog>
-  <script src="sidebar.js?v=20261116-previa"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
-  <script src="liberacao.js?v=20261103-empresas"></script>
-  <script src="conciliacao.js?v=20261116-duplicidade"></script>
+  <script src="sidebar.js?v=20261125-menu"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script>
+  <script src="liberacao.js?v=20261126-previa"></script>
+  <script src="conciliacao.js?v=20261126-fat"></script>
 </body>
 </html>

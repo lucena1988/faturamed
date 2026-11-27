@@ -116,9 +116,11 @@ def executar(env, admin):
             publicar(ctx[chave])
         # Nova versao da producao (hospital atualizado) herda a empresa e substitui a publicacao anterior.
         ana = ctx['ana']
-        importar_hospital(ctx['hospital'], [hospital_row('61000001', ana['nome'], 150, '2026-08-05')], 'empresas-hospital-atualizado.xlsx', 'ATUALIZAR')
-        versao = admin.call('GET', f"/api/conciliacoes/visitas/{ctx['ana_clinica']}/acompanhamento")['versao']
-        nova = admin.call('POST', f"/api/base-hospitalar/relatorios/{ctx['ana_clinica']}/atualizar?versao={versao}")['id']
+        importado = importar_hospital(ctx['hospital'], [hospital_row('61000001', ana['nome'], 150, '2026-08-05')], 'empresas-hospital-atualizado.xlsx', 'ATUALIZAR')
+        # A importacao ja reconcilia a producao afetada; a liberada fica aguardando nova publicacao.
+        reconciliada = next(r for r in importado['reconciliadas'] if r['relatorioAnterior'] == ctx['ana_clinica'])
+        assert reconciliada['erro'] is None and reconciliada['liberada']
+        nova = reconciliada['relatorioNovo']
         assert atribuida(nova) == ctx['clinica']
         publicar(nova)
         ctx['ana_clinica_v2'] = nova

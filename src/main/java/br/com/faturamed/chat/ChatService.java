@@ -31,7 +31,7 @@ public class ChatService {
     private static final String PERFIS_INTERNOS = "('ADMIN','DEV','OPERADOR')";
     private static final java.security.SecureRandom SORTEIO = new java.security.SecureRandom();
     private static final String FOTO = "(select extract(epoch from f.atualizado_em)::bigint from usuario_foto f where f.usuario_id=%s)";
-    private static final String STATUS_SQL = "(select s.status from chat_status s where s.usuario_id=%1$s) status, (select s.recado from chat_status s where s.usuario_id=%1$s) recado";
+    private static final String STATUS_SQL = "(select s.status from chat_status s where s.usuario_id=%1$s) status, (select s.recado from chat_status s where s.usuario_id=%1$s) recado, (select p.visto_em from chat_presenca p where p.usuario_id=%1$s) visto_em";
     private static final String SELECT_MENSAGEM = """
         select m.*, u.nome, u.email, %s foto,
                r.autor_id resp_autor, ru.nome resp_nome, r.texto resp_texto, r.apagada_em resp_apagada,
@@ -42,13 +42,13 @@ public class ChatService {
         """.formatted(FOTO.formatted("m.autor_id"));
 
     /** foto: versao da foto (null sem foto), imagem em /api/usuarios/{id}/foto?v={foto}; status/recado escolhidos pela pessoa. */
-    public record Contato(long id, String nome, String perfil, boolean online, Long foto, String status, String recado) {}
+    public record Contato(long id, String nome, String perfil, boolean online, Long foto, String status, String recado, Instant vistoEm) {}
     public record Fixada(long id, String autorNome, String texto) {}
     /** Em conversa DIRETA, contato e a outra pessoa; em GRUPO, contato e null e nome traz o nome do grupo. sistema: conversa com o Robo. */
     public record Conversa(long id, String tipo, String nome, Contato contato, int participantes, boolean souCriador,
                            String ultimaMensagem, Long ultimoAutorId, String ultimoAutorNome,
                            Instant ultimaMensagemEm, long naoLidas, long leituraContato, boolean silenciado,
-                           boolean oficial, boolean sistema, Fixada fixada, long mencoesNaoLidas) {}
+                           boolean oficial, boolean sistema, Fixada fixada, long mencoesNaoLidas, Long fotoGrupo) {}
     public record Silencio(boolean silenciado) {}
     public record UltimaNaoLida(long conversaId, long mensagemId, String autorNome, String texto) {}
     /** total: todas as nao lidas; comSom: so das conversas nao silenciadas; ultima: para a notificacao na area de trabalho. */
@@ -99,6 +99,7 @@ public class ChatService {
         long robo = idRobo();
         return jdbc.query("""
             select c.id, c.tipo, c.nome nome_grupo, c.criado_por, c.oficial, p.silenciado, c.ultima_mensagem_em, c.criado_em,
+                   (select extract(epoch from g.atualizado_em)::bigint from chat_grupo_foto g where g.conversa_id=c.id) foto_grupo,
                    u.id contato_id, u.nome, u.perfil, %s foto, %s,
                    (select count(*) from chat_participante t where t.conversa_id=c.id) participantes,
                    (select coalesce(min(t.ultima_leitura_id),0) from chat_participante t where t.conversa_id=c.id and t.usuario_id<>p.usuario_id) leitura_contato,
@@ -131,7 +132,7 @@ public class ChatService {
                     contato, r.getInt("participantes"), criador != null && criador == user.id(),
                     r.getString("ultima_texto"), (Long) r.getObject("ultimo_autor"), r.getString("ultimo_autor_nome"),
                     instante(r, "ultima_mensagem_em"), r.getLong("nao_lidas"), r.getLong("leitura_contato"), r.getBoolean("silenciado"),
-                    r.getBoolean("oficial"), contato != null && contato.id() == robo, fixada, r.getLong("mencoes_nao_lidas"));
+                    r.getBoolean("oficial"), contato != null && contato.id() == robo, fixada, r.getLong("mencoes_nao_lidas"), (Long) r.getObject("foto_grupo"));
             }, user.id(), user.id());
     }
 
@@ -639,6 +640,56 @@ public class ChatService {
         }).toList();
     }
 
+    // ---------- foto do grupo ----------
+    static final int LIMITE_FOTO_GRUPO = 1024 * 1024;
+
+    /** Troca a foto do grupo: em grupo comum qualquer participante; em grupo oficial so o ADMIN. Devolve a versao nova. */
+    @Transactional
+    public Long trocarFotoGrupo(long conversaId, String nomeArquivo, byte[] conteudo, UsuarioAutenticado user) {
+        var participantes = podeMudarFotoGrupo(conversaId, user);
+        if (conteudo == null || conteudo.length == 0) throw new IllegalArgumentException("Escolha uma imagem");
+        if (conteudo.length > LIMITE_FOTO_GRUPO) throw new IllegalArgumentException("A foto deve ter até 1 MB");
+        var img = ChatAnexos.validar(nomeArquivo, conteudo);
+        if (!img.imagem() || img.tipo().equals("image/gif")) throw new IllegalArgumentException("Use uma imagem PNG, JPG ou WEBP");
+        jdbc.update("""
+            insert into chat_grupo_foto(conversa_id,tipo,conteudo,atualizado_em) values (?,?,?,now())
+            on conflict (conversa_id) do update set tipo=excluded.tipo, conteudo=excluded.conteudo, atualizado_em=now()
+            """, conversaId, img.tipo(), img.conteudo());
+        Long versao = versaoFotoGrupo(conversaId);
+        depoisDoCommit(() -> eventos.enviar(participantes, "grupo-foto", java.util.Collections.singletonMap("conversaId", conversaId)));
+        return versao;
+    }
+
+    @Transactional
+    public void removerFotoGrupo(long conversaId, UsuarioAutenticado user) {
+        var participantes = podeMudarFotoGrupo(conversaId, user);
+        jdbc.update("delete from chat_grupo_foto where conversa_id=?", conversaId);
+        depoisDoCommit(() -> eventos.enviar(participantes, "grupo-foto", java.util.Collections.singletonMap("conversaId", conversaId)));
+    }
+
+    /** Imagem da foto do grupo (tipo, bytes) para quem participa dele. */
+    @Transactional(readOnly = true)
+    public Map.Entry<String, byte[]> fotoGrupo(long conversaId, UsuarioAutenticado user) {
+        participantes(conversaId, user);
+        var linhas = jdbc.query("select tipo, conteudo from chat_grupo_foto where conversa_id=?",
+                (r, n) -> Map.entry(r.getString("tipo"), r.getBytes("conteudo")), conversaId);
+        if (linhas.isEmpty()) throw new RecursoNaoEncontradoException("Sem foto");
+        return linhas.getFirst();
+    }
+
+    private Long versaoFotoGrupo(long conversaId) {
+        return jdbc.query("select extract(epoch from atualizado_em)::bigint v from chat_grupo_foto where conversa_id=?",
+                (r, n) -> r.getLong("v"), conversaId).stream().findFirst().orElse(null);
+    }
+
+    private List<Long> podeMudarFotoGrupo(long conversaId, UsuarioAutenticado user) {
+        var participantes = participantes(conversaId, user);
+        if (jdbc.queryForList("select id from chat_conversa where id=? and tipo='GRUPO'", Long.class, conversaId).isEmpty())
+            throw new IllegalArgumentException("Só grupos têm foto própria");
+        if (oficial(conversaId) && !admin(user)) throw new AccessDeniedException("Neste grupo oficial só o ADMIN muda a foto");
+        return participantes;
+    }
+
     /** Participantes da conversa; recusa quem nao faz parte dela. */
     private List<Long> participantes(long conversaId, UsuarioAutenticado user) {
         List<Long> ids = jdbc.queryForList("select usuario_id from chat_participante where conversa_id=?", Long.class, conversaId);
@@ -687,7 +738,8 @@ public class ChatService {
     private Contato contato(ResultSet r, String coluna) throws SQLException {
         long id = r.getLong(coluna);
         return new Contato(id, r.getString("nome"), r.getString("perfil"), eventos.online(id), (Long) r.getObject("foto"),
-                Optional.ofNullable(r.getString("status")).orElse("DISPONIVEL"), r.getString("recado"));
+                Optional.ofNullable(r.getString("status")).orElse("DISPONIVEL"), r.getString("recado"),
+                Optional.ofNullable(r.getTimestamp("visto_em")).map(java.sql.Timestamp::toInstant).orElse(null));
     }
 
     private static Mensagem mensagem(ResultSet r) throws SQLException {

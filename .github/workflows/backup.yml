@@ -1,0 +1,106 @@
+name: Backup
+
+# Backup diario do PostgreSQL de producao, criptografado e enviado ao Cloudflare R2.
+# Roda 03h no horario de Brasilia (06h UTC). Para rodar agora: Actions > Backup > Run workflow.
+# Configuracao e restauracao: docs/backup-r2.md
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: backup-producao
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup de producao para o R2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Environment proprio, SEM revisores obrigatorios: o agendamento nao pode ficar
+    # esperando aprovacao (o environment "producao" exige aprovacao manual).
+    environment: backup
+    env:
+      # pg_dump precisa ser da mesma versao do servidor, ou mais nova.
+      PG_VERSION: ${{ vars.BACKUP_PG_VERSION || '17' }}
+      PGSSLMODE: require
+      AWS_DEFAULT_REGION: auto
+    steps:
+      - name: Instalar cliente PostgreSQL e age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "postgresql-client-${PG_VERSION}" age
+          "/usr/lib/postgresql/${PG_VERSION}/bin/pg_dump" --version
+
+      - name: Gerar o dump
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          carimbo="$(date -u +%Y%m%d-%H%M%S)"
+          echo "ARQUIVO=faturamed-${carimbo}.dump" >> "$GITHUB_ENV"
+          "/usr/lib/postgresql/${PG_VERSION}/bin/pg_dump" "$DATABASE_URL" \
+            --format=custom --no-owner --file="faturamed-${carimbo}.dump"
+
+      - name: Conferir o dump
+        run: |
+          set -euo pipefail
+          tamanho="$(stat -c %s "$ARQUIVO")"
+          echo "Dump: $tamanho bytes"
+          if [ "$tamanho" -lt 10240 ]; then
+            echo "::error::Dump pequeno demais ($tamanho bytes); backup recusado"
+            exit 1
+          fi
+          # Lista o conteudo: falha se o arquivo estiver corrompido ou incompleto.
+          tabelas="$("/usr/lib/postgresql/${PG_VERSION}/bin/pg_restore" --list "$ARQUIVO" | grep -c ' TABLE DATA ' || true)"
+          echo "Tabelas com dados no dump: $tabelas"
+          if [ "$tabelas" -lt 1 ]; then
+            echo "::error::Nenhuma tabela com dados no dump; backup recusado"
+            exit 1
+          fi
+
+      - name: Criptografar (age)
+        env:
+          CHAVE_PUBLICA: ${{ vars.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          age --recipient "$CHAVE_PUBLICA" --output "${ARQUIVO}.age" "$ARQUIVO"
+          rm -f "$ARQUIVO"
+          ls -l "${ARQUIVO}.age"
+
+      - name: Enviar ao Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          aws s3 cp "${ARQUIVO}.age" "s3://${R2_BUCKET}/producao/${ARQUIVO}.age" \
+            --endpoint-url "$endpoint" --only-show-errors
+          # Confirma que o objeto chegou com o mesmo tamanho.
+          enviado="$(aws s3api head-object --bucket "$R2_BUCKET" --key "producao/${ARQUIVO}.age" \
+            --endpoint-url "$endpoint" --query ContentLength --output text)"
+          local_="$(stat -c %s "${ARQUIVO}.age")"
+          if [ "$enviado" != "$local_" ]; then
+            echo "::error::Tamanho no R2 ($enviado) difere do local ($local_)"
+            exit 1
+          fi
+          echo "Enviado: producao/${ARQUIVO}.age ($enviado bytes)"
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "## Backup de producao"
+            echo "- Arquivo: \`${ARQUIVO:-nao gerado}.age\`"
+            echo "- Resultado: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class ConciliadorVisitas {
     public enum Status { PAGA, PENDENTE, DIVERGENTE, EXCLUIDA }
+
+    /** Todo registro que veio na planilha do hospital conta como faturado, independentemente da coluna Setor. */
+    public static boolean faturado(RegistroHospital registro) { return registro != null; }
     public record Chave(String atendimento, LocalDate data) {}
     public record RegistroHospital(int linha, String atendimento, LocalDate data, String paciente,
             String convenio, String medico, String codigo, String procedimento, String conta,
@@ -48,6 +51,13 @@ public class ConciliadorVisitas {
                 : hospital != null ? hospital.procedimento() : original.getOrDefault("procedimento/mat-med", ""); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "codigoProcedimento", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public String codigoEfetivo() { return camposRevisados != null ? camposRevisados.codigoProcedimento() : hospital == null ? null : hospital.codigo(); }
+        /** Codigo e nome do exame como vieram na producao; a tela usa quando ainda nao ha registro do hospital. */
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "codigoProducao", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String codigoProducao() { return ConciliadorVisitas.codigoProducao(original); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "procedimentoProducao", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String procedimentoProducao() { return ConciliadorVisitas.nomeProducao(original); }
+        @com.fasterxml.jackson.annotation.JsonProperty(value = "tipoProducao", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String tipoProducao() { String c = codigoProducao(), n = procedimentoProducao(); return c.isBlank() && n.isBlank() ? null : TipoProcedimento.classificar("", c, n).name(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "valorHospital", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
         public BigDecimal valorEfetivo() { return camposRevisados != null ? camposRevisados.valorHospital() : hospital == null ? null : hospital.valorTotal(); }
         @com.fasterxml.jackson.annotation.JsonProperty(value = "repasse", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
@@ -150,7 +160,7 @@ public class ConciliadorVisitas {
                     .compareTo(new BigDecimal("0.01")) > 0) {
                 status = Status.DIVERGENTE;
                 motivo = "Repasse informado diverge de Valor Tot x Regra";
-            } else if (LeitorPlanilhaVisitas.normalizar(unico.setor()).equals("faturado")) {
+            } else if (ConciliadorVisitas.faturado(unico)) {
                 status = Status.PAGA;
                 motivo = "Correspondencia unica no faturamento do hospital";
             } else {
@@ -202,25 +212,42 @@ public class ConciliadorVisitas {
 
     private boolean conflita(LeitorPlanilhaVisitas.Linha linha, RegistroHospital hospital) {
         String medico = linha.campo("Medico");
-        String procedimento = linha.campo("Procedimento/Mat-Med");
         BigDecimal valor = numero(linha.campo("Valor Orig"), linha.numero());
-        String codigo = LeitorPlanilhaVisitas.identificador(linha.campo("Cod Produto"));
-        return (!codigo.isBlank() && !codigo.equals(hospital.codigo()))
+        return !mesmoExame(linha.campos(), hospital)
                 || (!medico.isBlank() && !LeitorPlanilhaVisitas.normalizar(medico).equals(LeitorPlanilhaVisitas.normalizar(hospital.medico())))
-                || (!procedimento.isBlank() && !procedimento.equals(hospital.codigo())
-                    && !LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(hospital.procedimento())))
                 || (valor != null && valor.signum() != 0 && valor.compareTo(hospital.valorTotal()) != 0);
+    }
+
+    // Colunas da producao que trazem o codigo e o nome do exame, conforme o layout exportado.
+    private static final List<String> COLUNAS_CODIGO = List.of("cod produto", "codigo procedimento", "cd procedimento", "codigo do procedimento");
+    private static final List<String> COLUNAS_NOME = List.of("procedimento/mat-med", "procedimento", "ds procedimento", "descricao procedimento");
+
+    private static String primeiro(Map<String,String> dados, List<String> colunas) {
+        for (String coluna : colunas) { String valor = dados.getOrDefault(coluna, ""); if (valor != null && !valor.isBlank()) return valor.trim(); }
+        return "";
+    }
+    public static String codigoProducao(Map<String,String> dados) { return dados == null ? "" : LeitorPlanilhaVisitas.identificador(primeiro(dados, COLUNAS_CODIGO)); }
+    public static String nomeProducao(Map<String,String> dados) { return dados == null ? "" : primeiro(dados, COLUNAS_NOME); }
+    private static String codigoLimpo(String codigo) { return LeitorPlanilhaVisitas.identificador(codigo == null ? "" : codigo).replaceAll("[^0-9A-Za-z]", ""); }
+
+    /**
+     * Mesmo exame entre a linha da producao e o registro do hospital. Com codigo dos dois lados, decide o codigo
+     * (o nome costuma vir escrito diferente em cada sistema); sem codigo, decide o nome.
+     */
+    static boolean mesmoExame(Map<String,String> dados, RegistroHospital hospital) {
+        String codigo = codigoLimpo(primeiro(dados, COLUNAS_CODIGO)), codigoHospital = codigoLimpo(hospital.codigo());
+        if (!codigo.isBlank() && !codigoHospital.isBlank()) return codigo.equals(codigoHospital);
+        String nome = primeiro(dados, COLUNAS_NOME);
+        if (nome.isBlank()) return true;
+        return codigoLimpo(nome).equals(codigoHospital)
+                || LeitorPlanilhaVisitas.normalizar(nome).equals(LeitorPlanilhaVisitas.normalizar(hospital.procedimento()));
     }
 
     static List<RegistroHospital> refinar(List<RegistroHospital> candidatos, Map<String,String> dados) {
         if (candidatos.size() < 2) return candidatos;
         String medico = LeitorPlanilhaVisitas.normalizar(dados.getOrDefault("medico", ""));
-        String codigo = LeitorPlanilhaVisitas.identificador(dados.getOrDefault("cod produto", ""));
-        String procedimento = dados.getOrDefault("procedimento/mat-med", "");
         var filtrados = candidatos.stream().filter(h -> (medico.isBlank() || medico.equals(LeitorPlanilhaVisitas.normalizar(h.medico())))
-                && (codigo.isBlank() || codigo.equals(h.codigo()))
-                && (procedimento.isBlank() || procedimento.equals(h.codigo())
-                    || LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(h.procedimento())))).toList();
+                && mesmoExame(dados, h)).toList();
         // Keep mismatching candidates visible for review instead of reporting an absent visit.
         return filtrados.isEmpty() ? candidatos : filtrados;
     }

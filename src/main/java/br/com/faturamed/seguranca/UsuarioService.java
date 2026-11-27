@@ -26,6 +26,9 @@ public class UsuarioService implements UserDetailsService {
         public Novo(String email, String nome, String senha, String perfil, Long medicoId, Long empresaId) { this(email,nome,senha,perfil,medicoId,empresaId,null); }
     }
     public record Situacao(boolean ativo, @NotNull @PositiveOrZero Long versao) {}
+    public record Edicao(@NotBlank @Email @Size(max=180) String email, @NotBlank @Size(max=180) String nome,
+            @Pattern(regexp="ADMIN|MEDICO|DEV|OPERADOR|EMPRESA|HOSPITAL") @NotNull String perfil, Long medicoId, Long empresaId, Long hospitalId,
+            boolean ativo, @NotNull @PositiveOrZero Long versao) {}
     public record NovaSenha(@NotBlank String senha, @NotNull @PositiveOrZero Long versao) {}
     private final JdbcTemplate jdbc;
     private final PasswordEncoder encoder;
@@ -89,6 +92,40 @@ public class UsuarioService implements UserDetailsService {
         if(jdbc.update("update usuario_acesso set ativo=?,versao=versao+1 where id=? and versao=?",dados.ativo(),id,dados.versao())!=1)
             throw new ConflitoRevisaoException("Acesso alterado. Recarregue a lista");
         auditar(id, operador, dados.ativo() ? "ATIVACAO" : "DESATIVACAO");
+        return buscar(id);
+    }
+    private static boolean administrador(String perfil) { return "ADMIN".equals(perfil) || "DEV".equals(perfil); }
+    private void validarVinculo(String perfil, Long medicoId, Long empresaId, Long hospitalId, boolean exigirAtivo) {
+        if (perfil.equals("HOSPITAL")) {
+            Boolean ativo = hospitalId == null ? null : jdbc.query("select ativo from hospital_cadastro where id=?", rs -> rs.next() ? rs.getBoolean(1) : null, hospitalId);
+            if (ativo == null || (exigirAtivo && !ativo)) throw new IllegalArgumentException("Selecione um hospital ativo");
+        } else if (hospitalId!=null) throw new IllegalArgumentException("Somente o perfil Hospital pode ser vinculado a um hospital");
+        if (perfil.equals("MEDICO")) {
+            if (medicoId==null || (exigirAtivo && !medicos.buscar(medicoId).ativo())) throw new IllegalArgumentException("Selecione um medico ativo");
+        } else if (medicoId!=null) throw new IllegalArgumentException("Somente o perfil Medico pode ser vinculado a um medico");
+        if (perfil.equals("EMPRESA")) {
+            if (empresaId==null || (exigirAtivo && !empresas.buscar(empresaId).ativo())) throw new IllegalArgumentException("Selecione uma empresa ativa");
+        } else if (empresaId!=null) throw new IllegalArgumentException("Somente o perfil Empresa pode ser vinculado a uma empresa");
+    }
+    @Transactional public Usuario editar(long id, Edicao dados, long operador) {
+        jdbc.execute("lock table usuario_acesso in share row exclusive mode");
+        var user=buscar(id);
+        if (dados.nome().isBlank() || !Set.of("ADMIN", "MEDICO", "DEV", "OPERADOR", "EMPRESA", "HOSPITAL").contains(dados.perfil())) throw new IllegalArgumentException("Dados de acesso invalidos");
+        if (id==operador && !dados.ativo()) throw new IllegalArgumentException("Nao e permitido desativar o proprio acesso");
+        if (id==operador && administrador(user.perfil()) && !administrador(dados.perfil())) throw new IllegalArgumentException("Nao e permitido remover o proprio perfil de administrador");
+        boolean deixaDeSerAdminAtivo = user.perfil().equals("ADMIN") && user.ativo() && (!dados.ativo() || !dados.perfil().equals("ADMIN"));
+        if (deixaDeSerAdminAtivo && jdbc.queryForObject("select count(*) from usuario_acesso where perfil='ADMIN' and ativo",Long.class)<=1)
+            throw new IllegalArgumentException("Mantenha pelo menos um administrador ativo");
+        validarVinculo(dados.perfil(), dados.medicoId(), dados.empresaId(), dados.hospitalId(), dados.ativo());
+        String email=email(dados.email());
+        if (jdbc.queryForObject("select count(*) from usuario_acesso where email=? and id<>?",Long.class,email,id)>0)
+            throw new ConflitoRevisaoException("Email ja possui acesso cadastrado");
+        try {
+            if(jdbc.update("update usuario_acesso set email=?,nome=?,perfil=?,medico_id=?,empresa_id=?,hospital_id=?,ativo=?,versao=versao+1 where id=? and versao=?",
+                    email,dados.nome().trim(),dados.perfil(),dados.medicoId(),dados.empresaId(),dados.hospitalId(),dados.ativo(),id,dados.versao())!=1)
+                throw new ConflitoRevisaoException("Acesso alterado. Recarregue a lista");
+        } catch(DuplicateKeyException e) { throw new ConflitoRevisaoException("Email ou medico ja possui acesso cadastrado"); }
+        auditar(id, operador, "EDICAO");
         return buscar(id);
     }
     @Transactional public void redefinir(long id, NovaSenha dados) { redefinir(id, dados, null); }

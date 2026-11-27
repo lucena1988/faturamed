@@ -34,13 +34,16 @@ public class LeitorPlanilhaVisitas {
             if (hospital) abas.sort(Comparator.comparing(a -> !a.nome().equalsIgnoreCase("Planilha2")));
             for (Aba aba : abas) {
                 for (int i = 0; i < Math.min(50, aba.linhas().size()); i++) {
-                    Map<Integer, String> cabecalho = aba.linhas().get(i);
+                    Map<Integer, String> cabecalho = hospital ? apelidar(aba.linhas().get(i)) : apelidarProducao(aba.linhas().get(i));
                     Set<String> campos = new HashSet<>();
                     cabecalho.values().forEach(v -> campos.add(normalizar(v)));
                     // A producao pode vir sem a coluna Atendimento; a data (Dt.) passa a identificar a visita.
                     boolean cabecalhoProducao = !hospital && (campos.contains("atendimento") || campos.contains("dt."));
                     if (!cabecalhoProducao && (!campos.contains("atendimento") || !hospital || !campos.contains("data consumo"))) continue;
-                    if (hospital && !campos.containsAll(Set.of("medico", "cod produto", "valor tot", "setor"))) {
+                    // No layout alternativo (Nr atendimento, Dt procedimento...) nao ha coluna de status de faturamento.
+                    Set<String> obrigatorios = layoutAlternativo(aba.linhas().get(i))
+                            ? Set.of("medico", "cod produto", "valor tot") : Set.of("medico", "cod produto", "valor tot", "setor");
+                    if (hospital && !campos.containsAll(obrigatorios)) {
                         throw new IllegalArgumentException("Cabecalho do hospital incompleto");
                     }
                     List<Linha> resultado = new ArrayList<>();
@@ -138,6 +141,54 @@ public class LeitorPlanilhaVisitas {
         return abas;
     }
 
+    // Layout de exportacao alternativo do hospital: cada coluna equivale a uma do modelo padrao.
+    private static final Map<String, String> APELIDOS_HOSPITAL = Map.ofEntries(
+            Map.entry("nr atendimento", "atendimento"),
+            Map.entry("dt procedimento", "data consumo"),
+            Map.entry("nm medico laudo", "medico"),
+            Map.entry("cd procedimento", "cod produto"),
+            Map.entry("ds procedimento", "produto"),
+            Map.entry("vl procedimento", "valor tot"),
+            Map.entry("valor", "valor tot"),
+            Map.entry("repasse", "vl. a repassar"),
+            Map.entry("convenio", "operadora"),
+            Map.entry("nm paciente", "paciente"));
+
+    private static String rotulo(String valor) {
+        // Exportacoes com BOM UTF-16 lido como texto deixam "þÿ" no inicio da primeira coluna
+        // (apos normalizar, o "ÿ" vira "y").
+        return normalizar(valor).replaceFirst("^(﻿|þy)+", "").trim();
+    }
+
+    private static boolean layoutAlternativo(Map<Integer, String> cabecalho) {
+        Set<String> rotulos = new HashSet<>();
+        cabecalho.values().forEach(v -> rotulos.add(rotulo(v)));
+        return !rotulos.contains("data consumo") && rotulos.contains("dt procedimento") && rotulos.contains("nr atendimento");
+    }
+
+    private static Map<Integer, String> apelidar(Map<Integer, String> cabecalho) {
+        if (!layoutAlternativo(cabecalho)) return cabecalho;
+        Map<Integer, String> resultado = new LinkedHashMap<>();
+        cabecalho.forEach((col, label) -> resultado.put(col, APELIDOS_HOSPITAL.getOrDefault(rotulo(label), label)));
+        return resultado;
+    }
+
+
+    // Exportacao de exames do sistema do hospital (Laudado por, Data execucao...) usada como producao:
+    // sem a coluna Dt., a data de execucao identifica a visita e o medico que laudou, o profissional.
+    private static Map<Integer, String> apelidarProducao(Map<Integer, String> cabecalho) {
+        Set<String> rotulos = new HashSet<>();
+        cabecalho.values().forEach(v -> rotulos.add(rotulo(v)));
+        if (rotulos.contains("dt.") || !rotulos.contains("data execucao")) return cabecalho;
+        boolean semMedico = !rotulos.contains("medico");
+        String colunaMedico = rotulos.contains("laudado por") ? "laudado por" : "executado por";
+        Map<Integer, String> resultado = new LinkedHashMap<>();
+        cabecalho.forEach((col, label) -> {
+            String r = rotulo(label);
+            resultado.put(col, r.equals("data execucao") ? "Dt." : semMedico && r.equals(colunaMedico) ? "Medico" : label);
+        });
+        return resultado;
+    }
     static String normalizar(String valor) {
         return Normalizer.normalize(Objects.toString(valor, ""), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "").replace('\u00a0', ' ').trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);

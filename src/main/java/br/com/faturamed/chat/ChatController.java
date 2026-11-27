@@ -164,6 +164,29 @@ public class ChatController {
                 .body(pdf);
     }
 
+    @PutMapping(path = "/conversas/{id}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> trocarFotoGrupo(@PathVariable long id, @RequestParam org.springframework.web.multipart.MultipartFile arquivo,
+                                               @AuthenticationPrincipal UsuarioAutenticado user) throws java.io.IOException {
+        if (arquivo.getSize() > ChatService.LIMITE_FOTO_GRUPO) throw new IllegalArgumentException("A foto deve ter até 1 MB");
+        Long versao = service.trocarFotoGrupo(id, arquivo.getOriginalFilename(), arquivo.getBytes(), user);
+        return java.util.Collections.singletonMap("fotoGrupo", versao);
+    }
+
+    @DeleteMapping("/conversas/{id}/foto")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removerFotoGrupo(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado user) {
+        service.removerFotoGrupo(id, user);
+    }
+
+    @GetMapping("/conversas/{id}/foto")
+    public org.springframework.http.ResponseEntity<byte[]> fotoGrupo(@PathVariable long id, @AuthenticationPrincipal UsuarioAutenticado user) {
+        var f = service.fotoGrupo(id, user);
+        return org.springframework.http.ResponseEntity.ok().contentType(MediaType.parseMediaType(f.getKey()))
+                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(7)).cachePrivate())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(f.getValue());
+    }
+
     @GetMapping("/anexos/{anexoId}")
     public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> anexo(@PathVariable long anexoId,
                                                                  @RequestParam(defaultValue = "false") boolean download,

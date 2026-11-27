@@ -35,19 +35,21 @@
   const cor = nome => { let h = 0; for (const ch of nome || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 'cor-' + (h % 6); };
   // foto de perfil quando a pessoa tem uma; senao, iniciais coloridas
   const urlFoto = (id, versao) => `/api/usuarios/${id}/foto?v=${versao}`;
-  function avatar(nome, online, ehGrupo, foto, usuarioId, status) {
+  function avatar(nome, online, ehGrupo, foto, usuarioId, status, conversaId, fotoGrupo) {
     const a = el('span', 'chat-avatar ' + (ehGrupo ? 'grupo' : cor(nome)), ehGrupo ? '#' : iniciais(nome));
     a.setAttribute('aria-hidden', 'true');
     a.classList.toggle('online', !!online);
     if (online && status && status !== 'DISPONIVEL') a.dataset.status = status;
-    if (!ehGrupo && foto && usuarioId) {
-      const img = document.createElement('img'); img.alt = ''; img.src = urlFoto(usuarioId, foto); img.loading = 'lazy';
+    const src = ehGrupo ? (fotoGrupo && conversaId ? `/api/chat/conversas/${Number(conversaId)}/foto?v=${Number(fotoGrupo)}` : null)
+      : (foto && usuarioId ? urlFoto(usuarioId, foto) : null);
+    if (src) {
+      const img = document.createElement('img'); img.alt = ''; img.src = src; img.loading = 'lazy';
       img.addEventListener('error', () => { img.remove(); a.classList.remove('com-foto'); });
       a.classList.add('com-foto'); a.append(img);
     }
     return a;
   }
-  const avatarConversa = c => avatar(c.nome, c.contato?.online, grupo(c), c.contato?.foto, c.contato?.id, c.contato?.status);
+  const avatarConversa = c => avatar(c.nome, c.contato?.online, grupo(c), c.contato?.foto, c.contato?.id, c.contato?.status, c.id, c.fotoGrupo);
 
   function desenharLista() {
     const termo = $('chat-busca').value.trim().toLowerCase();
@@ -88,6 +90,17 @@
     document.title = (total ? `(${total}) ` : '') + 'FaturaChat | FaturaMed';
   }
 
+  // "visto por ultimo" no estilo do WhatsApp: hoje/ontem as HH:MM, dia da semana na ultima semana, senao a data
+  function vistoPorUltimo(iso) {
+    if (!iso) return 'offline';
+    const d = new Date(iso), agora = new Date(), hora = d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+    const dia = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dias = Math.round((dia(agora) - dia(d)) / 86400000);
+    if (dias <= 0) return `visto por último hoje às ${hora}`;
+    if (dias === 1) return `visto por último ontem às ${hora}`;
+    if (dias < 7) return `visto por último ${d.toLocaleDateString('pt-BR', {weekday: 'long'})} às ${hora}`;
+    return `visto por último em ${d.toLocaleDateString('pt-BR')} às ${hora}`;
+  }
   function desenharCabecalho() {
     $('chat-nome').textContent = atual.nome;
     const status = $('chat-status');
@@ -99,7 +112,7 @@
       status.classList.remove('online');
     } else {
       const c = atual.contato;
-      const rotulo = c?.online ? (STATUS_ROTULO[c.status] || '● online') : 'offline';
+      const rotulo = c?.online ? (STATUS_ROTULO[c.status] || '● online') : vistoPorUltimo(c?.vistoEm);
       status.textContent = rotulo + (c?.recado ? ` — ${c.recado}` : '');
       status.classList.toggle('online', !!c?.online);
     }
@@ -877,6 +890,7 @@
       const c = conversas.find(x => x.id === msg.conversaId);
       if (c && c.ultimoAutorId === msg.autorId) carregarConversas().catch(() => {});
     });
+    fonte.addEventListener('grupo-foto', () => carregarConversas());
     fonte.addEventListener('status', e => {
       const {usuarioId, status, recado} = JSON.parse(e.data);
       conversas.forEach(c => { if (c.contato?.id === usuarioId) Object.assign(c.contato, {status, recado}); });
@@ -884,8 +898,8 @@
       desenharLista();
     });
     fonte.addEventListener('presenca', e => {
-      const {usuarioId, online} = JSON.parse(e.data);
-      conversas.forEach(c => { if (c.contato?.id === usuarioId) c.contato.online = online; });
+      const {usuarioId, online, vistoEm} = JSON.parse(e.data);
+      conversas.forEach(c => { if (c.contato?.id === usuarioId) Object.assign(c.contato, {online}, vistoEm ? {vistoEm} : {}); });
       if (atual?.contato?.id === usuarioId) desenharCabecalho();
       desenharLista();
     });
@@ -1161,9 +1175,39 @@
   }
 
   // ---- participantes do grupo
+  // foto do grupo: grupo comum, qualquer participante troca; grupo oficial, so o ADMIN
+  function desenharFotoGrupo() {
+    const pode = !atual.oficial || eu.perfil === 'ADMIN';
+    $('chat-grupo-foto-previa').replaceChildren(avatarConversa(atual));
+    $('chat-grupo-foto-trocar').hidden = !pode;
+    $('chat-grupo-foto-remover').hidden = !pode || !atual.fotoGrupo;
+    $('chat-grupo-foto-dica').textContent = pode ? 'PNG, JPG ou WEBP de até 1 MB.' : 'Neste grupo oficial só o ADMIN muda a foto.';
+  }
+  function aplicarFotoGrupo(conversaId, versao) {
+    conversas.forEach(c => { if (c.id === conversaId) c.fotoGrupo = versao; });
+    if (atual?.id === conversaId) { atual.fotoGrupo = versao; desenharCabecalho(); if ($('chat-participantes').open) desenharFotoGrupo(); }
+    desenharLista();
+  }
+  async function enviarFotoGrupo(arquivo) {
+    if (!arquivo || !atual) return;
+    if (arquivo.size > 1024 * 1024) { aviso('A foto deve ter até 1 MB'); return; }
+    const conversaId = atual.id, corpo = new FormData(); corpo.append('arquivo', arquivo);
+    try {
+      const r = await api(`/api/chat/conversas/${conversaId}/foto`, {method: 'PUT', body: corpo});
+      aplicarFotoGrupo(conversaId, r.fotoGrupo);
+    } catch (e) { aviso(e.message); }
+  }
+  async function removerFotoGrupo() {
+    if (!atual || !confirm('Remover a foto deste grupo?')) return;
+    const conversaId = atual.id;
+    try { await api(`/api/chat/conversas/${conversaId}/foto`, {method: 'DELETE'}); aplicarFotoGrupo(conversaId, null); }
+    catch (e) { aviso(e.message); }
+  }
+
   async function abrirParticipantes() {
     if (!grupo(atual)) return;
     const conversaId = atual.id;
+    desenharFotoGrupo();
     try {
       const [lista, todos] = await Promise.all([api(`/api/chat/conversas/${conversaId}/participantes`), api('/api/chat/contatos')]);
       const ul = $('chat-participantes-lista'); ul.replaceChildren();
@@ -1240,6 +1284,9 @@
     $('chat-contato-busca').addEventListener('input', desenharContatos);
     $('chat-grupo-criar').addEventListener('click', criarGrupo);
     $('chat-participantes-abrir').addEventListener('click', abrirParticipantes);
+    $('chat-grupo-foto-trocar').addEventListener('click', () => $('chat-grupo-foto-arquivo').click());
+    $('chat-grupo-foto-arquivo').addEventListener('change', e => { const a = e.target.files[0]; e.target.value = ''; enviarFotoGrupo(a); });
+    $('chat-grupo-foto-remover').addEventListener('click', removerFotoGrupo);
     $('chat-participantes-fechar').addEventListener('click', () => $('chat-participantes').close());
     $('chat-participante-adicionar').addEventListener('click', adicionarParticipante);
     $('chat-sair-grupo').addEventListener('click', () => atual && removerParticipante(atual.id, eu.id, `Sair do grupo “${atual.nome}”?`));

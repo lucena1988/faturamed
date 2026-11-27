@@ -52,7 +52,7 @@ public class AcompanhamentoRevisao {
         if (h != null && h.regra() != null && v.valorEfetivo().multiply(h.regra()).subtract(v.repasseEfetivo()).abs()
                 .compareTo(new BigDecimal("0.01")) > 0) return Categoria.VALOR_DIVERGENTE;
         if (v.status() == ConciliadorVisitas.Status.DIVERGENTE && h != null) return Categoria.DADOS_DIVERGENTES;
-        if (h != null && !LeitorPlanilhaVisitas.normalizar(h.setor()).equals("faturado")) return Categoria.AGUARDANDO_FATURAMENTO;
+        if (h != null && !ConciliadorVisitas.faturado(h)) return Categoria.AGUARDANDO_FATURAMENTO;
         return Categoria.CONFERENCIA_MANUAL;
     }
 

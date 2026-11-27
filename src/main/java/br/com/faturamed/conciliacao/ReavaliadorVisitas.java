@@ -43,13 +43,9 @@ public class ReavaliadorVisitas {
         var dados = visita.original();
         String medico = dados.getOrDefault("medico", "");
         if(visita.medicoProducao()!=null && !visita.medicoProducao().conflito()) medico=visita.medicoProducao().nome();
-        String procedimento = dados.getOrDefault("procedimento/mat-med", "");
         String valor = dados.getOrDefault("valor orig", "");
-        String codigo = LeitorPlanilhaVisitas.identificador(dados.getOrDefault("cod produto", ""));
-        if (!codigo.isBlank() && !codigo.equals(h.codigo())) return false;
+        if (!ConciliadorVisitas.mesmoExame(dados, h)) return false;
         if (!medico.isBlank() && !LeitorPlanilhaVisitas.normalizar(medico).equals(LeitorPlanilhaVisitas.normalizar(h.medico()))) return false;
-        if (!procedimento.isBlank() && !procedimento.equals(h.codigo())
-                && !LeitorPlanilhaVisitas.normalizar(procedimento).equals(LeitorPlanilhaVisitas.normalizar(h.procedimento()))) return false;
         try { return valor.isBlank() || new BigDecimal(valor).signum() == 0 || new BigDecimal(valor).compareTo(h.valorTotal()) == 0; }
         catch (NumberFormatException e) { return false; }
     }

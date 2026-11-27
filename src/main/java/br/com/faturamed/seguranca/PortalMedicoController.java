@@ -23,8 +23,21 @@ public class PortalMedicoController {
         // The account's doctor ID is authoritative; never accept it from a query parameter.
         return liberacoes.buscarDoMedico(id,user.medicoId());
     }
+    /** Procedimento do hospital/revisao; sem ele (visita ainda sem registro do hospital), o nome do exame da producao do proprio medico. */
+    static String procedimentoDe(ConciliadorVisitas.Visita visita) {
+        String valor=visita.procedimentoEfetivo();
+        if(valor!=null && !valor.isBlank()) return valor;
+        String producao=visita.procedimentoProducao();
+        return producao==null || producao.isBlank() ? valor : producao;
+    }
+    static String codigoDe(ConciliadorVisitas.Visita visita) {
+        String valor=visita.codigoEfetivo();
+        if(valor!=null && !valor.isBlank()) return valor;
+        String producao=visita.codigoProducao();
+        return producao==null || producao.isBlank() ? valor : producao;
+    }
     static Visita sanitizar(ConciliadorVisitas.Visita visita,MedicoCadastroService.Medico medico) {
         return new Visita(visita.linhaMedico(),visita.atendimento(),visita.data(),visita.status(),visita.motivo(),
-                medico.nome(),medico.id(),visita.procedimentoEfetivo(),visita.codigoEfetivo(),visita.repasseEfetivo());
+                medico.nome(),medico.id(),procedimentoDe(visita),codigoDe(visita),visita.repasseEfetivo());
     }
 }

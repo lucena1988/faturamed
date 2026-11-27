@@ -12,6 +12,11 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class ChatEventos {
     static final long TEMPO_CONEXAO_MS = 30 * 60 * 1000L;
     private final Map<Long, Set<SseEmitter>> conexoes = new ConcurrentHashMap<>();
+    private org.springframework.jdbc.core.JdbcTemplate jdbc; // opcional: sem banco (testes) o "visto por ultimo" so nao e gravado
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setJdbc(org.springframework.jdbc.core.JdbcTemplate jdbc) { this.jdbc = jdbc; }
+
     private final ScheduledExecutorService pulso = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "chat-pulso"); t.setDaemon(true); return t;
     });
@@ -29,6 +34,7 @@ public class ChatEventos {
         emitter.onCompletion(remover);
         emitter.onTimeout(remover);
         emitter.onError(e -> remover.run());
+        registrarVisto(List.of(usuarioId));
         enviar(emitter, "pronto", Map.of("usuarioId", usuarioId));
         if (estavaOffline) difundir("presenca", Map.of("usuarioId", usuarioId, "online", true), usuarioId);
         return emitter;
@@ -37,8 +43,10 @@ public class ChatEventos {
     private void desconectar(long usuarioId, SseEmitter emitter) {
         Set<SseEmitter> lista = conexoes.get(usuarioId);
         if (lista == null || !lista.remove(emitter)) return;
-        if (lista.isEmpty() && conexoes.remove(usuarioId, lista))
-            difundir("presenca", Map.of("usuarioId", usuarioId, "online", false), usuarioId);
+        if (lista.isEmpty() && conexoes.remove(usuarioId, lista)) {
+            registrarVisto(List.of(usuarioId));
+            difundir("presenca", Map.of("usuarioId", usuarioId, "online", false, "vistoEm", java.time.Instant.now().toString()), usuarioId);
+        }
     }
 
     public boolean online(long usuarioId) {
@@ -72,10 +80,19 @@ public class ChatEventos {
     }
 
     private void pulsar() {
+        registrarVisto(List.copyOf(conexoes.keySet()));
         conexoes.values().forEach(lista -> List.copyOf(lista).forEach(e -> {
             try { e.send(SseEmitter.event().comment("pulso")); }
             catch (IOException | IllegalStateException ex) { e.completeWithError(ex); }
         }));
+    }
+
+    /** Grava agora como ultimo instante visto dessas pessoas; falha de banco nao derruba o chat em tempo real. */
+    void registrarVisto(Collection<Long> usuarios) {
+        if (jdbc == null || usuarios.isEmpty()) return;
+        try {
+            for (Long id : usuarios) jdbc.update("insert into chat_presenca (usuario_id, visto_em) values (?, now()) on conflict (usuario_id) do update set visto_em = excluded.visto_em", id);
+        } catch (RuntimeException e) { /* tabela ainda nao migrada ou banco indisponivel */ }
     }
 
     @PreDestroy void encerrar() {

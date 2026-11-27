@@ -20,7 +20,7 @@
       <button type="button" class="fmc-mudo-geral" aria-pressed="false"></button>
       <a class="fmc-cheio" href="chat.html" title="Abrir o FaturaChat completo" aria-label="Abrir o FaturaChat completo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></a>
       <button type="button" class="fmc-fechar" aria-label="Fechar (Esc)">×</button></header>
-    <div class="fmc-lista-vista"><div class="fmc-abas" role="tablist"><button type="button" role="tab" class="fmc-aba-conversas ativo" aria-selected="true">Conversas</button><button type="button" role="tab" class="fmc-aba-comigo" aria-selected="false" title="Pendências abertas com você">Comigo <b></b></button><button type="button" role="tab" class="fmc-aba-salvas" aria-selected="false" title="Mensagens salvas">⭐ Salvas</button></div><input type="search" class="fmc-busca" placeholder="Buscar conversa" aria-label="Buscar conversa"><ul class="fmc-lista"></ul></div>
+    <div class="fmc-lista-vista"><div class="fmc-abas" role="tablist"><button type="button" role="tab" class="fmc-aba-conversas ativo" aria-selected="true">Conversas</button><button type="button" role="tab" class="fmc-aba-comigo" aria-selected="false" title="Pendências abertas com você">Comigo <b></b></button><button type="button" role="tab" class="fmc-aba-salvas" aria-selected="false" title="Mensagens salvas">⭐ Salvas</button></div><input type="search" class="fmc-busca" placeholder="Buscar conversa ou pessoa" aria-label="Buscar conversa ou pessoa"><ul class="fmc-lista"></ul></div>
     <div class="fmc-conversa-vista" hidden><ol class="fmc-msgs" aria-live="polite"></ol>
       <div class="fmc-anexos" hidden></div>
       <div class="fmc-emojis" hidden role="dialog" aria-label="Emojis"></div>
@@ -171,6 +171,7 @@
       avisarNovas(novas);
       conversas = novas;
       renderTrilho(); if (!gaveta.hidden && !aberta) renderLista();
+      if (aberta) { const c = conversas.find(x => x.id === aberta); if (c) desenharTitulo(c); }
     } catch (_) {}
   }
 
@@ -222,7 +223,8 @@
   }
   function avatar(c, classe = '') {
     const grupo = c.tipo === 'GRUPO';
-    const foto = !grupo && c.contato?.foto ? `<img alt="" loading="lazy" src="/api/usuarios/${c.contato.id}/foto?v=${c.contato.foto}" onerror="this.remove()">` : '';
+    const foto = grupo ? (c.fotoGrupo ? `<img alt="" loading="lazy" src="/api/chat/conversas/${Number(c.id)}/foto?v=${Number(c.fotoGrupo)}" onerror="this.remove()">` : '')
+      : c.contato?.foto ? `<img alt="" loading="lazy" src="/api/usuarios/${c.contato.id}/foto?v=${c.contato.foto}" onerror="this.remove()">` : '';
     const online = !grupo && c.contato?.online ? '<i class="fmc-online"></i>' : '';
     return `<span class="fmc-av ${grupo ? 'grupo' : ''} ${classe}">${grupo ? '#' : esc(iniciais(c.nome))}${foto}${online}</span>`;
   }
@@ -289,6 +291,7 @@
   function abrir(id) {
     posicionar(); gaveta.hidden = false; document.body.classList.add('fmc-aberta');
     requestAnimationFrame(() => gaveta.classList.add('visivel'));
+    carregarContatos();
     if (id) abrirConversa(id); else { voltar(); $('.fmc-busca').focus(); }
   }
   function fechar() {
@@ -302,17 +305,41 @@
     $('.fmc-titulo').textContent = 'FaturaChat'; $('.fmc-cheio').href = 'chat.html'; $('.fmc-mudo-conversa').hidden = true; $('.fmc-mudo-geral').hidden = false; $('.fmc-nao-perturbe').hidden = false;
     renderLista();
   }
+  const PERFIS = {ADMIN: 'Administrador', DEV: 'Desenvolvedor', OPERADOR: 'Operador', MEDICO: 'Médico', HOSPITAL: 'Hospital'};
+  let contatos = null; // pessoas cadastradas (/api/chat/contatos), carregadas ao abrir a gaveta
   function renderLista() {
     if (vendoPendencias) { renderPendencias(); return; }
     if (vendoSalvas) { renderSalvas(); return; }
     const termo = $('.fmc-busca').value.trim().toLowerCase();
     const lista = conversas.filter(c => !termo || String(c.nome).toLowerCase().includes(termo));
-    $('.fmc-lista').innerHTML = lista.length ? lista.map(c => `<li><button type="button" class="fmc-item${c.naoLidas ? ' nao-lida' : ''}" data-id="${c.id}">
+    // pessoas cadastradas que ainda nao tem conversa direta com o usuario: clicar abre a conversa
+    const comConversa = new Set(conversas.filter(c => c.tipo !== 'GRUPO' && c.contato).map(c => c.contato.id));
+    const pessoas = (contatos || []).filter(p => !comConversa.has(p.id) && (!termo || String(p.nome).toLowerCase().includes(termo)));
+    const secaoPessoas = pessoas.length ? `<li class="fmc-secao">Iniciar conversa</li>` + pessoas.map(p => `<li><button type="button" class="fmc-item fmc-contato" data-usuario="${p.id}">
+        ${avatar({nome: p.nome, contato: p})}<span class="fmc-item-corpo"><strong>${esc(p.nome)}</strong><small>${esc(p.recado || PERFIS[p.perfil] || p.perfil || '')}</small></span>
+        <span class="fmc-item-meta"><em>Nova</em></span></button></li>`).join('') : '';
+    if (!lista.length && !pessoas.length) {
+      $('.fmc-lista').innerHTML = `<li class="fmc-vazio">${termo ? 'Ninguém encontrado com esse nome.' : contatos ? 'Nenhuma pessoa disponível para conversar.' : 'Carregando…'}</li>`;
+      return;
+    }
+    $('.fmc-lista').innerHTML = lista.map(c => `<li><button type="button" class="fmc-item${c.naoLidas ? ' nao-lida' : ''}" data-id="${c.id}">
         ${avatar(c)}<span class="fmc-item-corpo"><strong>${esc(c.nome)}</strong><small>${esc(c.ultimaMensagem || 'Sem mensagens ainda')}</small></span>
-        <span class="fmc-item-meta">${c.ultimaMensagemEm ? `<em>${hora(c.ultimaMensagemEm)}</em>` : ''}${c.naoLidas ? `<b>${c.naoLidas > 99 ? '99+' : c.naoLidas}</b>` : ''}</span></button><button type="button" class="fmc-item-mudo${c.silenciado ? ' ativo' : ''}" data-id="${c.id}" aria-pressed="${!!c.silenciado}" title="${c.silenciado ? 'Conversa silenciada: clique para reativar' : 'Silenciar esta conversa'}" aria-label="${c.silenciado ? 'Reativar' : 'Silenciar'} ${esc(c.nome)}">${c.silenciado ? SINO_CORTADO : SINO}</button></li>`).join('')
-      : `<li class="fmc-vazio">${termo ? 'Nenhuma conversa com esse nome.' : 'Você ainda não tem conversas. Abra o FaturaChat completo para começar uma.'}</li>`;
+        <span class="fmc-item-meta">${c.ultimaMensagemEm ? `<em>${hora(c.ultimaMensagemEm)}</em>` : ''}${c.naoLidas ? `<b>${c.naoLidas > 99 ? '99+' : c.naoLidas}</b>` : ''}</span></button><button type="button" class="fmc-item-mudo${c.silenciado ? ' ativo' : ''}" data-id="${c.id}" aria-pressed="${!!c.silenciado}" title="${c.silenciado ? 'Conversa silenciada: clique para reativar' : 'Silenciar esta conversa'}" aria-label="${c.silenciado ? 'Reativar' : 'Silenciar'} ${esc(c.nome)}">${c.silenciado ? SINO_CORTADO : SINO}</button></li>`)
+      .join('') + secaoPessoas;
   }
   $('.fmc-busca').addEventListener('input', renderLista);
+  async function carregarContatos() {
+    const r = await fetch('/api/chat/contatos', {headers: {Accept: 'application/json'}}).catch(() => null);
+    contatos = r && r.ok ? await r.json() : (contatos || []);
+    if (!gaveta.hidden && !aberta) renderLista();
+  }
+  async function iniciarConversa(usuarioId) {
+    const r = await fetch('/api/chat/conversas', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({usuarioId})}).catch(() => null);
+    if (!r || !r.ok) { window.fmToast?.('Não foi possível iniciar a conversa', 'erro'); return; }
+    const conversa = await r.json();
+    await carregarConversas();
+    abrirConversa(conversa.id);
+  }
   function renderPendencias() {
     $('.fmc-lista').innerHTML = pendencias.length ? pendencias.map(p => {
       const [ic, nome] = ROTULO_STATUS[p.status] || ['', p.status];
@@ -351,6 +378,7 @@
   setTimeout(() => { contarPendencias(); setInterval(contarPendencias, 60000); }, 0);
   $('.fmc-lista').addEventListener('click', e => {
     const m = e.target.closest('.fmc-item-mudo'); if (m) { e.stopPropagation(); alternarSilencio(Number(m.dataset.id)); return; }
+    const p = e.target.closest('.fmc-contato'); if (p) { p.disabled = true; iniciarConversa(Number(p.dataset.usuario)); return; }
     const b = e.target.closest('.fmc-item'); if (b) abrirConversa(Number(b.dataset.id));
   });
   $('.fmc-voltar').addEventListener('click', voltar);
@@ -377,12 +405,28 @@
     campo.style.height = 'auto'; if (campo.value) campo.style.height = Math.min(120, campo.scrollHeight) + 'px';
     renderPendentes(); painelEmoji.hidden = true;
   }
+  // cabecalho da conversa: nome e, na conversa direta, "online" ou "visto por ultimo" (estilo WhatsApp)
+  function vistoPorUltimo(iso) {
+    if (!iso) return 'offline';
+    const d = new Date(iso), agora = new Date(), h = d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+    const dia = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dias = Math.round((dia(agora) - dia(d)) / 86400000);
+    if (dias <= 0) return `visto por último hoje às ${h}`;
+    if (dias === 1) return `visto por último ontem às ${h}`;
+    if (dias < 7) return `visto por último ${d.toLocaleDateString('pt-BR', {weekday: 'long'})} às ${h}`;
+    return `visto por último em ${d.toLocaleDateString('pt-BR')} às ${h}`;
+  }
+  function desenharTitulo(c) {
+    const direta = c.tipo !== 'GRUPO' && c.contato;
+    const presenca = direta ? `<small class="fmc-presenca${c.contato.online ? ' online' : ''}">${c.contato.online ? 'online' : esc(vistoPorUltimo(c.contato.vistoEm))}</small>` : '';
+    $('.fmc-titulo').innerHTML = `${avatar(c, 'mini')}<span class="fmc-titulo-txt"><span>${esc(c.nome)}</span>${presenca}</span>`;
+  }
   async function abrirConversa(id) {
     const c = conversas.find(x => x.id === id) || {id, nome: 'Conversa'};
     if (aberta !== id) { guardarRascunho(); restaurarRascunho(id); }
     aberta = id;
     $('.fmc-lista-vista').hidden = true; $('.fmc-conversa-vista').hidden = false; $('.fmc-voltar').hidden = false;
-    $('.fmc-titulo').innerHTML = `${avatar(c, 'mini')}<span>${esc(c.nome)}</span>`;
+    desenharTitulo(c);
     atualizarMudoConversa(); $('.fmc-mudo-geral').hidden = true; $('.fmc-nao-perturbe').hidden = true; // dentro da conversa, so o sininho dela
     $('.fmc-cheio').href = `chat.html#c${id}`;
     $('.fmc-msgs').innerHTML = '<li class="fmc-vazio">Carregando…</li>';
@@ -418,7 +462,7 @@
       lista.innerHTML = msgs.length ? msgs.map(m => {
         if (m.sistema) return `<li class="fmc-sis">${esc(m.texto)}</li>`;
         const minha = eu && m.autorId === eu.id;
-        const anexos = (m.anexos || []).map(a => String(a.tipo || '').startsWith('image/') ? `<a class="fmc-img" href="/api/chat/anexos/${a.id}" target="_blank" rel="noopener" title="${esc(a.nome)}"><img alt="${esc(a.nome)}" loading="lazy" src="/api/chat/anexos/${a.id}"></a>` : `<a href="/api/chat/anexos/${a.id}" target="_blank" rel="noopener">📎 ${esc(a.nome)}</a>`).join('');
+        const anexos = (m.anexos || []).map(a => String(a.tipo || '').startsWith('audio/') ? `<audio class="fmc-audio" controls preload="metadata" title="${esc(a.nome)}" src="/api/chat/anexos/${a.id}"></audio>` : String(a.tipo || '').startsWith('image/') ? `<a class="fmc-img" href="/api/chat/anexos/${a.id}" target="_blank" rel="noopener" title="${esc(a.nome)}"><img alt="${esc(a.nome)}" loading="lazy" src="/api/chat/anexos/${a.id}"></a>` : `<a href="/api/chat/anexos/${a.id}" target="_blank" rel="noopener">📎 ${esc(a.nome)}</a>`).join('');
         return `<li class="fmc-msg${minha ? ' minha' : ''}" data-msg="${m.id}">${minha ? '' : `<span class="fmc-autor">${esc(m.autorNome)}</span>`}
           <p>${m.apagada ? '<em>Mensagem apagada</em>' : esc(m.texto || '').replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/(^|\s)(@[\p{L}.\-]+)/gu, '$1<span class="fmc-marca">$2</span>').replace(/^[\s\S]*$/, t => window.fmChatRefs ? window.fmChatRefs.linkificar(t) : t)}</p>${anexos}<time>${idsSalvos.has(m.id) ? '⭐ ' : ''}${hora(m.criadoEm)}${m.editada ? ' · editada' : ''}</time>
           ${m.apagada ? '' : `<span class="fmc-msg-acoes"><button type="button" class="fmc-reagir" data-msg="${m.id}" title="Reagir" aria-label="Reagir à mensagem">☺<small>+</small></button><button type="button" class="fmc-mais" data-msg="${m.id}" title="Mais ações" aria-label="Mais ações da mensagem">⋯</button></span>`}

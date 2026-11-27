@@ -76,8 +76,9 @@ public class BaseHospitalarService {
                 atualizadas++;
                 continue;
             }
-            var anteriores=jdbc.queryForList("select id,medico_nome from visita_base_hospitalar where hospital_id=? and atendimento=? and data_visita=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId,registro.atendimento(),registro.data());
-            var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),texto(anterior,"medico_nome"),cadastros)).toList();
+            var anteriores=jdbc.queryForList("select id,medico_nome,campos->>'cod produto' as codigo,campos->>'produto' as produto from visita_base_hospitalar where hospital_id=? and atendimento=? and data_visita=? and decisao in ('ORIGINAL','VISITA_DISTINTA') order by id",hospitalId,registro.atendimento(),registro.data());
+            var semelhantes=anteriores.stream().filter(anterior->mesmoMedico(registro.medico(),texto(anterior,"medico_nome"),cadastros)
+                    && mesmoProcedimento(registro.codigo(),registro.procedimento(),Objects.toString(anterior.get("codigo"),""),Objects.toString(anterior.get("produto"),""))).toList();
             Integer anteriorId=semelhantes.isEmpty()?null:(int)numero(semelhantes.getFirst(),"id");
             if(anteriorId!=null) divergencias++;
             jdbc.update("""
@@ -289,7 +290,7 @@ public class BaseHospitalarService {
                 || ultima.acao()==RevisaoVisitaRequest.Acao.CORRESPONDENCIA_AUTOMATICA) {
             if(!hospital.medico().isBlank() && !hospital.codigo().isBlank()
                     && hospital.valorTotal()!=null && hospital.repasse()!=null) {
-                status=LeitorPlanilhaVisitas.normalizar(hospital.setor()).equals("faturado")
+                status=ConciliadorVisitas.faturado(hospital)
                         ? ConciliadorVisitas.Status.PAGA : ConciliadorVisitas.Status.PENDENTE;
             }
         }
@@ -318,16 +319,25 @@ public class BaseHospitalarService {
                 List.of(new LeitorPlanilhaVisitas.Linha(anterior.linhaMedico(),anterior.original())),List.of(hospital),medico).visitas().getFirst();
     }
 
+    /** Tipo informado na importacao. No hospital, substitui a classificacao automatica dos procedimentos do arquivo; na producao, e apenas informativo. */
+    @Transactional
+    public void definirTipoArquivo(long arquivoId,String tipo) {
+        var valor=TipoProcedimento.de(tipo);
+        if(valor==null) return;
+        jdbc.update("update arquivo_base_hospitalar set tipo_procedimento=? where id=?",valor.name(),arquivoId);
+        jdbc.update("update visita_base_hospitalar set tipo_procedimento=? where arquivo_atual_id=?",valor.name(),arquivoId);
+    }
+
     @Transactional(readOnly=true)
     public List<Map<String,Object>> arquivos(long hospitalId) {
-        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,m.nome as medico,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
+        return jdbc.queryForList("select a.id,a.tipo,a.nome,a.competencia,a.criado_em,a.relatorio_id,a.modo_hospital,a.quantidade_registros,a.tipo_procedimento,m.nome as medico,(select string_agg(x.mes||':'||x.total,',' order by x.mes) from (select to_char(v.data_visita,'YYYY-MM') as mes,count(*) as total from visita_base_hospitalar v where a.tipo='HOSPITAL' and v.arquivo_atual_id=a.id group by 1) x) as competencias_exames,(select string_agg(c.competencia||':'||c.total,',' order by c.competencia) from (select h.competencia,count(*) as total from vinculo_base_hospitalar b join visita_base_hospitalar v on v.id=b.visita_id join arquivo_base_hospitalar h on h.id=v.arquivo_id where a.relatorio_id is not null and b.relatorio_id=a.relatorio_id group by h.competencia) c) as competencias_faturadas,case when a.tipo='PRODUCAO' and a.medico_id is null then 'VARIOS' else 'UNICO' end as modo_producao from arquivo_base_hospitalar a left join medico_cadastro m on m.id=a.medico_id where a.hospital_id=? order by a.id desc",hospitalId);
     }
 
     @Transactional(readOnly=true)
     public List<Map<String,Object>> visitas(long hospitalId) {
         return jdbc.queryForList("""
                 select v.id,v.linha,v.atendimento,v.data_visita,v.medico_nome,v.decisao,v.anterior_id,a.competencia,a.id as arquivo_id,v.arquivo_atual_id,v.linha_atual,
-                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.tipo_procedimento,
+                b.relatorio_id,b.linha_producao,v.campos->>'produto' as procedimento,v.campos->>'cod produto' as codigo_procedimento,v.campos->>'paciente' as paciente,v.campos->>'operadora' as convenio,to_char(v.data_visita,'YYYY-MM') as competencia_exame,v.tipo_procedimento,
                 case when v.decisao='EM_ANALISE' then 'DIVERGENTE'
                      when v.decisao in ('DUPLICADO_PAGO_OUTRO_MES','DUPLICADO_MESMA_COMPETENCIA') then v.decisao
                      when b.visita_id is not null and coalesce(
@@ -408,10 +418,13 @@ public class BaseHospitalarService {
             throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
         }
         String limpo = competencia.trim().replace('/', '-');
-        if (limpo.matches("^[0-9]{4}-[0-9]{2}$")) {
+        // AAAA-MM ou AAAA-M (mes com um digito), como a tela aceita.
+        if (limpo.matches("^[0-9]{4}-[0-9]{1,2}$")) {
             try {
-                YearMonth.parse(limpo);
-                return limpo;
+                String[] partes = limpo.split("-");
+                String normalizado = partes[0] + "-" + (partes[1].length() == 1 ? "0" + partes[1] : partes[1]);
+                YearMonth.parse(normalizado);
+                return normalizado;
             } catch (Exception erro) {
                 throw new IllegalArgumentException("Formato invalido. Informe a competencia no formato AAAA/MM ou AAAA-MM (ex: 2026/01)");
             }
@@ -469,6 +482,14 @@ public class BaseHospitalarService {
     private Long identificar(String nome,List<MedicoCadastroService.Medico> cadastros) {
         return medicos.identificarNome(nome,cadastros);
     }
+    /** Mesmo atendimento, data e medico com codigo ou nome de procedimento diferentes sao procedimentos distintos (ex.: dois exames no mesmo dia). */
+    static boolean mesmoProcedimento(String codigo,String nome,String outroCodigo,String outroNome) {
+        String a=LeitorPlanilhaVisitas.identificador(Objects.toString(codigo,"")).replaceAll("[^0-9A-Za-z]",""),b=LeitorPlanilhaVisitas.identificador(Objects.toString(outroCodigo,"")).replaceAll("[^0-9A-Za-z]","");
+        if(!a.isBlank() && !b.isBlank()) return a.equals(b);
+        String x=LeitorPlanilhaVisitas.normalizar(Objects.toString(nome,"")),y=LeitorPlanilhaVisitas.normalizar(Objects.toString(outroNome,""));
+        return x.isBlank() || y.isBlank() || x.equals(y);
+    }
+
     private boolean mesmoMedico(String primeiro,String segundo,List<MedicoCadastroService.Medico> cadastros) {
         if(primeiro.isBlank() || segundo.isBlank()) return true;
         Long primeiroId=identificar(primeiro,cadastros),segundoId=identificar(segundo,cadastros);

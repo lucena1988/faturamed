@@ -1,0 +1,33 @@
+.comp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 24px; }
+.comp-card { text-align: left; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: 14px 16px; cursor: pointer; color: var(--text); }
+.comp-card:hover { border-color: var(--primary); }
+.comp-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.comp-card[aria-pressed="true"] { border-color: var(--primary); border-width: 2px; box-shadow: var(--shadow); }
+.comp-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.comp-card .total { color: var(--muted); font-size: .85rem; margin-bottom: 8px; display: block; }
+.comp-card .linha { display: flex; justify-content: space-between; font-size: .9rem; padding: 2px 0; }
+.chip.chip-pendente { background: var(--info-bg); color: var(--info-fg); }
+.chip.chip-divergente { background: var(--danger-bg); color: var(--danger-fg); font-weight: 700; }
+.chip.chip-analise { background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
+.chip.chip-inferido { margin-left: 6px; background: var(--surface-soft); color: var(--muted); }
+.chip.chip-duplicada { background: var(--surface-soft); color: var(--muted); text-decoration: line-through; }
+#competencia-dialog, #repeticao-dialog { max-width: 620px; width: calc(100% - 32px); }
+#historico-dialog { max-width: 700px; }
+#competencia-mensagem:empty, #repeticao-mensagem:empty { display: none; }
+#competencia-mensagem:not(:empty), #repeticao-mensagem:not(:empty) { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--danger-line); background: var(--danger-bg); color: var(--danger-fg); font-weight: 600; }
+.titulo-secao { margin: 0 0 6px; font-size: 1.1rem; }
+.faturamento-lista { display: grid; gap: 16px; margin: 12px 0 8px; }
+.faturamento-card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: 16px 18px; }
+.faturamento-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.faturamento-topo h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.faturamento-total { text-align: right; }
+.faturamento-total strong { display: block; font-size: 1.5rem; color: var(--primary); }
+.faturamento-total span { font-size: .8rem; color: var(--muted); }
+.faturamento-meses { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.faturamento-meses th, .faturamento-meses td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.faturamento-meses th { background: var(--surface-soft); }
+.faturamento-meses td .chip { margin-left: 8px; }
+.faturamento-soma td { font-weight: 700; background: var(--surface-soft); }
+.aviso-relatorio { padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--warning-line); border-left: 6px solid var(--amber); background: var(--warning-bg); color: var(--warning-fg); font-weight: 600; }
+td.acoes button { margin: 3px 0; display: block; }
+.conciliation-table td.motivo { min-width: 260px; font-size: .85rem; color: var(--muted); }

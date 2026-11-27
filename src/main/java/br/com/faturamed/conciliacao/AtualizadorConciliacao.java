@@ -92,7 +92,8 @@ public class AtualizadorConciliacao {
         return Arrays.asList(h.atendimento(),h.data(),LeitorPlanilhaVisitas.normalizar(h.paciente()),LeitorPlanilhaVisitas.normalizar(h.medico()),h.codigo(),LeitorPlanilhaVisitas.normalizar(h.procedimento()),h.conta());
     }
     private boolean mesmoRegistro(ConciliadorVisitas.RegistroHospital a,ConciliadorVisitas.RegistroHospital b) {
-        return identidade(a).equals(identidade(b))&&LeitorPlanilhaVisitas.normalizar(a.setor()).equals(LeitorPlanilhaVisitas.normalizar(b.setor()))
+        // Setor nao entra: todo registro da planilha do hospital ja conta como faturado.
+        return identidade(a).equals(identidade(b))
                 && decimal(a.valorTotal(),b.valorTotal())&&decimal(a.regra(),b.regra())&&decimal(a.repasse(),b.repasse());
     }
     private boolean decimal(BigDecimal a,BigDecimal b) { return a==null?b==null:b!=null&&a.compareTo(b)==0; }

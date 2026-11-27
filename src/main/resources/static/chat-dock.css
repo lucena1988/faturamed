@@ -79,6 +79,7 @@
 .fmc-emojis button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .fmc-img { display: block; }
 .fmc-img img { display: block; max-width: 220px; max-height: 180px; border-radius: 8px; object-fit: cover; }
+.fmc-audio { display: block; width: 240px; max-width: 100%; height: 36px; }
 .fmc-gaveta.soltando .fmc-conversa-vista { outline: 2px dashed var(--green); outline-offset: -8px; }
 .fmc-cab { padding: 14px 14px 12px; background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
 .fmc-titulo { font-size: 14px; font-weight: 700; }
@@ -345,3 +346,9 @@ main :is(.account-heading, .conciliation-heading, .topbar) .session-actions { po
 .fmc-dica { margin: 0; color: var(--muted); font-size: 13px; }
 .fmc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .fmc-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fmc-secao { list-style: none; padding: 12px 12px 4px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.fmc-contato .fmc-item-meta em { color: var(--primary, #1f6f8b); font-style: normal; font-weight: 600; }
+.fmc-titulo-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.fmc-titulo-txt > span { overflow: hidden; text-overflow: ellipsis; }
+.fmc-presenca { font-size: 11px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.fmc-presenca.online { color: var(--green, #16a34a); }

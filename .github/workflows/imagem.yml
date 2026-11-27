@@ -30,8 +30,20 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
+      - name: Preparar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # O Maven Central limita (HTTP 429) os IPs compartilhados dos runners. Com o cache de camadas do GitHub Actions,
+      # a camada de dependencias (que so depende do pom.xml) e reaproveitada e o build nao volta ao Maven Central
+      # enquanto o pom.xml nao mudar. Mudou o pom.xml, so a primeira construcao precisa baixar de novo.
       - name: Construir imagem
-        run: docker build -t "$IMAGEM:$SHA" .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGEM }}:${{ env.SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Procurar vulnerabilidades criticas (Trivy)
         run: >-

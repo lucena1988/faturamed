@@ -32,6 +32,34 @@ class LeitorPlanilhaVisitasTest {
     }
 
     @Test
+    @DisplayName("Producao no layout de exportacao de exames usa Data execucao como Dt. e Laudado por como Medico")
+    void importaProducaoNoLayoutDeExames() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet();
+            var cab = sheet.createRow(0);
+            String[] rotulos = {"Status", "Atendimento", "Paciente", "Procedimento", "Data prescrição", "Laudado por", "Executado por", "Data execução"};
+            for (int i = 0; i < rotulos.length; i++) cab.createCell(i).setCellValue(rotulos[i]);
+            var linha = sheet.createRow(1);
+            linha.createCell(0).setCellValue("Laudo liberado");
+            linha.createCell(1).setCellValue(55729388);
+            linha.createCell(2).setCellValue("Paciente Teste");
+            linha.createCell(3).setCellValue("Doppler Colorido Arterias Cervicais Bilateral");
+            linha.createCell(4).setCellValue(46205.5);
+            linha.createCell(5).setCellValue("Medico Laudo");
+            linha.createCell(6).setCellValue("Medico Executor");
+            linha.createCell(7).setCellValue(46207.326840277776);
+            workbook.write(output);
+            var linhas = new LeitorPlanilhaVisitas().ler(new MockMultipartFile("producao", "Exames.xlsx",
+                    "application/octet-stream", output.toByteArray()), false);
+            assertThat(linhas).hasSize(1);
+            var l = linhas.getFirst();
+            assertThat(LeitorPlanilhaVisitas.identificador(l.campo("Atendimento"))).isEqualTo("55729388");
+            assertThat(LeitorPlanilhaVisitas.data(l.campo("Dt."), l.numero())).isEqualTo(LocalDate.of(2026, 7, 4));
+            assertThat(l.campo("Medico")).isEqualTo("Medico Laudo");
+        }
+    }
+
+    @Test
     void producaoAceitaAtendimentoVazioOuColunaAusenteMasHospitalNao() throws Exception {
         assertThat(ler(false, new String[][] {{"Dt.", "Medico"}, {"2026-01-05", "Medico A"}}).getFirst().campo("Atendimento")).isEmpty();
         var vazio = ler(false, new String[][] {{"Atendimento", "Dt."}, {"", "2026-01-05"}, {"00123", "2026-01-06"}});
@@ -151,6 +179,78 @@ class LeitorPlanilhaVisitasTest {
 
             LocalDate data = LeitorPlanilhaVisitas.data(linhas.getFirst().campo("Data Consumo"), linhas.getFirst().numero());
             assertThat(data).isEqualTo(LocalDate.of(2026, 10, 30));
+        }
+    }
+
+    @Test
+    @DisplayName("Planilha hospitalar no layout alternativo (Nr atendimento, Dt procedimento, BOM no primeiro rotulo)")
+    void importaPlanilhaHospitalNoLayoutAlternativo() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Planilha1");
+            String[] rotulos = {"þÿDs setor atendimento", "Nm medico laudo", "Convênio", "Nr atendimento",
+                    "Cd procedimento", "Ds procedimento", "Dt procedimento", "Nm paciente", "Vl procedimento", "Regra", "Repasse"};
+            var header = sheet.createRow(0);
+            for (int i = 0; i < rotulos.length; i++) header.createCell(i).setCellValue(rotulos[i]);
+            var row = sheet.createRow(1);
+            row.createCell(0).setCellValue("SADT");
+            row.createCell(1).setCellValue("Dr. Teste");
+            row.createCell(2).setCellValue("Plano");
+            row.createCell(3).setCellValue(55001);
+            row.createCell(4).setCellValue(40901106);
+            row.createCell(5).setCellValue("Exame");
+            row.createCell(6).setCellValue(46207);
+            row.createCell(7).setCellValue("Paciente Teste");
+            row.createCell(8).setCellValue(200.0);
+            row.createCell(9).setCellValue(0.5);
+            row.createCell(10).setCellValue(100.0);
+            workbook.write(output);
+            var linhas = new LeitorPlanilhaVisitas().ler(new MockMultipartFile("hospital", "hospital.xlsx",
+                    "application/octet-stream", output.toByteArray()), true);
+            assertThat(linhas).hasSize(1);
+            var linha = linhas.getFirst();
+            assertThat(linha.campo("Atendimento")).isEqualTo("55001");
+            assertThat(linha.campo("Medico")).isEqualTo("Dr. Teste");
+            assertThat(linha.campo("Cod Produto")).isEqualTo("40901106");
+            assertThat(linha.campo("Valor Tot")).isEqualTo("200");
+            assertThat(linha.campo("Vl. A Repassar")).isEqualTo("100");
+            assertThat(LeitorPlanilhaVisitas.data(linha.campo("Data Consumo"), linha.numero())).isEqualTo(LocalDate.of(2026, 7, 4));
+            var registros = new ConciliadorVisitas().conciliar("H", "", "base", java.util.List.of(), linhas).hospitalSemProducao();
+            assertThat(registros).hasSize(1);
+        }
+    }
+
+    @Test
+    @DisplayName("Layout alternativo com coluna Valor no lugar de Vl procedimento e linha de total acima do cabecalho")
+    void importaPlanilhaHospitalNoLayoutAlternativoComColunaValor() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Planilha1");
+            var total = sheet.createRow(0);
+            total.createCell(0).setCellValue("Repasse");
+            total.createCell(1).setCellValue(14402.05);
+            String[] rotulos = {"Ds setor atendimento", "Nm medico laudo", "Convênio", "Nr atendimento",
+                    "Cd procedimento", "Ds procedimento", "Dt procedimento", "Nm paciente", "Valor", "Regra", "Repasse"};
+            var header = sheet.createRow(1);
+            for (int i = 0; i < rotulos.length; i++) header.createCell(i).setCellValue(rotulos[i]);
+            var row = sheet.createRow(2);
+            row.createCell(0).setCellValue("SADT");
+            row.createCell(1).setCellValue("Dr. Teste");
+            row.createCell(2).setCellValue("Plano");
+            row.createCell(3).setCellValue(55729388);
+            row.createCell(4).setCellValue(40901360);
+            row.createCell(5).setCellValue("Doppler");
+            row.createCell(6).setCellValue(46207);
+            row.createCell(7).setCellValue("Paciente Teste");
+            row.createCell(8).setCellValue(273.95);
+            row.createCell(9).setCellValue(0.5);
+            row.createCell(10).setCellValue(136.97499999999999);
+            workbook.write(output);
+            var linhas = new LeitorPlanilhaVisitas().ler(new MockMultipartFile("hospital", "AF JULHO.xlsx",
+                    "application/octet-stream", output.toByteArray()), true);
+            assertThat(linhas).hasSize(1);
+            assertThat(linhas.getFirst().campo("Valor Tot")).isEqualTo("273.95");
+            var registros = new ConciliadorVisitas().conciliar("H", "", "base", java.util.List.of(), linhas).hospitalSemProducao();
+            assertThat(registros).hasSize(1);
+            assertThat(registros.getFirst().valorTotal()).isEqualByComparingTo("273.95");
         }
     }
 }

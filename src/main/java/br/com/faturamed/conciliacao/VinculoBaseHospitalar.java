@@ -17,6 +17,7 @@ public class VinculoBaseHospitalar {
         return new HashSet<>(jdbc.queryForList("""
                 select v.id from visita_base_hospitalar v where v.hospital_id=? and
                 (exists(select 1 from reserva_base_hospitalar b where b.visita_id=v.id)
+                 or exists(select 1 from producao_visita p where p.hospital_visita_id=v.id)
                  or exists(select 1 from visita_base_hospitalar repetida where repetida.anterior_id=v.id and repetida.decisao='EM_ANALISE'))
                 """,Integer.class,hospitalId));
     }

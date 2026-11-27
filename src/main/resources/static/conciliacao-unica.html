@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Importar e conciliar | FaturaMed</title>
+<link rel="stylesheet" href="tokens.css?v=20261029-ui"><link rel="stylesheet" href="styles.css?v=20261029-ui"><link rel="stylesheet" href="conciliacao.css?v=20261127-menu"><link rel="stylesheet" href="login.css?v=20261029-ui"><link rel="stylesheet" href="identidade.css?v=20261127-menu"><link rel="stylesheet" href="tema.css?v=20261127-menu"><link rel="stylesheet" href="base-hospitalar.css?v=20261125-compexame"><link rel="stylesheet" href="conciliacao-unica.css?v=20261126-2"><script src="tema.js"></script></head>
+<body><main class="conciliation-workspace">
+<header class="conciliation-heading"><div><a class="company-name" href="/">FaturaMed</a><h1>Importar e conciliar</h1></div><a href="base-hospitalar.html">Acompanhamento da base</a><a href="conciliacao.html">Relatórios e revisões</a><div class="session-actions"><a href="conta.html">Minha conta</a><button type="button" data-logout>Sair</button></div></header>
+<p class="base-intro">Importe a produção médica e a planilha do hospital em qualquer ordem. A competência de cada visita vem da data do atendimento e a conciliação acontece sozinha a cada importação.</p>
+<div class="conciliation-filters base-toolbar"><label>Hospital<select id="hospital" required></select></label><button id="reload" type="button">Atualizar</button></div>
+<p id="message" role="status" aria-live="polite"></p>
+<div class="base-steps">
+<section><h2>Produção médica</h2>
+<form id="production-form" class="stack-form">
+<div class="form-row"><label>Médico<select name="medicoId" id="medico"></select></label>
+<label>Tipo de procedimento<select name="tipoProcedimento"><option value="">Automático (por linha)</option><option value="VISITA">Visita</option><option value="EXAME">Exame</option><option value="CONSULTA">Consulta</option><option value="OUTRO">Outro</option></select></label></div>
+<label>Planilha da produção<input name="arquivo" type="file" accept=".xlsx,.xlsb" required></label>
+<details class="help"><summary>Como funciona</summary><p>Sem escolher médico, a planilha é tratada como produção de vários médicos: o médico vem da coluna Medico ou, quando vazia, do registro único do hospital para atendimento e data. Escolhendo um médico, ele vale para todas as linhas.</p><p>Não é preciso informar competência: uma planilha com meses diferentes se divide sozinha.</p><p>Tipo automático classifica cada linha pelo código e pelo nome do exame (colunas como Codigo Procedimento e Procedimento). Escolher um tipo vale para todas as linhas da planilha.</p></details>
+<button type="submit">Importar produção</button></form></section>
+<section><h2>Planilha do hospital</h2>
+<form id="hospital-form" class="stack-form">
+<div class="form-row"><label>Finalidade<select name="modoHospital"><option value="NOVO">Novos registros / reapresentação</option><option value="ATUALIZAR">Atualizar faturamento existente</option></select></label>
+<label>Tipo de procedimento<select name="tipoProcedimento"><option value="">Automático (por linha)</option><option value="VISITA">Visita</option><option value="EXAME">Exame</option><option value="CONSULTA">Consulta</option><option value="OUTRO">Outro</option></select></label></div>
+<label>Competência do faturamento <small>(MM/AAAA ou AAAA/MM)</small><input name="competencia" type="text" placeholder="ex: 07/2026" pattern="(\d{4}(/|-)(0?[1-9]|1[0-2])|(0?[1-9]|1[0-2])(/|-)\d{4})" title="Use MM/AAAA ou AAAA/MM, por exemplo 07/2026" required></label>
+<label>Planilha do hospital<input name="arquivo" type="file" accept=".xlsx,.xlsb" required></label>
+<details class="help"><summary>Como funciona</summary><p>A competência aqui é a do faturamento (NF) e não altera a competência das visitas, que segue a data do atendimento. Todo registro do hospital que casa com uma visita da produção a deixa como paga.</p></details>
+<button type="submit">Importar hospital e conciliar</button></form></section>
+</div>
+<section class="base-resumo"><div id="comp-cards" class="comp-cards"><p class="muted">Selecione um hospital.</p></div></section>
+<section class="base-resumo"><h2 class="titulo-secao">Faturado pelo hospital</h2>
+<p class="muted">Total de Vl. A Repassar de cada planilha do hospital, aberto pelo mês do exame: um faturamento pode pagar exames de meses anteriores. <strong>Conciliado</strong> é o que já casou com uma produção; <strong>sem produção</strong> aguarda a produção daquele mês.</p>
+<div id="faturamento" class="faturamento-lista"><p class="muted">Selecione um hospital.</p></div></section>
+<p id="aviso-hospital" class="aviso-relatorio" hidden></p>
+<nav class="base-tabs" role="tablist"><button type="button" role="tab" data-tab="tab-visitas" aria-selected="true">Visitas da produção</button><button type="button" role="tab" data-tab="tab-relatorios" aria-selected="false">Relatórios ao médico</button><button type="button" role="tab" data-tab="tab-sem-producao" aria-selected="false">Hospital sem produção</button><button type="button" role="tab" data-tab="tab-arquivos" aria-selected="false">Arquivos importados</button></nav>
+<section id="tab-visitas" class="base-tab-panel">
+<div class="conciliation-filters"><label>Competência<select id="competencia-filter"><option value="">Todas</option></select></label><label>Situação<select id="status"><option value="">Todas</option><option value="PAGA">Pagas</option><option value="PENDENTE">Aguardando hospital</option><option value="DIVERGENTE">Divergentes</option><option value="EM_ANALISE">Em análise</option><option value="DUPLICADA">Duplicadas</option></select></label><label>Médico<select id="medico-filter"><option value="">Todos</option></select></label><label>Tipo<select id="tipo-filter"><option value="">Todos</option><option value="VISITA">Visita</option><option value="EXAME">Exame</option><option value="CONSULTA">Consulta</option><option value="OUTRO">Outro</option></select></label><label>Atendimento<input id="search" type="search"></label><span id="count"></span></div>
+<p class="muted">PAGA significa correspondência com um registro faturado pelo hospital; não comprova recebimento financeiro.</p>
+<div class="conciliation-table"><table><thead><tr><th>ID</th><th>Atendimento / data</th><th>Médico</th><th>Competência</th><th>Código e exame</th><th>Tipo</th><th>Situação</th><th>Detalhe</th><th>Ações</th></tr></thead><tbody id="visits"></tbody></table></div></section>
+<section id="tab-relatorios" class="base-tab-panel" hidden>
+<p class="muted">Gere o relatório de cada médico por competência quando a conciliação estiver pronta. O relatório segue para revisão, liberação ao médico e recebimentos como sempre; novos arquivos do hospital atualizam o relatório gerado. Visitas incluídas depois de um relatório geram outro relatório da mesma competência.</p>
+<div class="conciliation-table"><table><thead><tr><th>Competência</th><th>Médico</th><th>Pagas</th><th>Aguardando hospital</th><th>Divergentes</th><th>Em análise</th><th>Relatório</th></tr></thead><tbody id="reports"></tbody></table></div></section>
+<section id="tab-sem-producao" class="base-tab-panel" hidden>
+<p class="muted">Registros do hospital que ainda não atendem nenhuma visita da produção. Podem aguardar a produção do médico.</p>
+<div class="conciliation-table"><table><thead><tr><th>ID</th><th>Atendimento</th><th>Data</th><th>Competência do exame</th><th>Médico hospitalar</th><th>Código e exame</th></tr></thead><tbody id="orphans"></tbody></table></div></section>
+<section id="tab-arquivos" class="base-tab-panel" hidden>
+<p class="muted">Planilhas importadas para este hospital. Exclua uma planilha enviada por engano ou na versão errada; a exclusão pede sua senha e fica registrada. Produção com visitas em relatório só pode ser excluída depois de excluir o relatório, em <a href="conciliacao.html">Relatórios e revisões</a>. Planilha do hospital já conciliada só pode ser excluída depois da produção correspondente.</p>
+<div class="conciliation-table"><table><thead><tr><th>Tipo</th><th>Arquivo</th><th>Detalhe</th><th>Importado em</th><th>Ações</th></tr></thead><tbody id="files"></tbody></table></div></section>
+<dialog id="competencia-dialog"><form id="competencia-form" class="stack-form"><h2>Corrigir competência</h2><p id="competencia-resumo"></p>
+<p class="muted">A competência da visita vem da data do atendimento. Corrija apenas quando o faturamento deve ocorrer em outro mês. A correção fica no histórico.</p>
+<p id="competencia-relatorio" class="aviso-relatorio" hidden></p>
+<label>Nova competência <small>(MM/AAAA ou AAAA/MM; em branco restaura a da data)</small><input name="competencia" type="text" placeholder="ex: 07/2026" pattern="(\d{4}(/|-)(0?[1-9]|1[0-2])|(0?[1-9]|1[0-2])(/|-)\d{4})" title="Use MM/AAAA ou AAAA/MM, por exemplo 07/2026"></label>
+<label>Justificativa<textarea name="justificativa" minlength="5" maxlength="2000" required rows="3"></textarea></label>
+<p id="competencia-mensagem" role="status"></p><button type="submit">Salvar correção</button><button type="button" id="competencia-fechar">Cancelar</button></form></dialog>
+<dialog id="repeticao-dialog"><form id="repeticao-form" class="stack-form"><h2>Analisar repetição</h2><p id="repeticao-resumo"></p>
+<p class="muted">Esta visita já tinha sido importada em outro arquivo. Confira a original e decida. A decisão fica no histórico.</p>
+<label>Decisão<select name="acao"><option value="VISITA_DISTINTA">É uma visita distinta (volta a conciliar)</option><option value="DUPLICADA">É duplicada (sai da conciliação e dos relatórios)</option></select></label>
+<label>Justificativa<textarea name="justificativa" minlength="5" maxlength="2000" required rows="3"></textarea></label>
+<p id="repeticao-mensagem" role="status"></p><button type="submit">Salvar decisão</button><button type="button" id="repeticao-fechar">Cancelar</button></form></dialog>
+<dialog id="historico-dialog"><h2>Histórico da visita</h2><ol id="historico-lista"></ol><button type="button" id="historico-fechar">Fechar</button></dialog>
+</main><script src="sidebar.js?v=20261125-menu"></script><script src="menu.js?v=20261029-3"></script><script src="auth.js?v=20261110-semfab"></script><script src="conciliacao-unica.js?v=20261126-2"></script></body></html>

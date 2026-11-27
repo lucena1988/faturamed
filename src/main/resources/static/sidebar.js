@@ -18,9 +18,10 @@
       ['Fechamento e envio', 'fechamento-producao.html', null, '<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>']], 'producao'],
     ['nav-producao', 'Fechamento Faturado', [
       ['Dashboard', null, 'dashboard', '<path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-4H4v4Z"/>'],
-      ['Base hospitalar', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
+      ['Importar e conciliar', 'conciliacao-unica.html', null, '<path d="M4 7h10M4 12h16M4 17h10"/><path d="M17 5l3 2-3 2M17 15l3 2-3 2"/>'],
+      ['Acompanhamento da base', 'base-hospitalar.html', null, '<path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M10 21v-4h4v4M12 7v4M10 9h4"/>'],
       ['Importações', null, 'importacoes', '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/>'],
-      ['Conciliação', 'conciliacao.html', null, '<path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/>'],
+      ['Relatórios e revisões', 'conciliacao.html', null, '<path d="M4 5h16M4 12h7M4 19h7M14 16l2 2 5-6"/>'],
       ['Divergências', null, 'divergencias', '<path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/>'],
       ['Solicitações dos médicos', 'solicitacoes-medicos.html', null, '<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 9h8M8 12h5"/>'],
       ['Repasse por procedimento', 'repasses.html', null, '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
@@ -226,8 +227,8 @@
   // FaturaChat de bolso (icone no topo + gaveta + trilho de avatares) substitui o antigo widget do menu
   function recentesChat() { window.fmChatDock?.atualizar(); }
   if (page !== 'chat.html' && !document.querySelector('script[src^="chat-dock.js"]')) {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261116-previa'; document.head.append(css);
-    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261116-previa'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'chat-dock.css?v=20261124-audio'; document.head.append(css);
+    const js = document.createElement('script'); js.src = 'chat-dock.js?v=20261124-audio'; js.onload = () => window.fmChatDock?.total(totais.chat); document.body.append(js);
   }
 
   // Chat da equipe abre em janela propria, para nao tirar a pessoa da tela em que esta trabalhando.
