@@ -183,7 +183,15 @@ class PreviaLiberacaoTest {
             assertThat(resumo.getRow(0).getCell(0).getStringCellValue()).isEqualTo("Relatório Conciliado mensal").doesNotContain("PREVIA");
             var t=texto(resumo);
             assertThat(t).contains("Hospital Demo","Medico(s)","Ana","Competencia da producao","09/2026","Competencia faturada pelo hospital","08/2026","Em revisao");
-            assertThat(t).contains("Exames do mesmo faturamento fora deste relatorio","Exames do mesmo faturamento de outros medicos","Total faturado pelo hospital (R$)");
+            // Nomes definidos pela empresa substituem os antigos: linhas do bloco de cima e colunas da tabela por medico.
+            assertThat(t).contains("QTD PROCEDIMENTOS FATURADOS DO MÊS ATUAL","QTD PROCEDIMENTOS FATURADOS DE MESES ANTERIORES","Exames do mesmo faturamento de outros medicos");
+            assertThat(t).contains("mês atual","qtd meses anteriores","meses anteriores","TOTAL FATURADO (R$)");
+            assertThat(t).doesNotContain("no relatorio (sem excluidos)","fora deste relatorio (incluidos","Repasse das pagas neste relatorio","Total faturado pelo hospital (R$)");
+            var tabela=linhaDoResumo(resumo,"Medico");
+            assertThat(tabela.getCell(5).getStringCellValue()).isEqualTo("mês atual");
+            assertThat(tabela.getCell(6).getStringCellValue()).isEqualTo("qtd meses anteriores");
+            assertThat(tabela.getCell(7).getStringCellValue()).isEqualTo("meses anteriores");
+            assertThat(tabela.getCell(8).getStringCellValue()).isEqualTo("TOTAL FATURADO (R$)");
             // Linha da Ana na tabela do resumo: 100 neste relatorio, 2 outros exames de 279,62 e 379,62 no total.
             Row ana=null; for(Row row:resumo) if(row.getCell(0)!=null && "Ana".equals(row.getCell(0).toString()) && row.getCell(5)!=null && row.getCell(5).getCellType()==CellType.NUMERIC) ana=row;
             assertThat(ana).isNotNull();
@@ -228,8 +236,9 @@ class PreviaLiberacaoTest {
                 String esperado=Character.toUpperCase(caso.plural().charAt(0))+caso.plural().substring(1);
                 assertThat(cabecalho.getCell(1).getStringCellValue()).isEqualTo(esperado);
                 var t=texto(resumo);
-                assertThat(t).contains(esperado+" no relatorio","Outros "+caso.plural()+" do faturamento","Repasse dos outros "+caso.plural());
-                if(!caso.plural().equals("visitas")) assertThat(t).doesNotContain("Visitas no relatorio");
+                // O substantivo segue o tipo nas linhas que o usam; as duas linhas de quantidade tem o nome fixo da empresa.
+                assertThat(t).contains(esperado+" que os medicos passam a ver no portal","QTD PROCEDIMENTOS FATURADOS DO MÊS ATUAL","QTD PROCEDIMENTOS FATURADOS DE MESES ANTERIORES");
+                if(!caso.plural().equals("visitas")) assertThat(t).doesNotContain("Visitas que os medicos","Visitas sem medico");
                 assertThat(texto(workbook.getSheet("Ana"))).contains("Repasse de "+caso.plural()+" do mesmo faturamento");
             }
         }
